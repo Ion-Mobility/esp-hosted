@@ -39,10 +39,10 @@ SRC += ./test_utils.c
 all: test
 
 test:
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) $(INCLUDE) $(SRC) $(LINKER) $(@).c -o $(@).out
+	$(CC) $(CFLAGS) $(INCLUDE) $(SRC) $(LINKER) $(@).c -o $(@).out
 
 stress:
-	$(CROSS_COMPILE)$(CC) $(CFLAGS) $(CFLAGS_SANITIZE) $(INCLUDE) $(SRC) $(LINKER) $(@).c -o $(@).out -ggdb3 -g
+	$(CC) $(CFLAGS) $(CFLAGS_SANITIZE) $(INCLUDE) $(SRC) $(LINKER) $(@).c -o $(@).out -ggdb3 -g
 
 clean:
 	rm -f *.out *.o
