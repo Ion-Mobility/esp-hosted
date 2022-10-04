@@ -54,16 +54,16 @@
 
 /* station mode */
 #define STATION_MODE_MAC_ADDRESS            "aa:bb:cc:dd:ee:ff"
-#define STATION_MODE_SSID                   "MyWifi"
-#define STATION_MODE_PWD                    "MyWifiPass@123"
+#define STATION_MODE_SSID                   "WIFI24"
+#define STATION_MODE_PWD                    "p@ssw0rd"
 #define STATION_MODE_BSSID                  ""
 #define STATION_MODE_IS_WPA3_SUPPORTED      false
 #define STATION_MODE_LISTEN_INTERVAL        5
 
 /* softap mode */
 #define SOFTAP_MODE_MAC_ADDRESS             "cc:bb:aa:ee:ff:dd"
-#define SOFTAP_MODE_SSID                    "ESPWifi"
-#define SOFTAP_MODE_PWD                     "ESPWifi@123"
+#define SOFTAP_MODE_SSID                    "ION-DVT1-Wifi"
+#define SOFTAP_MODE_PWD                     "IONMobility"
 #define SOFTAP_MODE_CHANNEL                 1
 #define SOFTAP_MODE_ENCRYPTION_MODE         3
 #define SOFTAP_MODE_MAX_ALLOWED_CLIENTS     4
