@@ -168,6 +168,8 @@ typedef enum {
 		CTRL_MSG_ID__Event_StationDisconnectFromAP,
 	CTRL_EVENT_STATION_DISCONNECT_FROM_ESP_SOFTAP =
 		CTRL_MSG_ID__Event_StationDisconnectFromESPSoftAP,
+	CTRL_EVENT_STATION_CONNECT_FROM_ESPTOUCH =
+		CTRL_MSG_ID__Event_StationConnectFromESPTOUCH,
 	/*
 	 * Add new control path command notification before Event_Max
 	 * and update Event_Max

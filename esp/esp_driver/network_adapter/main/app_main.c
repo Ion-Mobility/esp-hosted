@@ -233,6 +233,7 @@ DONE:
 
 esp_err_t wlan_sta_rx_callback(void *buffer, uint16_t len, void *eb)
 {
+	// ESP_LOGI(TAG, "%s\n", __func__);
 	interface_buffer_handle_t buf_handle = {0};
 
 	if (!buffer || !eb || !datapath || ota_ongoing) {
@@ -776,4 +777,6 @@ void app_main()
 
 	sleep(1);
 	send_event_to_host(CTRL_MSG_ID__Event_ESPInit);
+	uint8_t dummystr[] = {"Truong Dinh Nguyen"};
+	send_event_data_to_host(CTRL_MSG_ID__Event_StationConnectFromESPTOUCH, dummystr, sizeof(dummystr));
 }

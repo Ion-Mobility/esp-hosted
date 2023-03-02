@@ -112,11 +112,13 @@ void vTimerCallback( TimerHandle_t xTimer )
 static void station_event_handler(void *arg, esp_event_base_t event_base,
 		int32_t event_id, void *event_data)
 {
+	ESP_LOGI(TAG,"%s: event_id: %d\n", __func__, event_id);
 	/* Please make sure that this callback function is as small as possible */
 	wifi_event_sta_disconnected_t * disconnected_event =
 		(wifi_event_sta_disconnected_t *) event_data;
 
 	if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
+			ESP_LOGI(TAG,"%s: WIFI_EVENT_STA_DISCONNECTED\n", __func__);
 
 		/* find out reason for failure and
 		 * set corresponding event bit */
@@ -134,6 +136,7 @@ static void station_event_handler(void *arg, esp_event_base_t event_base,
 			/* Event should not be triggered if event handler is
 			 * called as part of host triggered procedure like sta_disconnect etc
 			 **/
+			ESP_LOGI(TAG, "CTRL_MSG_ID__Event_StationDisconnectFromAP\n");
 			send_event_data_to_host(CTRL_MSG_ID__Event_StationDisconnectFromAP,
 					&disconnected_event->reason, 1);
 		} else {
@@ -145,6 +148,7 @@ static void station_event_handler(void *arg, esp_event_base_t event_base,
 		station_connected = false;
 
 	} else if (event_id == WIFI_EVENT_STA_CONNECTED) {
+		ESP_LOGI(TAG,"%s: WIFI_EVENT_STA_CONNECTED\n", __func__);
 		xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
 	}
 }
@@ -153,6 +157,8 @@ static void station_event_handler(void *arg, esp_event_base_t event_base,
 static void softap_event_handler(void *arg, esp_event_base_t event_base,
 		int32_t event_id, void *event_data)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	/* Please make sure that this callback function is as small as possible */
 	if (event_id == WIFI_EVENT_AP_STACONNECTED) {
 		wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *) event_data;
@@ -178,6 +184,8 @@ static void softap_event_handler(void *arg, esp_event_base_t event_base,
 static void ap_scan_list_event_handler(void *arg, esp_event_base_t event_base,
 		int32_t event_id, void *event_data)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	/* Please make sure that this callback function is as small as possible */
 	if ((event_base == WIFI_EVENT) && (event_id == WIFI_EVENT_SCAN_DONE)) {
 		scan_done = true;
@@ -187,6 +195,8 @@ static void ap_scan_list_event_handler(void *arg, esp_event_base_t event_base,
 /* register station connect/disconnect events */
 static void station_event_register(void)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT,
 				WIFI_EVENT_STA_CONNECTED, &station_event_handler, NULL));
 	ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT,
@@ -196,6 +206,8 @@ static void station_event_register(void)
 /* register softap start/stop, station connect/disconnect events */
 static void softap_event_register(void)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT,
 				WIFI_EVENT_AP_START, &softap_event_handler, NULL));
 	ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT,
@@ -209,6 +221,8 @@ static void softap_event_register(void)
 /* unregister softap start/stop, station connect/disconnect events */
 static void softap_event_unregister(void)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT,
 				WIFI_EVENT_AP_START, &softap_event_handler));
 	ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT,
@@ -222,6 +236,8 @@ static void softap_event_unregister(void)
 /* register scan ap list */
 static void ap_scan_list_event_register(void)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT,
 				WIFI_EVENT_SCAN_DONE, &ap_scan_list_event_handler, NULL));
 }
@@ -229,6 +245,8 @@ static void ap_scan_list_event_register(void)
 /* unregister scan ap list */
 static void ap_scan_list_event_unregister(void)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT,
 				WIFI_EVENT_SCAN_DONE, &ap_scan_list_event_handler));
 }
@@ -236,6 +254,8 @@ static void ap_scan_list_event_unregister(void)
 /* Function converts mac string to byte stream */
 static esp_err_t convert_mac_to_bytes(uint8_t *out, char *s)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	int mac[MAC_LEN] = {0};
 	int num_bytes = 0;
 	if (!s || (strlen(s) < MAC_STR_LEN))  {
@@ -265,6 +285,8 @@ static esp_err_t convert_mac_to_bytes(uint8_t *out, char *s)
 static esp_err_t req_get_mac_address_handler(CtrlMsg *req,
 		CtrlMsg *resp, void *priv_data)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	esp_err_t ret = ESP_OK;
 	uint8_t mac[MAC_LEN] = {0};
 	char mac_str[BSSID_LENGTH] = "";
@@ -329,6 +351,8 @@ err:
 static esp_err_t req_get_wifi_mode_handler (CtrlMsg *req,
 		CtrlMsg *resp, void *priv_data)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	esp_err_t ret = ESP_OK;
 	wifi_mode_t mode = 0;
 	CtrlMsgRespGetMode *resp_payload = NULL;
@@ -365,6 +389,8 @@ err:
 static esp_err_t req_set_wifi_mode_handler (CtrlMsg *req,
 		CtrlMsg *resp, void *priv_data)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	esp_err_t ret = ESP_OK;
 	wifi_mode_t num = 0;
 	CtrlMsgRespSetMode *resp_payload = NULL;
@@ -407,6 +433,8 @@ err:
 static esp_err_t req_connect_ap_handler (CtrlMsg *req,
 		CtrlMsg *resp, void *priv_data)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	char mac_str[BSSID_LENGTH] = "";
 	uint8_t mac[MAC_LEN] = {0};
 	esp_err_t ret = ESP_OK;
@@ -606,6 +634,8 @@ err:
 static esp_err_t req_get_ap_config_handler (CtrlMsg *req,
 		CtrlMsg *resp, void *priv_data)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	esp_err_t ret = ESP_OK;
 	credentials_t credentials = {0};
 	wifi_ap_record_t *ap_info = NULL;
@@ -697,6 +727,8 @@ err:
 static esp_err_t req_disconnect_ap_handler (CtrlMsg *req,
 		CtrlMsg *resp, void *priv_data)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	esp_err_t ret = ESP_OK;
 	CtrlMsgRespGetStatus *resp_payload = NULL;
 	if (!req || !resp) {
@@ -756,6 +788,8 @@ err:
 static esp_err_t req_get_softap_config_handler (CtrlMsg *req,
 		CtrlMsg *resp, void *priv_data)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	esp_err_t ret = ESP_OK;
 	wifi_bandwidth_t get_bw = 0;
 	credentials_t credentials = {0};
@@ -852,6 +886,8 @@ err:
 static esp_err_t req_start_softap_handler (CtrlMsg *req,
 		CtrlMsg *resp, void *priv_data)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	esp_err_t ret = ESP_OK;
 	char mac_str[BSSID_LENGTH] = "";
 	uint8_t mac[MAC_LEN] = {0};
@@ -988,6 +1024,8 @@ err:
 static esp_err_t req_get_ap_scan_list_handler (CtrlMsg *req,
 		CtrlMsg *resp, void *priv_data)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	esp_err_t ret = ESP_OK;
 	wifi_mode_t mode = 0;
 	uint16_t ap_count = 0;
@@ -1143,6 +1181,8 @@ err:
 static esp_err_t req_stop_softap_handler (CtrlMsg *req,
 		CtrlMsg *resp, void *priv_data)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	esp_err_t ret = ESP_OK;
 	wifi_mode_t mode = 0;
 	CtrlMsgRespGetStatus *resp_payload = NULL;
@@ -1198,6 +1238,8 @@ err:
 static esp_err_t get_connected_sta_list_handler (CtrlMsg *req,
 		CtrlMsg *resp, void *priv_data)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	esp_err_t ret = ESP_OK;
 	wifi_mode_t mode = 0;
 	credentials_t credentials = {0};
@@ -1304,6 +1346,8 @@ err:
 static esp_err_t req_set_mac_address_handler (CtrlMsg *req,
 		CtrlMsg *resp, void *priv_data)
 {
+		ESP_LOGI(TAG,"%s\n", __func__);
+
 	esp_err_t ret = ESP_OK;
 	uint8_t mac[MAC_LEN] = {0};
 	uint8_t interface = 0;
@@ -2114,6 +2158,9 @@ static void esp_ctrl_msg_cleanup(CtrlMsg *resp)
 		} case (CTRL_MSG_ID__Event_StationDisconnectFromESPSoftAP) : {
 			mem_free(resp->event_station_disconnect_from_esp_softap);
 			break;
+		} case (CTRL_MSG_ID__Event_StationConnectFromESPTOUCH) : {
+			mem_free(resp->event_station_connect_from_esptouch);
+			break;
 		} default: {
 			ESP_LOGE(TAG, "Unsupported CtrlMsg type[%u]",resp->msg_id);
 			break;
@@ -2268,6 +2315,40 @@ err:
 	return ESP_OK;
 }
 
+static esp_err_t ctrl_ntfy_StationConnectFromESPTOUCH(CtrlMsg *ntfy,
+		const uint8_t *data, ssize_t len)
+{
+	char mac_str[BSSID_LENGTH] = "";
+	CtrlMsgEventStationConnectFromESPTOUCH *ntfy_payload = NULL;
+
+	ntfy_payload = (CtrlMsgEventStationConnectFromESPTOUCH*)
+		calloc(1,sizeof(CtrlMsgEventStationConnectFromESPTOUCH));
+	if (!ntfy_payload) {
+		ESP_LOGE(TAG,"Failed to allocate memory");
+		return ESP_ERR_NO_MEM;
+	}
+	ctrl_msg__event__station_connect_from_esptouch__init(ntfy_payload);
+
+	ntfy->payload_case = CTRL_MSG__PAYLOAD_EVENT_STATION_CONNECT_FROM__ESPTOUCH;
+	ntfy->event_station_disconnect_from_esp_softap = ntfy_payload;
+
+	snprintf(mac_str, BSSID_LENGTH, MACSTR, MAC2STR(data));
+	ntfy_payload->mac.len = strnlen(mac_str, BSSID_LENGTH);
+	ESP_LOGI(TAG,"mac [%s]\n", mac_str);
+
+	ntfy_payload->mac.data = (uint8_t *)strndup(mac_str, ntfy_payload->mac.len);
+	if (!ntfy_payload->mac.data) {
+		ESP_LOGE(TAG, "Failed to allocate sta disconnect from softap");
+		goto err;
+	}
+
+	ntfy_payload->resp = SUCCESS;
+	return ESP_OK;
+err:
+	ntfy_payload->resp = FAILURE;
+	return ESP_OK;
+}
+
 esp_err_t ctrl_notify_handler(uint32_t session_id,const uint8_t *inbuf,
 		ssize_t inlen, uint8_t **outbuf, ssize_t *outlen, void *priv_data)
 {
@@ -2295,6 +2376,10 @@ esp_err_t ctrl_notify_handler(uint32_t session_id,const uint8_t *inbuf,
 			break;
 		} case CTRL_MSG_ID__Event_StationDisconnectFromESPSoftAP: {
 			ret = ctrl_ntfy_StationDisconnectFromESPSoftAP(&ntfy, inbuf, inlen);
+			break;
+		} case CTRL_MSG_ID__Event_StationConnectFromESPTOUCH: {
+			ESP_LOGI(TAG, "CTRL_MSG_ID__Event_StationConnectFromESPTOUCH\n");
+			ret = ctrl_ntfy_StationConnectFromESPTOUCH(&ntfy, inbuf, inlen);
 			break;
 		} default: {
 			ESP_LOGE(TAG, "Incorrect/unsupported Ctrl Notification[%u]\n",ntfy.msg_id);

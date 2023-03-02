@@ -1903,6 +1903,12 @@ void   ctrl_msg__event__station_disconnect_from_espsoft_ap__init
   static const CtrlMsgEventStationDisconnectFromESPSoftAP init_value = CTRL_MSG__EVENT__STATION_DISCONNECT_FROM_ESPSOFT_AP__INIT;
   *message = init_value;
 }
+void   ctrl_msg__event__station_connect_from_esptouch__init
+                     (CtrlMsgEventStationConnectFromESPTOUCH         *message)
+{
+  static const CtrlMsgEventStationConnectFromESPTOUCH init_value = CTRL_MSG__EVENT__STATION_CONNECT_FROM_ESPTOUCH_INIT;
+  *message = init_value;
+}
 size_t ctrl_msg__event__station_disconnect_from_espsoft_ap__get_packed_size
                      (const CtrlMsgEventStationDisconnectFromESPSoftAP *message)
 {
@@ -3988,6 +3994,7 @@ const ProtobufCMessageDescriptor ctrl_msg__event__station_disconnect_from_ap__de
   (ProtobufCMessageInit) ctrl_msg__event__station_disconnect_from_ap__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
+
 static const ProtobufCFieldDescriptor ctrl_msg__event__station_disconnect_from_espsoft_ap__field_descriptors[2] =
 {
   {
@@ -4015,6 +4022,35 @@ static const ProtobufCFieldDescriptor ctrl_msg__event__station_disconnect_from_e
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
+
+static const ProtobufCFieldDescriptor ctrl_msg__event__station_connect_from_esptouch__field_descriptors[2] =
+{
+  {
+    "resp",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(CtrlMsgEventStationConnectFromESPTOUCH, resp),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "mac",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BYTES,
+    0,   /* quantifier_offset */
+    offsetof(CtrlMsgEventStationConnectFromESPTOUCH, mac),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+
 static const unsigned ctrl_msg__event__station_disconnect_from_espsoft_ap__field_indices_by_name[] = {
   1,   /* field[1] = mac */
   0,   /* field[0] = resp */
@@ -4036,9 +4072,36 @@ const ProtobufCMessageDescriptor ctrl_msg__event__station_disconnect_from_espsof
   ctrl_msg__event__station_disconnect_from_espsoft_ap__field_descriptors,
   ctrl_msg__event__station_disconnect_from_espsoft_ap__field_indices_by_name,
   1,  ctrl_msg__event__station_disconnect_from_espsoft_ap__number_ranges,
+  (ProtobufCMessageInit) ctrl_msg__event__station_connect_from_esptouch__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+
+static const unsigned ctrl_msg__event__station_connect_from_esptouch__field_indices_by_name[] = {
+  1,   /* field[1] = mac */
+  0,   /* field[0] = resp */
+};
+static const ProtobufCIntRange ctrl_msg__event__station_connect_from_esptouch__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor ctrl_msg__event__station_connect_from_esptouch__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "CtrlMsg_Event_StaticConnectFromESPTouch",
+  "CtrlMsgEventStaticConnectFromESPTouch",
+  "CtrlMsgEventStaticConnectFromESPTouch",
+  "",
+  sizeof(CtrlMsgEventStationConnectFromESPTOUCH),
+  2,
+  ctrl_msg__event__station_connect_from_esptouch__field_descriptors,
+  ctrl_msg__event__station_connect_from_esptouch__field_indices_by_name,
+  1,  ctrl_msg__event__station_connect_from_esptouch__number_ranges,
   (ProtobufCMessageInit) ctrl_msg__event__station_disconnect_from_espsoft_ap__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
+
+
 static const ProtobufCFieldDescriptor ctrl_msg__field_descriptors[48] =
 {
   {
@@ -4955,7 +5018,7 @@ const ProtobufCEnumDescriptor ctrl_msg_type__descriptor =
   ctrl_msg_type__value_ranges,
   NULL,NULL,NULL,NULL   /* reserved[1234] */
 };
-static const ProtobufCEnumValue ctrl_msg_id__enum_values_by_number[53] =
+static const ProtobufCEnumValue ctrl_msg_id__enum_values_by_number[54] =
 {
   { "MsgId_Invalid", "CTRL_MSG_ID__MsgId_Invalid", 0 },
   { "Req_Base", "CTRL_MSG_ID__Req_Base", 100 },
@@ -5009,12 +5072,13 @@ static const ProtobufCEnumValue ctrl_msg_id__enum_values_by_number[53] =
   { "Event_Heartbeat", "CTRL_MSG_ID__Event_Heartbeat", 302 },
   { "Event_StationDisconnectFromAP", "CTRL_MSG_ID__Event_StationDisconnectFromAP", 303 },
   { "Event_StationDisconnectFromESPSoftAP", "CTRL_MSG_ID__Event_StationDisconnectFromESPSoftAP", 304 },
-  { "Event_Max", "CTRL_MSG_ID__Event_Max", 305 },
+  { "Event_StationConnectFromESPTOUCH", "CTRL_MSG_ID__Event_StationConnectFromESPTOUCH", 305 },
+  { "Event_Max", "CTRL_MSG_ID__Event_Max", 306 },
 };
 static const ProtobufCIntRange ctrl_msg_id__value_ranges[] = {
 {0, 0},{100, 1},{200, 24},{300, 47},{0, 53}
 };
-static const ProtobufCEnumValueIndex ctrl_msg_id__enum_values_by_name[53] =
+static const ProtobufCEnumValueIndex ctrl_msg_id__enum_values_by_name[54] =
 {
   { "Event_Base", 47 },
   { "Event_ESPInit", 48 },
@@ -5022,6 +5086,7 @@ static const ProtobufCEnumValueIndex ctrl_msg_id__enum_values_by_name[53] =
   { "Event_Max", 52 },
   { "Event_StationDisconnectFromAP", 50 },
   { "Event_StationDisconnectFromESPSoftAP", 51 },
+  { "Event_StationConnectFromESPTOUCH", 53 },
   { "MsgId_Invalid", 0 },
   { "Req_Base", 1 },
   { "Req_ConfigHeartbeat", 22 },
