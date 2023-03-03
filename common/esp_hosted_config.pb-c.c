@@ -4079,12 +4079,12 @@ static const ProtobufCFieldDescriptor ctrl_msg__event__station_connect_from_espt
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "mac",
+    "info",
     2,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_BYTES,
     0,   /* quantifier_offset */
-    offsetof(CtrlMsgEventStationConnectFromESPTOUCH, mac),
+    offsetof(CtrlMsgEventStationConnectFromESPTOUCH, info),
     NULL,
     NULL,
     0,             /* flags */

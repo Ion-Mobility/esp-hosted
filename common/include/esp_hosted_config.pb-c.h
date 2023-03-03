@@ -692,7 +692,7 @@ struct  CtrlMsgEventStationConnectFromESPTOUCH
 {
   ProtobufCMessage base;
   int32_t resp;
-  ProtobufCBinaryData mac;
+  ProtobufCBinaryData info;
 };
 #define CTRL_MSG__EVENT__STATION_CONNECT_FROM_ESPTOUCH_INIT \
  { PROTOBUF_C_MESSAGE_INIT (&ctrl_msg__event__station_connect_from_esptouch__descriptor) \

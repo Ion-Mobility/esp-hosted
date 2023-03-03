@@ -21,4 +21,5 @@
 typedef struct {
 	interface_context_t *context;
 } adapter;
+#define CONFIG_ESP_SMART_CONFIG_ENABLE
 #endif
