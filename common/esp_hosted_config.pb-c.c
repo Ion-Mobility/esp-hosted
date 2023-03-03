@@ -1903,12 +1903,6 @@ void   ctrl_msg__event__station_disconnect_from_espsoft_ap__init
   static const CtrlMsgEventStationDisconnectFromESPSoftAP init_value = CTRL_MSG__EVENT__STATION_DISCONNECT_FROM_ESPSOFT_AP__INIT;
   *message = init_value;
 }
-void   ctrl_msg__event__station_connect_from_esptouch__init
-                     (CtrlMsgEventStationConnectFromESPTOUCH         *message)
-{
-  static const CtrlMsgEventStationConnectFromESPTOUCH init_value = CTRL_MSG__EVENT__STATION_CONNECT_FROM_ESPTOUCH_INIT;
-  *message = init_value;
-}
 size_t ctrl_msg__event__station_disconnect_from_espsoft_ap__get_packed_size
                      (const CtrlMsgEventStationDisconnectFromESPSoftAP *message)
 {
@@ -1948,6 +1942,53 @@ void   ctrl_msg__event__station_disconnect_from_espsoft_ap__free_unpacked
   assert(message->base.descriptor == &ctrl_msg__event__station_disconnect_from_espsoft_ap__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
+
+void   ctrl_msg__event__station_connect_from_esptouch__init
+                     (CtrlMsgEventStationConnectFromESPTOUCH         *message)
+{
+  static const CtrlMsgEventStationConnectFromESPTOUCH init_value = CTRL_MSG__EVENT__STATION_CONNECT_FROM_ESPTOUCH_INIT;
+  *message = init_value;
+}
+size_t ctrl_msg__event__station_connect_from_esptouch__get_packed_size
+                     (const CtrlMsgEventStationConnectFromESPTOUCH *message)
+{
+  assert(message->base.descriptor == &ctrl_msg__event__station_connect_from_esptouch__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t ctrl_msg__event__station_connect_from_esptouch__pack
+                     (const CtrlMsgEventStationConnectFromESPTOUCH *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &ctrl_msg__event__station_connect_from_esptouch__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t ctrl_msg__event__station_connect_from_esptouch__pack_to_buffer
+                     (const CtrlMsgEventStationConnectFromESPTOUCH *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &ctrl_msg__event__station_connect_from_esptouch__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+CtrlMsgEventStationConnectFromESPTOUCH *
+       ctrl_msg__event__station_connect_from_esptouch_ap__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (CtrlMsgEventStationConnectFromESPTOUCH *)
+     protobuf_c_message_unpack (&ctrl_msg__event__station_connect_from_esptouch__descriptor,
+                                allocator, len, data);
+}
+void   ctrl_msg__event__station_connect_from_esptouch__free_unpacked
+                     (CtrlMsgEventStationConnectFromESPTOUCH *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &ctrl_msg__event__station_connect_from_esptouch__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+
 void   ctrl_msg__init
                      (CtrlMsg         *message)
 {
