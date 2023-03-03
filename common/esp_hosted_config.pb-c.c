@@ -4088,9 +4088,9 @@ static const ProtobufCIntRange ctrl_msg__event__station_connect_from_esptouch__n
 const ProtobufCMessageDescriptor ctrl_msg__event__station_connect_from_esptouch__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "CtrlMsg_Event_StaticConnectFromESPTouch",
-  "CtrlMsgEventStaticConnectFromESPTouch",
-  "CtrlMsgEventStaticConnectFromESPTouch",
+  "CtrlMsg_Event_StationConnectFromESPTouch",
+  "CtrlMsgEventStationConnectFromESPTouch",
+  "CtrlMsgEventStationConnectFromESPTouch",
   "",
   sizeof(CtrlMsgEventStationConnectFromESPTOUCH),
   2,

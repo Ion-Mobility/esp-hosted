@@ -2318,6 +2318,7 @@ err:
 static esp_err_t ctrl_ntfy_StationConnectFromESPTOUCH(CtrlMsg *ntfy,
 		const uint8_t *data, ssize_t len)
 {
+	ESP_LOGI(TAG, "%s: data: %x, len: %d\n", __func__, (uint32_t)data, len);
 	char mac_str[BSSID_LENGTH] = "";
 	CtrlMsgEventStationConnectFromESPTOUCH *ntfy_payload = NULL;
 
