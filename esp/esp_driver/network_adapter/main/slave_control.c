@@ -2334,7 +2334,7 @@ static esp_err_t ctrl_ntfy_StationConnectFromESPTOUCH(CtrlMsg *ntfy,
 	ntfy->event_station_connect_from_esptouch = ntfy_payload;
 
 	snprintf(smart_config_log, BSSID_LENGTH+PASSWORD_LENGTH, "%s", data);
-	ntfy_payload->info.len = strnlen(smart_config_log, BSSID_LENGTH);
+	ntfy_payload->info.len = strnlen(smart_config_log, BSSID_LENGTH+PASSWORD_LENGTH);
 	ESP_LOGI(TAG,"Smart-Config [%s]\n", smart_config_log);
 
 	ntfy_payload->info.data = (uint8_t *)strndup(smart_config_log, ntfy_payload->info.len);
