@@ -123,6 +123,13 @@ static int ctrl_app_event_callback(ctrl_cmd_t * app_event)
 					get_timestamp(ts, MIN_TIMESTAMP_STR_SIZE), p);
 			}
 			break;
+		} case CTRL_EVENT_STATION_CONNECT_FROM_ESPTOUCH: {
+		        char *p = app_event->u.e_sta_disconnected.mac;
+			if (p && strlen(p)) {
+				printf("%s App EVENT: Smart-Config: Connected MAC[%s]\n",
+				get_timestamp(ts, MIN_TIMESTAMP_STR_SIZE), p);
+			}
+			break;
 		} default: {
 			printf("%s Invalid event[%u] to parse\n",
 				get_timestamp(ts, MIN_TIMESTAMP_STR_SIZE), app_event->msg_id);
@@ -414,6 +421,8 @@ int register_event_callbacks(void)
 		{ CTRL_EVENT_HEARTBEAT,                          ctrl_app_event_callback },
 		{ CTRL_EVENT_STATION_DISCONNECT_FROM_AP,         ctrl_app_event_callback },
 		{ CTRL_EVENT_STATION_DISCONNECT_FROM_ESP_SOFTAP, ctrl_app_event_callback },
+		{ CTRL_EVENT_STATION_CONNECT_FROM_ESPTOUCH, 	 ctrl_app_event_callback },
+
 	};
 
 	for (evt=0; evt<sizeof(events)/sizeof(event_callback_table_t); evt++) {

@@ -150,6 +150,11 @@ int main(int argc, char *argv[])
 	sleep(2);
 	printf("\n\n\nRequested operation complete\n");
 	printf("Sleeping for some time just to showcase heartbeat\n");
+	printf("Main Loop-Forever!!!\n");
+	while(1)
+	{
+		sleep(1);
+	}
 	sleep(DEMO_SLEEP_DURATION_SEC);
 
 	test_disable_heartbeat();

@@ -255,6 +255,18 @@ static int ctrl_app_parse_event(CtrlMsg *ctrl_msg, ctrl_cmd_t *app_ntfy)
 					app_ntfy->u.e_sta_disconnected.mac);*/
 			}
 			break;
+		} case CTRL_EVENT_STATION_CONNECT_FROM_ESPTOUCH: {
+			printf("EVENT: Station connect by smart-config\n");
+			CHECK_CTRL_MSG_NON_NULL(event_station_connect_from_esptouch);
+			app_ntfy->resp_event_status = ctrl_msg->event_station_connect_from_esptouch->resp;
+			if(SUCCESS==app_ntfy->resp_event_status) {
+				CHECK_CTRL_MSG_NON_NULL_VAL(ctrl_msg->event_station_connect_from_esptouch->mac.data, "NULL mac");
+				strncpy(app_ntfy->u.e_sta_disconnected.mac,
+					(char *)ctrl_msg->event_station_connect_from_esptouch->mac.data,
+					 ctrl_msg->event_station_connect_from_esptouch->mac.len);
+				printf("EVENT: Station connected by smart-config  MAC[%s]\n", app_ntfy->u.e_sta_disconnected.mac);
+			}
+			break;
 		} default: {
 			printf("Invalid/unsupported event[%u] received\n",ctrl_msg->msg_id);
 			goto fail_parse_ctrl_msg;

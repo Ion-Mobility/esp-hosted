@@ -75,7 +75,7 @@
 #define INPUT_WIFI_TX_POWER                 20
 
 #define HEARTBEAT_ENABLE                    1
-#define HEARTBEAT_DURATION_SEC              20
+#define HEARTBEAT_DURATION_SEC              3
 
 #define TEST_DEBUG_PRINTS                   1
 
