@@ -4097,7 +4097,7 @@ const ProtobufCMessageDescriptor ctrl_msg__event__station_connect_from_esptouch_
   ctrl_msg__event__station_connect_from_esptouch__field_descriptors,
   ctrl_msg__event__station_connect_from_esptouch__field_indices_by_name,
   1,  ctrl_msg__event__station_connect_from_esptouch__number_ranges,
-  (ProtobufCMessageInit) ctrl_msg__event__station_disconnect_from_espsoft_ap__init,
+  (ProtobufCMessageInit) ctrl_msg__event__station_connect_from_esptouch__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
 
