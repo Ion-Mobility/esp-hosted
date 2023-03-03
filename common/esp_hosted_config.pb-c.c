@@ -4102,7 +4102,7 @@ const ProtobufCMessageDescriptor ctrl_msg__event__station_connect_from_esptouch_
 };
 
 
-static const ProtobufCFieldDescriptor ctrl_msg__field_descriptors[48] =
+static const ProtobufCFieldDescriptor ctrl_msg__field_descriptors[49] =
 {
   {
     "msg_type",
@@ -4680,12 +4680,25 @@ static const ProtobufCFieldDescriptor ctrl_msg__field_descriptors[48] =
     0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "event_station_connect_from_ESPTOUCH",
+    305,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(CtrlMsg, payload_case),
+    offsetof(CtrlMsg, event_station_connect_from_esptouch),
+    &ctrl_msg__event__station_connect_from_esptouch__descriptor,
+    NULL,
+    0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned ctrl_msg__field_indices_by_name[] = {
   44,   /* field[44] = event_esp_init */
   45,   /* field[45] = event_heartbeat */
   46,   /* field[46] = event_station_disconnect_from_AP */
   47,   /* field[47] = event_station_disconnect_from_ESP_SoftAP */
+  48,   /* field[48] = event_station_connect_from_ESPTOUCH */
   1,   /* field[1] = msg_id */
   0,   /* field[0] = msg_type */
   22,   /* field[22] = req_config_heartbeat */

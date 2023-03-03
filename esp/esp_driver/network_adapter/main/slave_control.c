@@ -2330,7 +2330,7 @@ static esp_err_t ctrl_ntfy_StationConnectFromESPTOUCH(CtrlMsg *ntfy,
 	ctrl_msg__event__station_connect_from_esptouch__init(ntfy_payload);
 
 	ntfy->payload_case = CTRL_MSG__PAYLOAD_EVENT_STATION_CONNECT_FROM__ESPTOUCH;
-	ntfy->event_station_disconnect_from_esp_softap = ntfy_payload;
+	ntfy->event_station_connect_from_esptouch = ntfy_payload;
 
 	snprintf(mac_str, BSSID_LENGTH, MACSTR, MAC2STR(data));
 	ntfy_payload->mac.len = strnlen(mac_str, BSSID_LENGTH);
