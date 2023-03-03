@@ -126,7 +126,7 @@ static int ctrl_app_event_callback(ctrl_cmd_t * app_event)
 		} case CTRL_EVENT_STATION_CONNECT_FROM_ESPTOUCH: {
 		        char *p = app_event->u.e_sta_disconnected.mac;
 			if (p && strlen(p)) {
-				printf("%s App EVENT: Smart-Config: Connected MAC[%s]\n",
+				printf("%s App EVENT: Smart-Config: Connected Information[%s]\n",
 				get_timestamp(ts, MIN_TIMESTAMP_STR_SIZE), p);
 			}
 			break;

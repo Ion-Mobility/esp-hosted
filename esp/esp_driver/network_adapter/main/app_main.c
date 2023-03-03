@@ -184,7 +184,8 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
             }
             printf("\n");
         }
-		uint8_t dummystr[] = {"Truong Dinh Nguyen"};
+		uint8_t dummystr[255];
+		snprintf((char*)dummystr, sizeof(dummystr), "SSID: %s, PASSWORD: %s", ssid, password);
 		send_event_data_to_host(CTRL_MSG_ID__Event_StationConnectFromESPTOUCH, dummystr, sizeof(dummystr));
         ESP_ERROR_CHECK( esp_wifi_disconnect() );
         ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
