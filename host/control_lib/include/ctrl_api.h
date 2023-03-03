@@ -333,7 +333,7 @@ typedef struct {
 
 typedef struct {
 	int32_t reason;
-	char info[MAX_MAC_STR_LEN];
+	char info[255];
 } event_smart_connect_t;
 
 typedef struct Ctrl_cmd_t {
@@ -366,7 +366,7 @@ typedef struct Ctrl_cmd_t {
 		event_heartbeat_t           e_heartbeat;
 
 		event_station_disconn_t     e_sta_disconnected;
-		
+
 		event_smart_connect_t		e_smrt_connected;
 	}u;
 
