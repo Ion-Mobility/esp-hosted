@@ -256,7 +256,6 @@ static int ctrl_app_parse_event(CtrlMsg *ctrl_msg, ctrl_cmd_t *app_ntfy)
 			}
 			break;
 		} case CTRL_EVENT_STATION_CONNECT_FROM_ESPTOUCH: {
-			printf("EVENT: Station connect by smart-config\n");
 			CHECK_CTRL_MSG_NON_NULL(event_station_connect_from_esptouch);
 			app_ntfy->resp_event_status = ctrl_msg->event_station_connect_from_esptouch->resp;
 			if(SUCCESS==app_ntfy->resp_event_status) {
@@ -264,7 +263,7 @@ static int ctrl_app_parse_event(CtrlMsg *ctrl_msg, ctrl_cmd_t *app_ntfy)
 				strncpy(app_ntfy->u.e_smrt_connected.info,
 					(char *)ctrl_msg->event_station_connect_from_esptouch->info.data,
 					 ctrl_msg->event_station_connect_from_esptouch->info.len);
-				printf("EVENT: Station connected by smart-config  Information [%s]\n", app_ntfy->u.e_smrt_connected.info);
+				printf("EVENT: Station connected by smart-config  Information [%s], len: %d\n", app_ntfy->u.e_smrt_connected.info.data, ctrl_msg->event_station_connect_from_esptouch->info.len);
 			}
 			break;
 		} default: {
