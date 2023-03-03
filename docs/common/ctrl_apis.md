@@ -1809,7 +1809,8 @@ _Values_:
 - `CTRL_EVENT_HEARTBEAT`       = 302
 - `CTRL_EVENT_STATION_DISCONNECT_FROM_AP` = 303
 - `CTRL_EVENT_STATION_DISCONNECT_FROM_ESP_SOFTAP` = 304
-- `CTRL_EVENT_MAX` = 305
+- `CTRL_EVENT_STATION_CONNECT_FROM_ESPTOUCH` = 305
+- `CTRL_EVENT_MAX` = 306
 
 #### Note
   This enum is mapping to `CtrlMsgId` from `esp_hosted_config.pb-c.h`

@@ -428,5 +428,6 @@ message CtrlMsg {
         CtrlMsg_Event_Heartbeat event_heartbeat = 302;
         CtrlMsg_Event_StationDisconnectFromAP event_station_disconnect_from_AP = 303;
         CtrlMsg_Event_StationDisconnectFromESPSoftAP event_station_disconnect_from_ESP_SoftAP = 304;
+        CtrlMsg_Event_StationConnectFromESPTOUCH event_station_connect_from_ESPTOUCH = 305;
     }
 }
