@@ -331,6 +331,11 @@ typedef struct {
 	char mac[MAX_MAC_STR_LEN];
 } event_station_disconn_t;
 
+typedef struct {
+	int32_t reason;
+	char info[MAX_MAC_STR_LEN];
+} event_smart_connect_t;
+
 typedef struct Ctrl_cmd_t {
 	/* msg type could be 1. req 2. resp 3. notification */
 	uint8_t msg_type;
@@ -361,6 +366,8 @@ typedef struct Ctrl_cmd_t {
 		event_heartbeat_t           e_heartbeat;
 
 		event_station_disconn_t     e_sta_disconnected;
+		
+		event_smart_connect_t		e_smrt_connected;
 	}u;
 
 	/* By default this callback is set to NULL.
