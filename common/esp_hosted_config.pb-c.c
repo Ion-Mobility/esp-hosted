@@ -4791,7 +4791,7 @@ static const ProtobufCIntRange ctrl_msg__number_ranges[4 + 1] =
   { 101, 2 },
   { 201, 23 },
   { 301, 44 },
-  { 0, 48 }
+  { 0, 49 }
 };
 const ProtobufCMessageDescriptor ctrl_msg__descriptor =
 {
@@ -5196,9 +5196,9 @@ const ProtobufCEnumDescriptor ctrl_msg_id__descriptor =
   "CtrlMsgId",
   "CtrlMsgId",
   "",
-  53,
+  54,
   ctrl_msg_id__enum_values_by_number,
-  53,
+  54,
   ctrl_msg_id__enum_values_by_name,
   4,
   ctrl_msg_id__value_ranges,
