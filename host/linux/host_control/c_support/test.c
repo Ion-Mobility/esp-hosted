@@ -95,6 +95,10 @@ static int parse_cli_cmd(char *in_cmd, char *args[])
 	else if (0 == strncasecmp(GET_WIFI_CURR_TX_POWER, in_cmd, sizeof(GET_WIFI_CURR_TX_POWER)))
 		test_wifi_get_curr_tx_power();
 
+	/* Wifi Smart Connect APIs */
+	else if (0 == strncasecmp(SMARTCONNECT, in_cmd, sizeof(SMARTCONNECT)))
+		test_config_smartconnect();
+
 	/* OTA ESP flashing */
 	else if (0 == strncasecmp(OTA, in_cmd, sizeof(OTA))) {
 		printf("OTA binary: %s\n",args[0]);

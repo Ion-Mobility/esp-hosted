@@ -41,6 +41,8 @@
 #define SOFTAP_CONNECTED_STA_LIST          "softap_connected_sta_list"
 #define SOFTAP_STOP                        "softap_stop"
 
+#define SMARTCONNECT                       "smartconnect"
+
 #define GET_WIFI_POWERSAVE_MODE            "get_wifi_powersave_mode"
 #define SET_WIFI_POWERSAVE_MODE            "set_wifi_powersave_mode"
 #define OTA                                "ota"
