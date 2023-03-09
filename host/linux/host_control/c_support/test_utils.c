@@ -140,6 +140,7 @@ static int ctrl_app_event_callback(ctrl_cmd_t * app_event)
 			if(p->bssid_set == 1)
 			{
 				printf("   -> BSSID: %s\n", p->bssid);
+			}
 			else
 			{
 				printf("BSSID is not used\n");
