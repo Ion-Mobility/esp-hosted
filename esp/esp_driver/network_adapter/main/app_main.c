@@ -222,7 +222,6 @@ static void smartconfig_example_task(void * parm)
         uxBits = xEventGroupWaitBits(s_wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT, true, false, portMAX_DELAY);
         if(uxBits & CONNECTED_BIT) {
             ESP_LOGI(TAG, "WiFi Connected to ap");
-			// ctrl_espconnected_set(1);
         }
         if(uxBits & ESPTOUCH_DONE_BIT) {
             ESP_LOGI(TAG, "smartconfig over");
@@ -238,8 +237,17 @@ static void smartconfig_example_task(void * parm)
 			printf("  Wifi Configuration: \n");
 			printf("   -> SSID: %s\n", wifi_share.ssid);
 			printf("   -> PWD: %s\n", wifi_share.pwd);
-			printf("   -> BSSID: %s\n", wifi_share.bssid);
-			printf("   -> IS BSSID: %d\n", wifi_share.bssid_set);
+			printf("   -> BSSID: ");
+			if(wifi_share.bssid_set)
+			{
+				for(int i=0;i<BSSID_LENGTH;i++)
+					printf("%x ", wifi_share.bssid[i]);
+				printf("\n");
+			}
+			else
+			{
+				printf("Is not set!\n");
+			}
 			send_event_data_to_host(CTRL_MSG_ID__Event_StationConnectFromESPTOUCH, (uint8_t *)&wifi_share, sizeof(wifi_share));
             vTaskDelete(NULL);
         }

@@ -117,6 +117,9 @@ typedef enum {
 	CTRL_REQ_GET_WIFI_CURR_TX_POWER    = CTRL_MSG_ID__Req_GetWifiCurrTxPower, //0x78
 
 	CTRL_REQ_CONFIG_HEARTBEAT          = CTRL_MSG_ID__Req_ConfigHeartbeat,    //0x79
+
+	CTRL_REQ_CONFIG_SMARTCONNECT       = CTRL_MSG_ID__Req_ConfigSmartConnect,    //0x7a
+
 	/*
 	 * Add new control path command response before Req_Max
 	 * and update Req_Max
@@ -319,6 +322,12 @@ typedef struct {
 } wifi_tx_power_t;
 
 typedef struct {
+	/* Req */
+	uint8_t enable;
+	uint32_t type;
+} smartconnect_config_t;
+
+typedef struct {
 	/* event */
 	uint32_t hb_num;
 	/* Req */
@@ -364,7 +373,9 @@ typedef struct Ctrl_cmd_t {
 		wifi_tx_power_t             wifi_tx_power;
 
 		event_heartbeat_t           e_heartbeat;
-
+		
+		smartconnect_config_t		smrtconnect;
+		
 		event_station_disconn_t     e_sta_disconnected;
 
 		event_smart_connect_t		e_smrt_connected;

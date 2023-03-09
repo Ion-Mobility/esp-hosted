@@ -1390,6 +1390,17 @@ int ctrl_app_send_req(ctrl_cmd_t *app_req)
 				printf("Disable Heartbeat\n");
 			}
 			break;
+		} case CTRL_REQ_CONFIG_SMARTCONNECT: {
+			CTRL_ALLOC_ASSIGN(CtrlMsgReqConfigSmartConnect, req_config_smartconnect);
+			ctrl_msg__req__config_smartconnect__init(req_payload);
+			req_payload->enable = app_req->u.smrtconnect.enable;
+			req_payload->type = app_req->u.smrtconnect.type;
+			if (req_payload->enable) {
+				printf("Start SmartConnect with type %ld\n", (long int)req_payload->type);
+			} else {
+				printf("Stop SmartConnect with type\n");
+			}
+			break;
 		} default: {
 			failure_status = CTRL_ERR_UNSUPPORTED_MSG;
 			printf("Unsupported Control Req[%u]",req.msg_id);

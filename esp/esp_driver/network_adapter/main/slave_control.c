@@ -1852,6 +1852,20 @@ static esp_err_t start_heartbeat(int duration)
 	return ESP_OK;
 }
 
+static esp_err_t configure_smartconnect(bool enable, int type)
+{
+	esp_err_t ret = ESP_OK;
+	int smartconnect_type = type ;
+
+	if (!enable) {
+		ESP_LOGI(TAG, "Start Smart-Connect");
+	} else {
+		ESP_LOGI(TAG, "Stop Smart-Connect");
+	}
+
+	return ret;
+}
+
 static esp_err_t configure_heartbeat(bool enable, int hb_duration)
 {
 	esp_err_t ret = ESP_OK;
@@ -1874,6 +1888,7 @@ static esp_err_t configure_heartbeat(bool enable, int hb_duration)
 
 	return ret;
 }
+
 /* Function to config heartbeat */
 static esp_err_t req_config_heartbeat(CtrlMsg *req,
 		CtrlMsg *resp, void *priv_data)
@@ -1909,7 +1924,41 @@ err:
 	resp_payload->resp = FAILURE;
 	return ESP_OK;
 }
+/* Function to config heartbeat */
+static esp_err_t req_config_smartconnect(CtrlMsg *req,
+		CtrlMsg *resp, void *priv_data)
+{
+	esp_err_t ret = ESP_OK;
+	CtrlMsgRespConfigSmartConnect *resp_payload = NULL;
 
+	if (!req || !resp) {
+		ESP_LOGE(TAG, "Invalid parameters");
+		return ESP_FAIL;
+	}
+
+	resp_payload = (CtrlMsgRespConfigSmartConnect*)
+		calloc(1,sizeof(CtrlMsgRespConfigSmartConnect));
+	if (!resp_payload) {
+		ESP_LOGE(TAG,"Failed to allocate memory");
+		return ESP_ERR_NO_MEM;
+	}
+
+	ctrl_msg__resp__config_smartconnect__init(resp_payload);
+	resp->payload_case = CTRL_MSG__PAYLOAD_RESP_CONFIG_SMARTCONNECT;
+	resp->resp_config_smartconnect = resp_payload;
+
+	ret = configure_smartconnect(req->req_config_smartconnect->enable,
+			req->req_config_smartconnect->type);
+	if (ret != SUCCESS) {
+		ESP_LOGE(TAG, "Failed to set smartconnect");
+		goto err;
+	}
+	resp_payload->resp = SUCCESS;
+	return ESP_OK;
+err:
+	resp_payload->resp = FAILURE;
+	return ESP_OK;
+}
 static esp_ctrl_msg_req_t req_table[] = {
 	{
 		.req_num = CTRL_MSG_ID__Req_GetMACAddress ,
@@ -1994,6 +2043,10 @@ static esp_ctrl_msg_req_t req_table[] = {
 	{
 		.req_num = CTRL_MSG_ID__Req_ConfigHeartbeat,
 		.command_handler = req_config_heartbeat
+	},
+	{
+		.req_num = CTRL_MSG_ID__Req_ConfigSmartConnect,
+		.command_handler = req_config_smartconnect
 	},
 };
 

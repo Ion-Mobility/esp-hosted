@@ -54,6 +54,8 @@ typedef struct CtrlMsgReqGetWifiCurrTxPower CtrlMsgReqGetWifiCurrTxPower;
 typedef struct CtrlMsgRespGetWifiCurrTxPower CtrlMsgRespGetWifiCurrTxPower;
 typedef struct CtrlMsgReqConfigHeartbeat CtrlMsgReqConfigHeartbeat;
 typedef struct CtrlMsgRespConfigHeartbeat CtrlMsgRespConfigHeartbeat;
+typedef struct CtrlMsgReqConfigSmartConnect CtrlMsgReqConfigSmartConnect;
+typedef struct CtrlMsgRespConfigSmartConnect CtrlMsgRespConfigSmartConnect;
 typedef struct CtrlMsgEventESPInit CtrlMsgEventESPInit;
 typedef struct CtrlMsgEventHeartbeat CtrlMsgEventHeartbeat;
 typedef struct CtrlMsgEventStationDisconnectFromAP CtrlMsgEventStationDisconnectFromAP;
@@ -157,11 +159,12 @@ typedef enum _CtrlMsgId {
   CTRL_MSG_ID__Req_SetWifiMaxTxPower = 119,
   CTRL_MSG_ID__Req_GetWifiCurrTxPower = 120,
   CTRL_MSG_ID__Req_ConfigHeartbeat = 121,
+  CTRL_MSG_ID__Req_ConfigSmartConnect = 122,
   /*
    * Add new control path command response before Req_Max
    * and update Req_Max 
    */
-  CTRL_MSG_ID__Req_Max = 122,
+  CTRL_MSG_ID__Req_Max = 123,
   /*
    ** Response Msgs *
    */
@@ -187,11 +190,12 @@ typedef enum _CtrlMsgId {
   CTRL_MSG_ID__Resp_SetWifiMaxTxPower = 219,
   CTRL_MSG_ID__Resp_GetWifiCurrTxPower = 220,
   CTRL_MSG_ID__Resp_ConfigHeartbeat = 221,
+  CTRL_MSG_ID__Resp_ConfigSmartConnect = 222,
   /*
    * Add new control path command response before Resp_Max
    * and update Resp_Max 
    */
-  CTRL_MSG_ID__Resp_Max = 222,
+  CTRL_MSG_ID__Resp_Max = 223,
   /*
    ** Event Msgs *
    */
@@ -644,6 +648,26 @@ struct  CtrlMsgRespConfigHeartbeat
  { PROTOBUF_C_MESSAGE_INIT (&ctrl_msg__resp__config_heartbeat__descriptor) \
     , 0 }
 
+struct  CtrlMsgReqConfigSmartConnect
+{
+  ProtobufCMessage base;
+  protobuf_c_boolean enable;
+  int32_t type;
+};
+#define CTRL_MSG__REQ__CONFIG_SMARTCONNECT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&ctrl_msg__req__config_smartconnect__descriptor) \
+    , 0, 0 }
+
+
+struct  CtrlMsgRespConfigSmartConnect
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define CTRL_MSG__RESP__CONFIG_SMARTCONNECT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&ctrl_msg__resp__config_smartconnect__descriptor) \
+    , 0 }
+
 
 /*
  ** Event structure *
@@ -722,6 +746,7 @@ typedef enum {
   CTRL_MSG__PAYLOAD_REQ_SET_WIFI_MAX_TX_POWER = 119,
   CTRL_MSG__PAYLOAD_REQ_GET_WIFI_CURR_TX_POWER = 120,
   CTRL_MSG__PAYLOAD_REQ_CONFIG_HEARTBEAT = 121,
+  CTRL_MSG__PAYLOAD_REQ_CONFIG_SMARTCONNECT = 122,
   CTRL_MSG__PAYLOAD_RESP_GET_MAC_ADDRESS = 201,
   CTRL_MSG__PAYLOAD_RESP_SET_MAC_ADDRESS = 202,
   CTRL_MSG__PAYLOAD_RESP_GET_WIFI_MODE = 203,
@@ -743,6 +768,7 @@ typedef enum {
   CTRL_MSG__PAYLOAD_RESP_SET_WIFI_MAX_TX_POWER = 219,
   CTRL_MSG__PAYLOAD_RESP_GET_WIFI_CURR_TX_POWER = 220,
   CTRL_MSG__PAYLOAD_RESP_CONFIG_HEARTBEAT = 221,
+  CTRL_MSG__PAYLOAD_RESP_CONFIG_SMARTCONNECT = 222,
   CTRL_MSG__PAYLOAD_EVENT_ESP_INIT = 301,
   CTRL_MSG__PAYLOAD_EVENT_HEARTBEAT = 302,
   CTRL_MSG__PAYLOAD_EVENT_STATION_DISCONNECT_FROM__AP = 303,
@@ -788,6 +814,7 @@ struct  CtrlMsg
     CtrlMsgReqSetWifiMaxTxPower *req_set_wifi_max_tx_power;
     CtrlMsgReqGetWifiCurrTxPower *req_get_wifi_curr_tx_power;
     CtrlMsgReqConfigHeartbeat *req_config_heartbeat;
+    CtrlMsgReqConfigSmartConnect *req_config_smartconnect;
     /*
      ** Responses *
      */
@@ -812,6 +839,7 @@ struct  CtrlMsg
     CtrlMsgRespSetWifiMaxTxPower *resp_set_wifi_max_tx_power;
     CtrlMsgRespGetWifiCurrTxPower *resp_get_wifi_curr_tx_power;
     CtrlMsgRespConfigHeartbeat *resp_config_heartbeat;
+    CtrlMsgRespConfigSmartConnect *resp_config_smartconnect;
     /*
      ** Notifications *
      */
@@ -1568,6 +1596,46 @@ CtrlMsgRespConfigHeartbeat *
 void   ctrl_msg__resp__config_heartbeat__free_unpacked
                      (CtrlMsgRespConfigHeartbeat *message,
                       ProtobufCAllocator *allocator);
+
+/* CtrlMsgReqConfigSmartConnect methods */
+void   ctrl_msg__req__config_smartconnect__init
+                     (CtrlMsgReqConfigSmartConnect         *message);
+size_t ctrl_msg__req__config_smartconnect__get_packed_size
+                     (const CtrlMsgReqConfigSmartConnect   *message);
+size_t ctrl_msg__req__config_smartconnect__pack
+                     (const CtrlMsgReqConfigSmartConnect   *message,
+                      uint8_t             *out);
+size_t ctrl_msg__req__config_smartconnect__pack_to_buffer
+                     (const CtrlMsgReqConfigSmartConnect   *message,
+                      ProtobufCBuffer     *buffer);
+CtrlMsgReqConfigSmartConnect *
+       ctrl_msg__req__config_smartconnect__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   ctrl_msg__req__config_smartconnect__free_unpacked
+                     (CtrlMsgReqConfigSmartConnect *message,
+                      ProtobufCAllocator *allocator);
+/* CtrlMsgRespConfigSmartConnect methods */
+void   ctrl_msg__resp__config_smartconnect__init
+                     (CtrlMsgRespConfigSmartConnect         *message);
+size_t ctrl_msg__resp__config_smartconnect__get_packed_size
+                     (const CtrlMsgRespConfigSmartConnect   *message);
+size_t ctrl_msg__resp__config_smartconnect__pack
+                     (const CtrlMsgRespConfigSmartConnect   *message,
+                      uint8_t             *out);
+size_t ctrl_msg__resp__config_smartconnect__pack_to_buffer
+                     (const CtrlMsgRespConfigSmartConnect   *message,
+                      ProtobufCBuffer     *buffer);
+CtrlMsgRespConfigSmartConnect *
+       ctrl_msg__resp__config_smartconnect__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   ctrl_msg__resp__config_smartconnect__free_unpacked
+                     (CtrlMsgRespConfigSmartConnect *message,
+                      ProtobufCAllocator *allocator);
+
 /* CtrlMsgEventESPInit methods */
 void   ctrl_msg__event__espinit__init
                      (CtrlMsgEventESPInit         *message);
@@ -1802,6 +1870,12 @@ typedef void (*CtrlMsgReqConfigHeartbeat_Closure)
 typedef void (*CtrlMsgRespConfigHeartbeat_Closure)
                  (const CtrlMsgRespConfigHeartbeat *message,
                   void *closure_data);
+typedef void (*CtrlMsgReqConfigSmartConnect_Closure)
+                 (const CtrlMsgReqConfigSmartConnect *message,
+                  void *closure_data);
+typedef void (*CtrlMsgRespConfigSmartConnect_Closure)
+                 (const CtrlMsgRespConfigSmartConnect *message,
+                  void *closure_data);
 typedef void (*CtrlMsgEventESPInit_Closure)
                  (const CtrlMsgEventESPInit *message,
                   void *closure_data);
@@ -1871,6 +1945,8 @@ extern const ProtobufCMessageDescriptor ctrl_msg__req__get_wifi_curr_tx_power__d
 extern const ProtobufCMessageDescriptor ctrl_msg__resp__get_wifi_curr_tx_power__descriptor;
 extern const ProtobufCMessageDescriptor ctrl_msg__req__config_heartbeat__descriptor;
 extern const ProtobufCMessageDescriptor ctrl_msg__resp__config_heartbeat__descriptor;
+extern const ProtobufCMessageDescriptor ctrl_msg__req__config_smartconnect__descriptor;
+extern const ProtobufCMessageDescriptor ctrl_msg__resp__config_smartconnect__descriptor;
 extern const ProtobufCMessageDescriptor ctrl_msg__event__espinit__descriptor;
 extern const ProtobufCMessageDescriptor ctrl_msg__event__heartbeat__descriptor;
 extern const ProtobufCMessageDescriptor ctrl_msg__event__station_disconnect_from_ap__descriptor;

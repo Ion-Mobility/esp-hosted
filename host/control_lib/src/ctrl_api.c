@@ -156,6 +156,12 @@ ctrl_cmd_t * config_heartbeat(ctrl_cmd_t req)
 	CTRL_DECODE_RESP_IF_NOT_ASYNC();
 }
 
+ctrl_cmd_t * config_smartconnect(ctrl_cmd_t req)
+{
+	CTRL_SEND_REQ(CTRL_REQ_CONFIG_HEARTBEAT);
+	CTRL_DECODE_RESP_IF_NOT_ASYNC();
+}
+
 ctrl_cmd_t * ota_begin(ctrl_cmd_t req)
 {
 	CTRL_SEND_REQ(CTRL_REQ_OTA_BEGIN);
