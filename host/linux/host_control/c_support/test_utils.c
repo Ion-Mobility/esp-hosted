@@ -230,8 +230,13 @@ static void process_failed_responses(ctrl_cmd_t *app_msg)
 		case CTRL_RESP_GET_SOFTAP_CONFIG: {
 			printf("Possibly softap is not running/started\n");
 			break;
+		}
+		case CTRL_RESP_CONFIG_SMARTCONNECT: {
+			printf("Respond SmartConnect Config\n");
+			printf("--> Status: %d\n", app_msg->resp_event_status);
+			break;
 		} default: {
-			printf("Failed Control Response\n");
+			printf("Failed Control Response: %d\n", app_msg->msg_id);
 			break;
 		}
 	}
@@ -1076,7 +1081,7 @@ int test_config_smartconnect(void)
 	req.ctrl_resp_cb = ctrl_app_resp_callback;
 
 	config_smartconnect(req);
-	
+
 	return SUCCESS;
 
 	// return ctrl_app_resp_callback(resp);

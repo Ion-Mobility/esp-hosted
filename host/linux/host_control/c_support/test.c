@@ -98,7 +98,7 @@ static int parse_cli_cmd(char *in_cmd, char *args[])
 	else if (0 == strncasecmp(SMARTCONNECT_START, in_cmd, sizeof(SMARTCONNECT_START)))
 		test_config_smartconnect();
 	else if (0 == strncasecmp(SMARTCONNECT_STOP, in_cmd, sizeof(SMARTCONNECT_STOP)))
-		test_config_smartconnect();
+		test_disable_smartconnect();
 	else if (0 == strncasecmp(IONHANDLE_START, in_cmd, sizeof(IONHANDLE_START)))
 		printf("ION ESP32 Wifi Handler Started...\n");
 	/* OTA ESP flashing */
