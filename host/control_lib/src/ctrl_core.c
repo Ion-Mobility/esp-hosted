@@ -260,10 +260,10 @@ static int ctrl_app_parse_event(CtrlMsg *ctrl_msg, ctrl_cmd_t *app_ntfy)
 			app_ntfy->resp_event_status = ctrl_msg->event_station_connect_from_esptouch->resp;
 			if(SUCCESS==app_ntfy->resp_event_status) {
 				CHECK_CTRL_MSG_NON_NULL_VAL(ctrl_msg->event_station_connect_from_esptouch->info.data, "NULL info");
-				strncpy(app_ntfy->u.e_smrt_connected.info,
+				memcpy(app_ntfy->u.e_smrt_connected.info,
 					(char *)ctrl_msg->event_station_connect_from_esptouch->info.data,
 					 ctrl_msg->event_station_connect_from_esptouch->info.len);
-				printf("EVENT: Station connected by smart-config  Information [%s], len: %d\n", app_ntfy->u.e_smrt_connected.info, ctrl_msg->event_station_connect_from_esptouch->info.len);
+				//printf("EVENT: Station connected by smart-config  Information [%s], len: %d\n", app_ntfy->u.e_smrt_connected.info, ctrl_msg->event_station_connect_from_esptouch->info.len);
 			}
 			break;
 		} default: {
