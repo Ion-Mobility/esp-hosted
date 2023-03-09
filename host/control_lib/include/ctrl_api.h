@@ -156,6 +156,8 @@ typedef enum {
 	CTRL_RESP_GET_WIFI_CURR_TX_POWER    = CTRL_MSG_ID__Resp_GetWifiCurrTxPower, //0x78 -> 0xdc
 
 	CTRL_RESP_CONFIG_HEARTBEAT          = CTRL_MSG_ID__Resp_ConfigHeartbeat,    //0x79 -> 0xdd
+	
+	CTRL_RESP_CONFIG_SMARTCONNECT       = CTRL_MSG_ID__Resp_ConfigSmartConnect,    //0x79 -> 0xdd
 	/*
 	 * Add new control path comm       and response before Resp_Max
 	 * and update Resp_Max
