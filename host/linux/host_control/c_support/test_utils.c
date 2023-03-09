@@ -73,7 +73,15 @@ typedef struct {
 	int event;
 	ctrl_resp_cb_t fun;
 } event_callback_table_t;
-
+//#ifdef CONFIG_ESP_SMART_CONFIG_ENABLE
+typedef struct tagIONEspTouchSharingType
+{
+	char ssid[SSID_LENGTH];
+	char pwd[PASSWORD_LENGTH];
+	char bssid[BSSID_LENGTH];
+	uint8_t bssid_set;
+}IONEspTouchSharingType;
+//#endif
 static char * get_timestamp(char *str, uint16_t str_size)
 {
 	if (str && str_size>=MIN_TIMESTAMP_STR_SIZE) {
@@ -124,11 +132,19 @@ static int ctrl_app_event_callback(ctrl_cmd_t * app_event)
 			}
 			break;
 		} case CTRL_EVENT_STATION_CONNECT_FROM_ESPTOUCH: {
-		        char *p = app_event->u.e_smrt_connected.info;
-			if (p && strlen(p)) {
-				printf("%s App EVENT: Smart-Config Connected [%s]\n",
-				get_timestamp(ts, MIN_TIMESTAMP_STR_SIZE), p);
+			IONEspTouchSharingType *p = app_event->u.e_smrt_connected.info;
+			printf("%s App EVENT: Smart-Config Connected!!!\n", get_timestamp(ts, MIN_TIMESTAMP_STR_SIZE));
+			printf("  Wifi Configuration: \n");
+			printf("   -> SSID: %s\n", p->ssid);
+			printf("   -> PWD: %s\n", p->pwd);
+			if(p->bssid_set == 1)
+			{
+				printf("   -> BSSID: %s\n", p->bssid);
+			else
+			{
+				printf("BSSID is not used\n");
 			}
+			test_station_mode_connect();
 			break;
 		} default: {
 			printf("%s Invalid event[%u] to parse\n",
