@@ -88,7 +88,6 @@ static int parse_cli_cmd(char *in_cmd, char *args[])
 		test_get_wifi_power_save_mode();
 
 
-
 	/* Wifi Tx power APIs */
 	else if (0 == strncasecmp(SET_WIFI_MAX_TX_POWER, in_cmd, sizeof(SET_WIFI_MAX_TX_POWER)))
 		test_wifi_set_max_tx_power(INPUT_WIFI_TX_POWER);
@@ -96,9 +95,12 @@ static int parse_cli_cmd(char *in_cmd, char *args[])
 		test_wifi_get_curr_tx_power();
 
 	/* Wifi Smart Connect APIs */
-	else if (0 == strncasecmp(SMARTCONNECT, in_cmd, sizeof(SMARTCONNECT)))
+	else if (0 == strncasecmp(SMARTCONNECT_START, in_cmd, sizeof(SMARTCONNECT_START)))
 		test_config_smartconnect();
-
+	else if (0 == strncasecmp(SMARTCONNECT_STOP, in_cmd, sizeof(SMARTCONNECT_STOP)))
+		test_config_smartconnect();
+	else if (0 == strncasecmp(IONHANDLE_START, in_cmd, sizeof(IONHANDLE_START)))
+		printf("ION ESP32 Wifi Handler Started...\n");
 	/* OTA ESP flashing */
 	else if (0 == strncasecmp(OTA, in_cmd, sizeof(OTA))) {
 		printf("OTA binary: %s\n",args[0]);

@@ -4033,7 +4033,7 @@ static const ProtobufCFieldDescriptor ctrl_msg__req__config_smartconnect__field_
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "duration",
+    "type",
     2,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
@@ -4077,7 +4077,7 @@ static const ProtobufCFieldDescriptor ctrl_msg__resp__config_smartconnect__field
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(CtrlMsgRespConfigHeartbeat, resp),
+    offsetof(CtrlMsgReqConfigSmartConnect, resp),
     NULL,
     NULL,
     0,             /* flags */
