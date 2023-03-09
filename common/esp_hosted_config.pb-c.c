@@ -4046,7 +4046,7 @@ static const ProtobufCFieldDescriptor ctrl_msg__req__config_smartconnect__field_
   },
 };
 static const unsigned ctrl_msg__req__config_smartconnect__field_indices_by_name[] = {
-  1,   /* field[1] = duration */
+  1,   /* field[1] = type */
   0,   /* field[0] = enable */
 };
 static const ProtobufCIntRange ctrl_msg__req__config_smartconnect__number_ranges[1 + 1] =
@@ -5005,7 +5005,7 @@ static const ProtobufCIntRange ctrl_msg__number_ranges[4 + 1] =
   { 101, 2 },
   { 201, 24 },
   { 301, 45 },
-  { 0, 51 }
+  { 0, 49 }
 };
 const ProtobufCMessageDescriptor ctrl_msg__descriptor =
 {
@@ -5018,7 +5018,7 @@ const ProtobufCMessageDescriptor ctrl_msg__descriptor =
   51,
   ctrl_msg__field_descriptors,
   ctrl_msg__field_indices_by_name,
-  5,  ctrl_msg__number_ranges,
+  4,  ctrl_msg__number_ranges,
   (ProtobufCMessageInit) ctrl_msg__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
@@ -5418,7 +5418,7 @@ const ProtobufCEnumDescriptor ctrl_msg_id__descriptor =
   ctrl_msg_id__enum_values_by_number,
   56,
   ctrl_msg_id__enum_values_by_name,
-  5,
+  4,
   ctrl_msg_id__value_ranges,
   NULL,NULL,NULL,NULL   /* reserved[1234] */
 };
