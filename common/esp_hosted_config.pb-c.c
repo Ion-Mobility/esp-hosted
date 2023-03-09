@@ -4955,6 +4955,7 @@ static const unsigned ctrl_msg__field_indices_by_name[] = {
   1,   /* field[1] = msg_id */
   0,   /* field[0] = msg_type */
   22,   /* field[22] = req_config_heartbeat */
+  23,   /* field[23] = req_config_smartconnect */
   8,   /* field[8] = req_connect_ap */
   9,   /* field[9] = req_disconnect_ap */
   7,   /* field[7] = req_get_ap_config */
@@ -4976,6 +4977,7 @@ static const unsigned ctrl_msg__field_indices_by_name[] = {
   12,   /* field[12] = req_start_softap */
   14,   /* field[14] = req_stop_softap */
   43,   /* field[43] = resp_config_heartbeat */
+  44,   /* field[43] = resp_config_smartconnect */
   29,   /* field[29] = resp_connect_ap */
   30,   /* field[30] = resp_disconnect_ap */
   28,   /* field[28] = resp_get_ap_config */
@@ -5001,8 +5003,8 @@ static const ProtobufCIntRange ctrl_msg__number_ranges[4 + 1] =
 {
   { 1, 0 },
   { 101, 2 },
-  { 201, 23 },
-  { 301, 44 },
+  { 201, 24 },
+  { 301, 45 },
   { 0, 49 }
 };
 const ProtobufCMessageDescriptor ctrl_msg__descriptor =

@@ -1854,6 +1854,7 @@ static esp_err_t start_heartbeat(int duration)
 
 static esp_err_t configure_smartconnect(bool enable, int type)
 {
+	ESP_LOGI(TAG, "configure_smartconnect");
 	esp_err_t ret = ESP_OK;
 	int smartconnect_type = type ;
 
@@ -1928,6 +1929,7 @@ err:
 static esp_err_t req_config_smartconnect(CtrlMsg *req,
 		CtrlMsg *resp, void *priv_data)
 {
+	ESP_LOGI(TAG, "req_config_smartconnect");
 	esp_err_t ret = ESP_OK;
 	CtrlMsgRespConfigSmartConnect *resp_payload = NULL;
 
@@ -2198,6 +2200,9 @@ static void esp_ctrl_msg_cleanup(CtrlMsg *resp)
 			break;
 		} case (CTRL_MSG_ID__Resp_ConfigHeartbeat) : {
 			mem_free(resp->resp_config_heartbeat);
+			break;
+		} case (CTRL_MSG_ID__Resp_ConfigSmartConnect) : {
+			mem_free(resp->resp_config_smartconnect);
 			break;
 		} case (CTRL_MSG_ID__Event_ESPInit) : {
 			mem_free(resp->event_esp_init);
