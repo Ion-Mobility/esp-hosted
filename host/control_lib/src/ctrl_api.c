@@ -158,7 +158,7 @@ ctrl_cmd_t * config_heartbeat(ctrl_cmd_t req)
 
 ctrl_cmd_t * config_smartconnect(ctrl_cmd_t req)
 {
-	CTRL_SEND_REQ(CTRL_REQ_CONFIG_HEARTBEAT);
+	CTRL_SEND_REQ(CTRL_REQ_CONFIG_SMARTCONNECT);
 	CTRL_DECODE_RESP_IF_NOT_ASYNC();
 }
 
