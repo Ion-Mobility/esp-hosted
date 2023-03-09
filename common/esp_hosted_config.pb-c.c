@@ -5003,9 +5003,9 @@ static const ProtobufCIntRange ctrl_msg__number_ranges[4 + 1] =
 {
   { 1, 0 },
   { 101, 2 },
-  { 201, 24 },
+  { 201, 25 },
   { 301, 45 },
-  { 0, 48 }
+  { 0, 49 }
 };
 const ProtobufCMessageDescriptor ctrl_msg__descriptor =
 {
