@@ -4077,7 +4077,7 @@ static const ProtobufCFieldDescriptor ctrl_msg__resp__config_smartconnect__field
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(CtrlMsgReqConfigSmartConnect, resp),
+    offsetof(CtrlMsgRespConfigSmartConnect, resp),
     NULL,
     NULL,
     0,             /* flags */
