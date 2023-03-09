@@ -1071,9 +1071,15 @@ int test_config_smartconnect(void)
 	req.u.smrtconnect.enable = YES;
 	req.u.smrtconnect.type = 0;
 
-	resp = config_smartconnect(req);
+	// resp = config_smartconnect(req);
+	/* register callback for handling reply asynch-ly */
+	req.ctrl_resp_cb = ctrl_app_resp_callback;
 
-	return ctrl_app_resp_callback(resp);
+	config_smartconnect(req);
+	
+	return SUCCESS;
+
+	// return ctrl_app_resp_callback(resp);
 }
 
 int test_disable_smartconnect(void)
