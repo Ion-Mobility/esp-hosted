@@ -1854,11 +1854,11 @@ static esp_err_t start_heartbeat(int duration)
 
 static esp_err_t configure_smartconnect(bool enable, int type)
 {
-	ESP_LOGI(TAG, "configure_smartconnect");
+	ESP_LOGI(TAG, "configure_smartconnect: %d, %d", enable, type);
 	esp_err_t ret = ESP_OK;
 	int smartconnect_type = type ;
 
-	if (!enable) {
+	if (enable == 1) {
 		ESP_LOGI(TAG, "Start Smart-Connect");
 	} else {
 		ESP_LOGI(TAG, "Stop Smart-Connect");
