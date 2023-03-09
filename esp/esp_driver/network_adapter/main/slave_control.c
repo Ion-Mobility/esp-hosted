@@ -2319,7 +2319,7 @@ static esp_err_t ctrl_ntfy_StationConnectFromESPTOUCH(CtrlMsg *ntfy,
 		const uint8_t *data, ssize_t len)
 {
 	ESP_LOGI(TAG, "%s: data: %x, len: %d\n", __func__, (uint32_t)data, len);
-	char smart_config_log[BSSID_LENGTH+PASSWORD_LENGTH] = "";
+	// char smart_config_log[BSSID_LENGTH+PASSWORD_LENGTH] = "";
 	CtrlMsgEventStationConnectFromESPTOUCH *ntfy_payload = NULL;
 
 	ntfy_payload = (CtrlMsgEventStationConnectFromESPTOUCH*)
@@ -2333,11 +2333,13 @@ static esp_err_t ctrl_ntfy_StationConnectFromESPTOUCH(CtrlMsg *ntfy,
 	ntfy->payload_case = CTRL_MSG__PAYLOAD_EVENT_STATION_CONNECT_FROM__ESPTOUCH;
 	ntfy->event_station_connect_from_esptouch = ntfy_payload;
 
-	snprintf(smart_config_log, BSSID_LENGTH+PASSWORD_LENGTH, "%s", data);
-	ntfy_payload->info.len = strnlen(smart_config_log, BSSID_LENGTH+PASSWORD_LENGTH);
-	ESP_LOGI(TAG,"Smart-Config [%s]\n", smart_config_log);
-
-	ntfy_payload->info.data = (uint8_t *)strndup(smart_config_log, ntfy_payload->info.len);
+	// snprintf(smart_config_log, BSSID_LENGTH+PASSWORD_LENGTH, "%s", data);
+	// ntfy_payload->info.len = strnlen(smart_config_log, BSSID_LENGTH+PASSWORD_LENGTH);
+	ntfy_payload->info.len = len;
+	ntfy_payload->info.data = data;
+	// ESP_LOGI(TAG,"Smart-Config [%s]\n", smart_config_log);
+	// memcpy(ntfy_payload->info.data, data, len);
+	// ntfy_payload->info.data = (uint8_t *)strndup(smart_config_log, ntfy_payload->info.len);
 	if (!ntfy_payload->info.data) {
 		ESP_LOGE(TAG, "Failed to allocate sta disconnect from softap");
 		goto err;
@@ -2418,4 +2420,9 @@ err:
 	}
 	esp_ctrl_msg_cleanup(&ntfy);
 	return ESP_FAIL;
+}
+
+void ctrl_espconnected_set(uint8_t status)
+{
+	station_connected = status;
 }

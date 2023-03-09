@@ -64,6 +64,8 @@ static const int ESPTOUCH_DONE_BIT = BIT1;
 // static const char *TAG = "smartconfig_example";
 
 static void smartconfig_example_task(void * parm);
+static void smartconfig_event_register(void);
+static void smartconfig_event_unregister(void);
 #endif
 
 static const char TAG[] = "NETWORK_ADAPTER";
@@ -139,15 +141,25 @@ static void print_firmware_version()
 }
 
 #ifdef CONFIG_ESP_SMART_CONFIG_ENABLE
-static void smartconfig_example_task(void * parm);
+typedef struct tagIONEspTouchSharingType
+{
+	char ssid[SSID_LENGTH];
+	char pwd[PASSWORD_LENGTH];
+	char bssid[BSSID_LENGTH];
+	uint8_t bssid_set;
 
+}IONEspTouchSharingType;
+static esp_netif_t *sta_netif = NULL;
+static void smartconfig_example_task(void * parm);
+static IONEspTouchSharingType wifi_share;
 static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
 {
+	ESP_LOGI(TAG, "%s: event_id: %d\n", __func__, event_id);
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         xTaskCreate(smartconfig_example_task, "smartconfig_example_task", 4096, NULL, 3, NULL);
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        esp_wifi_connect();
+        //esp_wifi_connect();
         xEventGroupClearBits(s_wifi_event_group, CONNECTED_BIT);
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         xEventGroupSetBits(s_wifi_event_group, CONNECTED_BIT);
@@ -157,7 +169,6 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "Found channel");
     } else if (event_base == SC_EVENT && event_id == SC_EVENT_GOT_SSID_PSWD) {
         ESP_LOGI(TAG, "Got SSID and password");
-
         smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
         wifi_config_t wifi_config;
         uint8_t ssid[33] = { 0 };
@@ -166,10 +177,17 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
 
         bzero(&wifi_config, sizeof(wifi_config_t));
         memcpy(wifi_config.sta.ssid, evt->ssid, sizeof(wifi_config.sta.ssid));
+        memcpy(wifi_share.ssid, evt->ssid, sizeof(wifi_config.sta.ssid));
+
         memcpy(wifi_config.sta.password, evt->password, sizeof(wifi_config.sta.password));
+        memcpy(wifi_share.pwd, evt->password, sizeof(wifi_config.sta.password));
+
         wifi_config.sta.bssid_set = evt->bssid_set;
+        wifi_share.bssid_set = evt->bssid_set;
+
         if (wifi_config.sta.bssid_set == true) {
             memcpy(wifi_config.sta.bssid, evt->bssid, sizeof(wifi_config.sta.bssid));
+            memcpy(wifi_share.bssid, evt->bssid, sizeof(wifi_config.sta.bssid));
         }
 
         memcpy(ssid, evt->ssid, sizeof(evt->ssid));
@@ -186,7 +204,6 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
         }
 		uint8_t dummystr[255];
 		snprintf((char*)dummystr, sizeof(dummystr), "SSID: %s, PASSWORD: %s", ssid, password);
-		send_event_data_to_host(CTRL_MSG_ID__Event_StationConnectFromESPTOUCH, dummystr, sizeof(dummystr));
         ESP_ERROR_CHECK( esp_wifi_disconnect() );
         ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
         esp_wifi_connect();
@@ -205,10 +222,25 @@ static void smartconfig_example_task(void * parm)
         uxBits = xEventGroupWaitBits(s_wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT, true, false, portMAX_DELAY);
         if(uxBits & CONNECTED_BIT) {
             ESP_LOGI(TAG, "WiFi Connected to ap");
+			// ctrl_espconnected_set(1);
         }
         if(uxBits & ESPTOUCH_DONE_BIT) {
             ESP_LOGI(TAG, "smartconfig over");
+			smartconfig_event_unregister();
             esp_smartconfig_stop();
+			esp_netif_destroy(sta_netif);
+			int32_t ret = esp_wifi_disconnect();
+			if (ret) {
+				ESP_LOGE(TAG, "Failed to disconnect");
+			}
+
+			printf("Size of IONEspTouchSharingType: %d\n", sizeof(IONEspTouchSharingType));
+			printf("  Wifi Configuration: \n");
+			printf("   -> SSID: %s\n", wifi_share.ssid);
+			printf("   -> PWD: %s\n", wifi_share.pwd);
+			printf("   -> BSSID: %s\n", wifi_share.bssid);
+			printf("   -> IS BSSID: %d\n", wifi_share.bssid_set);
+			send_event_data_to_host(CTRL_MSG_ID__Event_StationConnectFromESPTOUCH, (uint8_t *)&wifi_share, sizeof(wifi_share));
             vTaskDelete(NULL);
         }
     }
@@ -613,6 +645,54 @@ static esp_err_t serial_write_data(uint8_t* data, ssize_t len)
 	return ESP_OK;
 }
 
+#ifdef CONFIG_ESP_SMART_CONFIG_ENABLE
+static void smartconfig_event_register(void)
+{
+    ESP_ERROR_CHECK( esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &smartconfig_event_handler, NULL) );
+    ESP_ERROR_CHECK( esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &smartconfig_event_handler, NULL) );
+    ESP_ERROR_CHECK( esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &smartconfig_event_handler, NULL) );
+}
+static void smartconfig_event_unregister(void)
+{
+    ESP_ERROR_CHECK( esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &smartconfig_event_handler) );
+    ESP_ERROR_CHECK( esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &smartconfig_event_handler) );
+    ESP_ERROR_CHECK( esp_event_handler_unregister(SC_EVENT, ESP_EVENT_ANY_ID, &smartconfig_event_handler) );
+}
+static void smartconfig_initialize(void)
+{
+	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+	ESP_ERROR_CHECK(esp_event_loop_create_default());
+	esp_err_t result = esp_wifi_init_internal(&cfg);
+	// ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
+
+	if (result != ESP_OK) {
+		ESP_LOGE(TAG,"Init internal failed");
+		return result;
+	}
+	esp_wifi_set_debug_log();
+	result = esp_supplicant_init();
+	if (result != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to init supplicant (0x%x)", result);
+		esp_err_t deinit_ret = esp_wifi_deinit_internal();
+		if (deinit_ret != ESP_OK) {
+			ESP_LOGE(TAG, "Failed to deinit Wi-Fi internal (0x%x)", deinit_ret);
+			return;
+		}
+		return;
+	}
+
+    s_wifi_event_group = xEventGroupCreate();
+	ESP_ERROR_CHECK(esp_netif_init());
+    sta_netif = esp_netif_create_default_wifi_sta();
+    assert(sta_netif);
+
+	smartconfig_event_register();
+
+    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
+    ESP_ERROR_CHECK( esp_wifi_start() );
+}
+#endif
+
 static esp_err_t initialise_wifi(void)
 {
 	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -633,11 +713,30 @@ static esp_err_t initialise_wifi(void)
 		}
 		return result;
 	}
+
+#ifdef CONFIG_ESP_SMART_CONFIG_ENABLE
+    s_wifi_event_group = xEventGroupCreate();
+    // ESP_ERROR_CHECK(esp_event_loop_create_default());
+	// ESP_ERROR_CHECK(esp_netif_init());
+    sta_netif = esp_netif_create_default_wifi_sta();
+    assert(sta_netif);
+
+	smartconfig_event_register();
+
+	result = esp_wifi_set_mode(WIFI_MODE_STA);
+	if (result != ESP_OK) {
+		ESP_LOGE(TAG,"Failed to reset wifi mode");
+		return result;
+	}
+
+#else
 	result = esp_wifi_set_mode(WIFI_MODE_NULL);
 	if (result != ESP_OK) {
 		ESP_LOGE(TAG,"Failed to reset wifi mode");
 		return result;
 	}
+
+#endif
 	result = esp_wifi_start();
 	if (result != ESP_OK) {
 		ESP_LOGE(TAG,"Failed to start WiFi");
@@ -779,44 +878,6 @@ void task_runtime_stats_task(void* pvParameters)
 	}
 }
 #endif
-#ifdef CONFIG_ESP_SMART_CONFIG_ENABLE
-static void smartconfig_initialize(void)
-{
-	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-	ESP_ERROR_CHECK(esp_event_loop_create_default());
-	esp_err_t result = esp_wifi_init_internal(&cfg);
-	// ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
-
-	if (result != ESP_OK) {
-		ESP_LOGE(TAG,"Init internal failed");
-		return result;
-	}
-	esp_wifi_set_debug_log();
-	result = esp_supplicant_init();
-	if (result != ESP_OK) {
-		ESP_LOGE(TAG, "Failed to init supplicant (0x%x)", result);
-		esp_err_t deinit_ret = esp_wifi_deinit_internal();
-		if (deinit_ret != ESP_OK) {
-			ESP_LOGE(TAG, "Failed to deinit Wi-Fi internal (0x%x)", deinit_ret);
-			return;
-		}
-		return;
-	}
-
-	// ESP_ERROR_CHECK(esp_netif_init());
-    s_wifi_event_group = xEventGroupCreate();
-    // ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
-    assert(sta_netif);
-
-    ESP_ERROR_CHECK( esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &smartconfig_event_handler, NULL) );
-    ESP_ERROR_CHECK( esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &smartconfig_event_handler, NULL) );
-    ESP_ERROR_CHECK( esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &smartconfig_event_handler, NULL) );
-
-    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
-    ESP_ERROR_CHECK( esp_wifi_start() );
-}
-#endif
 void app_main()
 {
 	esp_err_t ret;
@@ -911,8 +972,8 @@ void app_main()
 
 	tcpip_adapter_init();
 
-	// ESP_ERROR_CHECK(initialise_wifi());
-	smartconfig_initialize();
+	ESP_ERROR_CHECK(initialise_wifi());
+	// smartconfig_initialize();
 
 	ESP_LOGI(TAG,"Initial set up done");
 
