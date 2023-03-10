@@ -231,10 +231,10 @@ static void process_failed_responses(ctrl_cmd_t *app_msg)
 			printf("Possibly softap is not running/started\n");
 			break;
 		}
-		case CTRL_RESP_CONFIG_SMARTCONNECT: {
-			printf("Respond SmartConnect Config\n");
-			printf("--> Status: %d\n", app_msg->resp_event_status);
-			break;
+		// case CTRL_RESP_CONFIG_SMARTCONNECT: {
+		// 	printf("Respond SmartConnect Config\n");
+		// 	printf("--> Status: %d\n", app_msg->resp_event_status);
+		// 	break;
 		} default: {
 			printf("Failed Control Response: %d\n", app_msg->msg_id);
 			break;
@@ -622,9 +622,9 @@ int ctrl_app_resp_callback(ctrl_cmd_t * app_resp)
 		} case CTRL_RESP_CONFIG_HEARTBEAT: {
 			printf("Heartbeat operation successful\n");
 			break;
-		} case CTRL_RESP_CONFIG_SMARTCONNECT: {
-			printf("Smartconnect operation successful\n");
-			break;
+		// } case CTRL_RESP_CONFIG_SMARTCONNECT: {
+		// 	printf("Smartconnect operation successful\n");
+		// 	break;
 		} default: {
 			printf("Invalid Response[%u] to parse\n", app_resp->msg_id);
 			break;

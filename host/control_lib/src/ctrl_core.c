@@ -595,11 +595,11 @@ static int ctrl_app_parse_resp(CtrlMsg *ctrl_msg, ctrl_cmd_t *app_resp)
 			CHECK_CTRL_MSG_NON_NULL(resp_config_heartbeat);
 			CHECK_CTRL_MSG_FAILED(resp_config_heartbeat);
 			break;
-		} case CTRL_RESP_CONFIG_SMARTCONNECT: {
-			printf("Processing for CTRL_RESP_CONFIG_SMARTCONNECT\n");
-			CHECK_CTRL_MSG_NON_NULL(resp_config_smartconnect);
-			CHECK_CTRL_MSG_FAILED(resp_config_smartconnect);
-			break;
+		// } case CTRL_RESP_CONFIG_SMARTCONNECT: {
+		// 	printf("Processing for CTRL_RESP_CONFIG_SMARTCONNECT\n");
+		// 	CHECK_CTRL_MSG_NON_NULL(resp_config_smartconnect);
+		// 	CHECK_CTRL_MSG_FAILED(resp_config_smartconnect);
+		// 	break;
 		} default: {
 			command_log("Unsupported Control Resp[%u]\n", ctrl_msg->msg_id);
 			goto fail_parse_ctrl_msg;
