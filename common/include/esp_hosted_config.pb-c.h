@@ -159,12 +159,12 @@ typedef enum _CtrlMsgId {
   CTRL_MSG_ID__Req_SetWifiMaxTxPower = 119,
   CTRL_MSG_ID__Req_GetWifiCurrTxPower = 120,
   CTRL_MSG_ID__Req_ConfigHeartbeat = 121,
-  CTRL_MSG_ID__Req_ConfigSmartConnect = 122,
+  // CTRL_MSG_ID__Req_ConfigSmartConnect = 122,
   /*
    * Add new control path command response before Req_Max
    * and update Req_Max 
    */
-  CTRL_MSG_ID__Req_Max = 123,
+  CTRL_MSG_ID__Req_Max = 122,
   /*
    ** Response Msgs *
    */
@@ -190,12 +190,12 @@ typedef enum _CtrlMsgId {
   CTRL_MSG_ID__Resp_SetWifiMaxTxPower = 219,
   CTRL_MSG_ID__Resp_GetWifiCurrTxPower = 220,
   CTRL_MSG_ID__Resp_ConfigHeartbeat = 221,
-  CTRL_MSG_ID__Resp_ConfigSmartConnect = 222,
+  // CTRL_MSG_ID__Resp_ConfigSmartConnect = 222,
   /*
    * Add new control path command response before Resp_Max
    * and update Resp_Max 
    */
-  CTRL_MSG_ID__Resp_Max = 223,
+  CTRL_MSG_ID__Resp_Max = 222,
   /*
    ** Event Msgs *
    */

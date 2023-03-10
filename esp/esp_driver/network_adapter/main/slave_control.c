@@ -1926,41 +1926,41 @@ err:
 	return ESP_OK;
 }
 /* Function to config heartbeat */
-static esp_err_t req_config_smartconnect(CtrlMsg *req,
-		CtrlMsg *resp, void *priv_data)
-{
-	ESP_LOGI(TAG, "req_config_smartconnect");
-	esp_err_t ret = ESP_OK;
-	CtrlMsgRespConfigSmartConnect *resp_payload = NULL;
+// static esp_err_t req_config_smartconnect(CtrlMsg *req,
+// 		CtrlMsg *resp, void *priv_data)
+// {
+// 	ESP_LOGI(TAG, "req_config_smartconnect");
+// 	esp_err_t ret = ESP_OK;
+// 	CtrlMsgRespConfigSmartConnect *resp_payload = NULL;
 
-	if (!req || !resp) {
-		ESP_LOGE(TAG, "Invalid parameters");
-		return ESP_FAIL;
-	}
+// 	if (!req || !resp) {
+// 		ESP_LOGE(TAG, "Invalid parameters");
+// 		return ESP_FAIL;
+// 	}
 
-	resp_payload = (CtrlMsgRespConfigSmartConnect*)
-		calloc(1,sizeof(CtrlMsgRespConfigSmartConnect));
-	if (!resp_payload) {
-		ESP_LOGE(TAG,"Failed to allocate memory");
-		return ESP_ERR_NO_MEM;
-	}
+// 	resp_payload = (CtrlMsgRespConfigSmartConnect*)
+// 		calloc(1,sizeof(CtrlMsgRespConfigSmartConnect));
+// 	if (!resp_payload) {
+// 		ESP_LOGE(TAG,"Failed to allocate memory");
+// 		return ESP_ERR_NO_MEM;
+// 	}
 
-	ctrl_msg__resp__config_smartconnect__init(resp_payload);
-	resp->payload_case = CTRL_MSG__PAYLOAD_RESP_CONFIG_SMARTCONNECT;
-	resp->resp_config_smartconnect = resp_payload;
+// 	ctrl_msg__resp__config_smartconnect__init(resp_payload);
+// 	resp->payload_case = CTRL_MSG__PAYLOAD_RESP_CONFIG_SMARTCONNECT;
+// 	resp->resp_config_smartconnect = resp_payload;
 
-	ret = configure_smartconnect(req->req_config_smartconnect->enable,
-			req->req_config_smartconnect->type);
-	if (ret != SUCCESS) {
-		ESP_LOGE(TAG, "Failed to set smartconnect");
-		goto err;
-	}
-	resp_payload->resp = SUCCESS;
-	return ESP_OK;
-err:
-	resp_payload->resp = FAILURE;
-	return ESP_OK;
-}
+// 	ret = configure_smartconnect(req->req_config_smartconnect->enable,
+// 			req->req_config_smartconnect->type);
+// 	if (ret != SUCCESS) {
+// 		ESP_LOGE(TAG, "Failed to set smartconnect");
+// 		goto err;
+// 	}
+// 	resp_payload->resp = SUCCESS;
+// 	return ESP_OK;
+// err:
+// 	resp_payload->resp = FAILURE;
+// 	return ESP_OK;
+// }
 static esp_ctrl_msg_req_t req_table[] = {
 	{
 		.req_num = CTRL_MSG_ID__Req_GetMACAddress ,
@@ -2046,10 +2046,10 @@ static esp_ctrl_msg_req_t req_table[] = {
 		.req_num = CTRL_MSG_ID__Req_ConfigHeartbeat,
 		.command_handler = req_config_heartbeat
 	},
-	{
-		.req_num = CTRL_MSG_ID__Req_ConfigSmartConnect,
-		.command_handler = req_config_smartconnect
-	},
+	// {
+	// 	.req_num = CTRL_MSG_ID__Req_ConfigSmartConnect,
+	// 	.command_handler = req_config_smartconnect
+	// },
 };
 
 
@@ -2201,9 +2201,9 @@ static void esp_ctrl_msg_cleanup(CtrlMsg *resp)
 		} case (CTRL_MSG_ID__Resp_ConfigHeartbeat) : {
 			mem_free(resp->resp_config_heartbeat);
 			break;
-		} case (CTRL_MSG_ID__Resp_ConfigSmartConnect) : {
-			mem_free(resp->resp_config_smartconnect);
-			break;
+		// } case (CTRL_MSG_ID__Resp_ConfigSmartConnect) : {
+		// 	mem_free(resp->resp_config_smartconnect);
+		// 	break;
 		} case (CTRL_MSG_ID__Event_ESPInit) : {
 			mem_free(resp->event_esp_init);
 			break;

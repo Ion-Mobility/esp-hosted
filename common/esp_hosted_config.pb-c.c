@@ -4609,18 +4609,18 @@ static const ProtobufCFieldDescriptor ctrl_msg__field_descriptors[51] =
     0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
-  {
-    "req_config_smartconnect",
-    122,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_MESSAGE,
-    offsetof(CtrlMsg, payload_case),
-    offsetof(CtrlMsg, req_config_smartconnect),
-    &ctrl_msg__req__config_smartconnect__descriptor,
-    NULL,
-    0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
+  // {
+  //   "req_config_smartconnect",
+  //   122,
+  //   PROTOBUF_C_LABEL_NONE,
+  //   PROTOBUF_C_TYPE_MESSAGE,
+  //   offsetof(CtrlMsg, payload_case),
+  //   offsetof(CtrlMsg, req_config_smartconnect),
+  //   &ctrl_msg__req__config_smartconnect__descriptor,
+  //   NULL,
+  //   0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+  //   0,NULL,NULL    /* reserved1,reserved2, etc */
+  // },
   {
     "resp_get_mac_address",
     201,
@@ -4873,18 +4873,18 @@ static const ProtobufCFieldDescriptor ctrl_msg__field_descriptors[51] =
     0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
-  {
-    "resp_config_smartconnect",
-    222,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_MESSAGE,
-    offsetof(CtrlMsg, payload_case),
-    offsetof(CtrlMsg, resp_config_smartconnect),
-    &ctrl_msg__resp__config_smartconnect__descriptor,
-    NULL,
-    0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
+  // {
+  //   "resp_config_smartconnect",
+  //   222,
+  //   PROTOBUF_C_LABEL_NONE,
+  //   PROTOBUF_C_TYPE_MESSAGE,
+  //   offsetof(CtrlMsg, payload_case),
+  //   offsetof(CtrlMsg, resp_config_smartconnect),
+  //   &ctrl_msg__resp__config_smartconnect__descriptor,
+  //   NULL,
+  //   0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+  //   0,NULL,NULL    /* reserved1,reserved2, etc */
+  // },
   {
     "event_esp_init",
     301,
@@ -4955,7 +4955,7 @@ static const unsigned ctrl_msg__field_indices_by_name[] = {
   1,   /* field[1] = msg_id */
   0,   /* field[0] = msg_type */
   22,   /* field[22] = req_config_heartbeat */
-  23,   /* field[23] = req_config_smartconnect */
+  // 23,   /* field[23] = req_config_smartconnect */
   8,   /* field[8] = req_connect_ap */
   9,   /* field[9] = req_disconnect_ap */
   7,   /* field[7] = req_get_ap_config */
@@ -4977,7 +4977,7 @@ static const unsigned ctrl_msg__field_indices_by_name[] = {
   12,   /* field[12] = req_start_softap */
   14,   /* field[14] = req_stop_softap */
   43,   /* field[43] = resp_config_heartbeat */
-  44,   /* field[43] = resp_config_smartconnect */
+  // 44,   /* field[43] = resp_config_smartconnect */
   29,   /* field[29] = resp_connect_ap */
   30,   /* field[30] = resp_disconnect_ap */
   28,   /* field[28] = resp_get_ap_config */
@@ -5005,7 +5005,7 @@ static const ProtobufCIntRange ctrl_msg__number_ranges[4 + 1] =
   { 101, 2 },
   { 201, 24 },
   { 301, 45 },
-  { 0, 51 }
+  { 0, 49 }
 };
 const ProtobufCMessageDescriptor ctrl_msg__descriptor =
 {
@@ -5015,7 +5015,7 @@ const ProtobufCMessageDescriptor ctrl_msg__descriptor =
   "CtrlMsg",
   "",
   sizeof(CtrlMsg),
-  51,
+  49,
   ctrl_msg__field_descriptors,
   ctrl_msg__field_indices_by_name,
   4,  ctrl_msg__number_ranges,
@@ -5286,7 +5286,7 @@ const ProtobufCEnumDescriptor ctrl_msg_type__descriptor =
   ctrl_msg_type__value_ranges,
   NULL,NULL,NULL,NULL   /* reserved[1234] */
 };
-static const ProtobufCEnumValue ctrl_msg_id__enum_values_by_number[56] =
+static const ProtobufCEnumValue ctrl_msg_id__enum_values_by_number[] =
 {
   { "MsgId_Invalid", "CTRL_MSG_ID__MsgId_Invalid", 0 },
   { "Req_Base", "CTRL_MSG_ID__Req_Base", 100 },
@@ -5311,8 +5311,8 @@ static const ProtobufCEnumValue ctrl_msg_id__enum_values_by_number[56] =
   { "Req_SetWifiMaxTxPower", "CTRL_MSG_ID__Req_SetWifiMaxTxPower", 119 },
   { "Req_GetWifiCurrTxPower", "CTRL_MSG_ID__Req_GetWifiCurrTxPower", 120 },
   { "Req_ConfigHeartbeat", "CTRL_MSG_ID__Req_ConfigHeartbeat", 121 },
-  { "Req_ConfigSmartConnect", "CTRL_MSG_ID__Req_ConfigSmartConnect", 122 },
-  { "Req_Max", "CTRL_MSG_ID__Req_Max", 123 },
+  // { "Req_ConfigSmartConnect", "CTRL_MSG_ID__Req_ConfigSmartConnect", 122 },
+  { "Req_Max", "CTRL_MSG_ID__Req_Max", 122 },
   { "Resp_Base", "CTRL_MSG_ID__Resp_Base", 200 },
   { "Resp_GetMACAddress", "CTRL_MSG_ID__Resp_GetMACAddress", 201 },
   { "Resp_SetMacAddress", "CTRL_MSG_ID__Resp_SetMacAddress", 202 },
@@ -5335,8 +5335,8 @@ static const ProtobufCEnumValue ctrl_msg_id__enum_values_by_number[56] =
   { "Resp_SetWifiMaxTxPower", "CTRL_MSG_ID__Resp_SetWifiMaxTxPower", 219 },
   { "Resp_GetWifiCurrTxPower", "CTRL_MSG_ID__Resp_GetWifiCurrTxPower", 220 },
   { "Resp_ConfigHeartbeat", "CTRL_MSG_ID__Resp_ConfigHeartbeat", 221 },
-  { "Resp_ConfigSmartConnect", "CTRL_MSG_ID__Resp_ConfigSmartConnect", 222 },
-  { "Resp_Max", "CTRL_MSG_ID__Resp_Max", 223 },
+  // { "Resp_ConfigSmartConnect", "CTRL_MSG_ID__Resp_ConfigSmartConnect", 222 },
+  { "Resp_Max", "CTRL_MSG_ID__Resp_Max", 222 },
   { "Event_Base", "CTRL_MSG_ID__Event_Base", 300 },
   { "Event_ESPInit", "CTRL_MSG_ID__Event_ESPInit", 301 },
   { "Event_Heartbeat", "CTRL_MSG_ID__Event_Heartbeat", 302 },
@@ -5346,9 +5346,9 @@ static const ProtobufCEnumValue ctrl_msg_id__enum_values_by_number[56] =
   { "Event_Max", "CTRL_MSG_ID__Event_Max", 306 },
 };
 static const ProtobufCIntRange ctrl_msg_id__value_ranges[] = {
-{0, 0},{100, 1},{200, 24},{300, 47},{0, 56}
+{0, 0},{100, 1},{200, 24},{300, 47},{0, 53}
 };
-static const ProtobufCEnumValueIndex ctrl_msg_id__enum_values_by_name[56] =
+static const ProtobufCEnumValueIndex ctrl_msg_id__enum_values_by_name[] =
 {
   { "Event_Base", 47 },
   { "Event_ESPInit", 48 },
@@ -5360,7 +5360,7 @@ static const ProtobufCEnumValueIndex ctrl_msg_id__enum_values_by_name[56] =
   { "MsgId_Invalid", 0 },
   { "Req_Base", 1 },
   { "Req_ConfigHeartbeat", 22 },
-  { "Req_ConfigSmartConnect", 23 },
+  // { "Req_ConfigSmartConnect", 23 },
   { "Req_ConnectAP", 8 },
   { "Req_DisconnectAP", 9 },
   { "Req_GetAPConfig", 7 },
@@ -5384,7 +5384,7 @@ static const ProtobufCEnumValueIndex ctrl_msg_id__enum_values_by_name[56] =
   { "Req_StopSoftAP", 14 },
   { "Resp_Base", 24 },
   { "Resp_ConfigHeartbeat", 45 },
-  { "Resp_ConfigSmartConnect", 46 },
+  // { "Resp_ConfigSmartConnect", 46 },
   { "Resp_ConnectAP", 31 },
   { "Resp_DisconnectAP", 32 },
   { "Resp_GetAPConfig", 30 },
@@ -5414,9 +5414,9 @@ const ProtobufCEnumDescriptor ctrl_msg_id__descriptor =
   "CtrlMsgId",
   "CtrlMsgId",
   "",
-  56,
+  54,
   ctrl_msg_id__enum_values_by_number,
-  56,
+  54,
   ctrl_msg_id__enum_values_by_name,
   4,
   ctrl_msg_id__value_ranges,
