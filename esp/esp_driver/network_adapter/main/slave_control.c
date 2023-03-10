@@ -159,8 +159,11 @@ static void req_smartconfig_start(void)
 	ESP_LOGI(TAG,"req_smartconfig_start");
     // ESP_ERROR_CHECK(esp_netif_init());
 	s_wifi_event_group = xEventGroupCreate();
-    sta_netif = esp_netif_create_default_wifi_sta();
-    assert(sta_netif);
+	if(sta_netif == NULL)
+	{
+		sta_netif = esp_netif_create_default_wifi_sta();
+		assert(sta_netif);
+	}
 
 	esp_wifi_stop();
 
@@ -240,10 +243,10 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
         xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
 		smartconfig_event_unregister();
 		esp_smartconfig_stop();
-		ESP_ERROR_CHECK(esp_wifi_disconnect());
+		// ESP_ERROR_CHECK(esp_wifi_disconnect());
 		// esp_netif_destroy(sta_netif);
 		send_event_data_to_host(CTRL_MSG_ID__Event_StationConnectFromESPTOUCH,
-					&wifi_share, 1);
+					&wifi_share, sizeof(IONEspTouchSharingType));
 		ESP_LOGI(TAG, "smartconfig over.");
     }
 }

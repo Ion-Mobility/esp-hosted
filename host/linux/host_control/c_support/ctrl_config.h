@@ -43,6 +43,7 @@
 
 #define SMARTCONNECT_START                 "smartconnect_start"
 #define SMARTCONNECT_STOP                  "smartconnect_stop"
+#define IONREQCONNECT                      "connect"
 
 #define IONHANDLE_START                    "ionhandler"
 
