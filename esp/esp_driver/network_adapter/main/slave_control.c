@@ -242,6 +242,8 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
 		esp_smartconfig_stop();
 		ESP_ERROR_CHECK(esp_wifi_disconnect());
 		// esp_netif_destroy(sta_netif);
+		send_event_data_to_host(CTRL_MSG_ID__Event_StationConnectFromESPTOUCH,
+					&wifi_share, 1);
 		ESP_LOGI(TAG, "smartconfig over.");
     }
 }
