@@ -1068,6 +1068,24 @@ int test_disable_heartbeat(void)
 	return ctrl_app_resp_callback(resp);
 }
 
+ionesp32_connectwifi(char* ssid, char* pass)
+{
+	printf("ION Esp Connect to SSID: %s, PASS: %s\n", ssid, pass);
+	/* implemented Asynchronous */
+	// ctrl_cmd_t req = CTRL_CMD_DEFAULT_REQ();
+
+	// strcpy((char *)&req.u.wifi_ap_config.ssid, ssid);
+	// strcpy((char *)&req.u.wifi_ap_config.pwd, pass);
+	// strcpy((char *)&req.u.wifi_ap_config.bssid, STATION_MODE_BSSID);
+	// req.u.wifi_ap_config.is_wpa3_supported = STATION_MODE_IS_WPA3_SUPPORTED;
+	// req.u.wifi_ap_config.listen_interval = STATION_MODE_LISTEN_INTERVAL;
+
+	// /* register callback for handling reply asynch-ly */
+	// req.ctrl_resp_cb = ctrl_app_resp_callback;
+
+	// wifi_connect_ap(req);
+}
+
 // int test_config_smartconnect(void)
 // {
 // 	/* implemented synchronous */
