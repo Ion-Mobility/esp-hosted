@@ -1068,34 +1068,34 @@ int test_disable_heartbeat(void)
 	return ctrl_app_resp_callback(resp);
 }
 
-int test_config_smartconnect(void)
-{
-	/* implemented synchronous */
-	ctrl_cmd_t *resp = NULL;
-	ctrl_cmd_t req = CTRL_CMD_DEFAULT_REQ();
-	req.u.smrtconnect.enable = YES;
-	req.u.smrtconnect.type = 0;
+// int test_config_smartconnect(void)
+// {
+// 	/* implemented synchronous */
+// 	ctrl_cmd_t *resp = NULL;
+// 	ctrl_cmd_t req = CTRL_CMD_DEFAULT_REQ();
+// 	req.u.smrtconnect.enable = YES;
+// 	req.u.smrtconnect.type = 0;
 
-	// resp = config_smartconnect(req);
-	/* register callback for handling reply asynch-ly */
-	req.ctrl_resp_cb = ctrl_app_resp_callback;
+// 	// resp = config_smartconnect(req);
+// 	/* register callback for handling reply asynch-ly */
+// 	req.ctrl_resp_cb = ctrl_app_resp_callback;
 
-	config_smartconnect(req);
+// 	config_smartconnect(req);
 
-	return SUCCESS;
+// 	return SUCCESS;
 
-	// return ctrl_app_resp_callback(resp);
-}
+// 	// return ctrl_app_resp_callback(resp);
+// }
 
-int test_disable_smartconnect(void)
-{
-	/* implemented synchronous */
-	ctrl_cmd_t *resp = NULL;
-	ctrl_cmd_t req = CTRL_CMD_DEFAULT_REQ();
-	req.u.smrtconnect.enable = NO;
-	req.u.smrtconnect.type = 0;
+// int test_disable_smartconnect(void)
+// {
+// 	/* implemented synchronous */
+// 	ctrl_cmd_t *resp = NULL;
+// 	ctrl_cmd_t req = CTRL_CMD_DEFAULT_REQ();
+// 	req.u.smrtconnect.enable = NO;
+// 	req.u.smrtconnect.type = 0;
 
-	resp = config_smartconnect(req);
+// 	resp = config_smartconnect(req);
 
-	return ctrl_app_resp_callback(resp);
-}
+// 	return ctrl_app_resp_callback(resp);
+// }
