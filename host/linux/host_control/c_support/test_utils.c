@@ -1068,7 +1068,7 @@ int test_disable_heartbeat(void)
 	return ctrl_app_resp_callback(resp);
 }
 
-// ionesp32_connectwifi(char* ssid, char* pass)
+ionesp32_connectwifi(char* ssid, char* pass)
 {
 	printf("ION Esp Connect to SSID: %s, PASS: %s\n", ssid, pass);
 	/* implemented Asynchronous */
