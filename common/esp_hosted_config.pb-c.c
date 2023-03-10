@@ -5005,7 +5005,7 @@ static const ProtobufCIntRange ctrl_msg__number_ranges[4 + 1] =
   { 101, 2 },
   { 201, 23 },
   { 301, 44 },
-  { 0, 48 }
+  { 0, 49 }
 };
 const ProtobufCMessageDescriptor ctrl_msg__descriptor =
 {
@@ -5346,7 +5346,7 @@ static const ProtobufCEnumValue ctrl_msg_id__enum_values_by_number[] =
   { "Event_Max", "CTRL_MSG_ID__Event_Max", 306 },
 };
 static const ProtobufCIntRange ctrl_msg_id__value_ranges[] = {
-{0, 0},{100, 1},{200, 24},{300, 47},{0, 53}
+{0, 0},{100, 1},{200, 24},{300, 47},{0, 54}
 };
 static const ProtobufCEnumValueIndex ctrl_msg_id__enum_values_by_name[] =
 {
