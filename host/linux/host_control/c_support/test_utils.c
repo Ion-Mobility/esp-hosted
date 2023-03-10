@@ -145,7 +145,7 @@ static int ctrl_app_event_callback(ctrl_cmd_t * app_event)
 			{
 				printf("BSSID is not used\n");
 			}
-			// ionesp32_connectwifi(p->ssid, p->pwd);
+			ionesp32_connectwifi(p->ssid, p->pwd);
 			break;
 		} default: {
 			printf("%s Invalid event[%u] to parse\n",
@@ -1068,7 +1068,7 @@ int test_disable_heartbeat(void)
 	return ctrl_app_resp_callback(resp);
 }
 
-ionesp32_connectwifi(char* ssid, char* pass)
+// ionesp32_connectwifi(char* ssid, char* pass)
 {
 	printf("ION Esp Connect to SSID: %s, PASS: %s\n", ssid, pass);
 	/* implemented Asynchronous */
