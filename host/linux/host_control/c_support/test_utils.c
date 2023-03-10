@@ -230,7 +230,7 @@ static void process_failed_responses(ctrl_cmd_t *app_msg)
 		case CTRL_RESP_GET_SOFTAP_CONFIG: {
 			printf("Possibly softap is not running/started\n");
 			break;
-		}
+		// }
 		// case CTRL_RESP_CONFIG_SMARTCONNECT: {
 		// 	printf("Respond SmartConnect Config\n");
 		// 	printf("--> Status: %d\n", app_msg->resp_event_status);
