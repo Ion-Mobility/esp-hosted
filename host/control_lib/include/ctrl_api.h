@@ -118,7 +118,7 @@ typedef enum {
 
 	CTRL_REQ_CONFIG_HEARTBEAT          = CTRL_MSG_ID__Req_ConfigHeartbeat,    //0x79
 
-	CTRL_REQ_CONFIG_SMARTCONNECT       = CTRL_MSG_ID__Req_ConfigSmartConnect,    //0x7a
+	// CTRL_REQ_CONFIG_SMARTCONNECT       = CTRL_MSG_ID__Req_ConfigSmartConnect,    //0x7a
 
 	/*
 	 * Add new control path command response before Req_Max
@@ -157,7 +157,7 @@ typedef enum {
 
 	CTRL_RESP_CONFIG_HEARTBEAT          = CTRL_MSG_ID__Resp_ConfigHeartbeat,    //0x79 -> 0xdd
 
-	CTRL_RESP_CONFIG_SMARTCONNECT       = CTRL_MSG_ID__Resp_ConfigSmartConnect,    //0x7a -> 0xdd
+	// CTRL_RESP_CONFIG_SMARTCONNECT       = CTRL_MSG_ID__Resp_ConfigSmartConnect,    //0x7a -> 0xdd
 	/*
 	 * Add new control path comm       and response before Resp_Max
 	 * and update Resp_Max
