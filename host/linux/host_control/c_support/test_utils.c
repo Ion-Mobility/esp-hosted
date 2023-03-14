@@ -142,6 +142,7 @@ static int ctrl_app_event_callback(ctrl_cmd_t * app_event)
 		case CTRL_EVENT_ESP_INIT: {
 			printf("%s App EVENT: ESP INIT\n",
 				get_timestamp(ts, MIN_TIMESTAMP_STR_SIZE));
+			IONEsp32WifiStatus = ION_ESP_WIFI_IDLE;
 			break;
 		} case CTRL_EVENT_HEARTBEAT: {
 			printf("%s App EVENT: Heartbeat event [%d]\n",
