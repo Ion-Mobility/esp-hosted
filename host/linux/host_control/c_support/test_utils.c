@@ -1218,6 +1218,7 @@ static uint32_t IONEspWifiParseConfig(const char *configfile, IONEspWifiConnectI
 
 void IONEspWifiHandler(void)
 {
+	printf("%s: Wifi status: %d\n!!!", __func__, IONEsp32WifiStatus);
     do
     {
         switch (IONEsp32WifiStatus)
