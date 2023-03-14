@@ -108,7 +108,7 @@ typedef struct tagIONEspWifiConnectInfo
 static IONEspWifiStatusType     IONEsp32WifiStatus = ION_ESP_WIFI_IDLE;
 static IONEspWifiConnectInfo    IONEsp32WifiConfig;
 
-static uint32_t IONEspWifiSaveConfig(const char *configfile, IONEspWifiConnectInfo *info);
+static uint32_t IONEspWifiSaveConfig(const char *configfile, IONEspWifiConnectInfo info);
 
 static char * get_timestamp(char *str, uint16_t str_size)
 {
@@ -176,7 +176,7 @@ static int ctrl_app_event_callback(ctrl_cmd_t * app_event)
 			IONEspWifiConnectInfo IONEsp32StoringWifiConfig;
 			strcpy(&IONEsp32StoringWifiConfig.SSID[0], p->ssid);
 			strcpy(&IONEsp32StoringWifiConfig.PWD[0], p->pwd);
-			IONEspWifiSaveConfig(ION_STATION_CFG_FILE, &IONEsp32StoringWifiConfig);
+			IONEspWifiSaveConfig(ION_STATION_CFG_FILE, IONEsp32StoringWifiConfig);
 			ionesp32_connectwifi(p->ssid, p->pwd);
 			break;
 		} default: {
