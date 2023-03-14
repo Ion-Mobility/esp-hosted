@@ -156,16 +156,16 @@ void vTimerCallback( TimerHandle_t xTimer )
 }
 static void req_smartconfig_stop(void)
 {
-	if(smartconnect_started == TRUE)
+	if(smartconnect_started == true)
 	{
 		smartconfig_event_unregister();
 		esp_smartconfig_stop();
-		smartconnect_started = FALSE;
+		smartconnect_started = false;
 	}
 }
 static void req_smartconfig_start(void)
 {
-	if(smartconnect_started == TRUE)
+	if(smartconnect_started == true)
 	{
 		return;
 	}
@@ -192,7 +192,7 @@ static void req_smartconfig_start(void)
     ESP_ERROR_CHECK( esp_smartconfig_set_type(SC_TYPE_ESPTOUCH) );
     smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
     ESP_ERROR_CHECK( esp_smartconfig_start(&cfg) );
-	smartconnect_started = TRUE;
+	smartconnect_started = true;
 	// xTaskCreate(smartconfig_example_task, "smartconfig_example_task", 4096, NULL, 3, NULL);
 }
 void ctrl_smartconnect_start(void)
@@ -595,7 +595,7 @@ static esp_err_t req_connect_ap_handler (CtrlMsg *req,
 	EventBits_t bits = {0};
 	int retry = 0;
 	
-	if (smartconnect_started == TRUE)
+	if (smartconnect_started == true)
 	{
 		req_smartconfig_stop();
 	}
