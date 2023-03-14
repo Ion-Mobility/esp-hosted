@@ -70,5 +70,6 @@ int register_event_callbacks(void);
 int unregister_event_callbacks(void);
 int test_config_heartbeat(void);
 int test_disable_heartbeat(void);
+void IONEspWifiHandler(void);
 
 #endif

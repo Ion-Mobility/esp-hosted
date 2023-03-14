@@ -102,8 +102,10 @@ static int parse_cli_cmd(char *in_cmd, char *args[])
 	else if (0 == strncasecmp(IONREQCONNECT, in_cmd, sizeof(IONREQCONNECT)))
 		ionesp32_connectwifi(args[0], args[1]);
 
-	else if (0 == strncasecmp(IONHANDLE_START, in_cmd, sizeof(IONHANDLE_START)))
+	else if (0 == strncasecmp(IONHANDLE_START, in_cmd, sizeof(IONHANDLE_START))){
 		printf("ION ESP32 Wifi Handler Started...\n");
+		IONEspWifiHandler();
+	}
 	/* OTA ESP flashing */
 	else if (0 == strncasecmp(OTA, in_cmd, sizeof(OTA))) {
 		printf("OTA binary: %s\n",args[0]);

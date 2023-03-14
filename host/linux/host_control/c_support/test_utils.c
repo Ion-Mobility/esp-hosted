@@ -82,6 +82,32 @@ typedef struct tagIONEspTouchSharingType
 	uint8_t bssid_set;
 }IONEspTouchSharingType;
 //#endif
+
+#define ION_STATION_MODE_MAC_ADDRESS        "aa:bb:cc:dd:ee:ff"
+#define STATION_MODE_SSID                   "IONSharingNetwork"
+#define STATION_MODE_PWD                    "IONMobility.com"
+#define ION_STATION_MODE_BSSID              ""
+#define ION_STATION_MODE_IS_WPA3_SUPPORTED  false
+#define ION_STATION_MODE_LISTEN_INTERVAL    5
+#define ION_STATION_CFG_FILE                "/etc/ion_wpa_config.cfg"
+
+typedef enum tagIONEspWifiStatusType
+{
+    ION_ESP_WIFI_IDLE = 0,
+    ION_ESP_WIFI_CONNECTING,
+    ION_ESP_WIFI_CONNECTED,
+    ION_ESP_WIFI_DISCONNECTING,
+    ION_ESP_WIFI_DISCONNECTED,
+}IONEspWifiStatusType;
+
+typedef struct tagIONEspWifiConnectInfo
+{
+    char SSID[SSID_LENGTH];
+    char PWD[PWD_LENGTH];
+}IONEspWifiConnectInfo;
+static IONEspWifiStatusType     IONEsp32WifiStatus = ION_ESP_WIFI_IDLE;
+static IONEspWifiConnectInfo    IONEsp32WifiConfig;
+
 static char * get_timestamp(char *str, uint16_t str_size)
 {
 	if (str && str_size>=MIN_TIMESTAMP_STR_SIZE) {
@@ -1117,3 +1143,110 @@ ionesp32_connectwifi(char* ssid, char* pass)
 
 // 	return ctrl_app_resp_callback(resp);
 // }
+/* station mode */
+
+static uint32_t IONEspWifiParseConfig(const char *configfile, IONEspWifiConnectInfo *info)
+{
+	FILE *IONWifiConfigurationFile = NULL;
+	char * line = NULL;
+    size_t len = 0;
+    ssize_t read;
+	uint32_t ret = 0;
+	printf("Config: %s\n", configfile);
+	IONWifiConfigurationFile = fopen(configfile, "r");
+	if(IONWifiConfigurationFile == NULL)
+	{
+		printf("[WARNING] Can't open config file\n");
+        return 0;
+	}
+	else
+	{
+		char *pch;
+		char parsessid[32];
+		char parsepsk[32];
+		int wificonfigtoken = 0;
+		while ((read = getline(&line, &len, IONWifiConfigurationFile)) != -1) 
+		{
+			if(wificonfigtoken == 0)
+			{
+				pch = strstr(line, "ssid=");
+				if (pch != NULL) 
+				{
+					memset(parsessid, 0x00, sizeof(parsessid));
+					for(int i=0;pch[i+6]!='"';i++)
+					{
+						parsessid[i] = pch[i+6];
+					}
+					printf("SSID: %s\n", parsessid);
+					wificonfigtoken++;
+				}
+			}
+			else
+			{
+				pch = strstr(line, "#psk=");
+				if (pch != NULL) 
+				{
+					memset(parsepsk, 0x00, sizeof(parsepsk));
+					for(int i=0;pch[i+6]!='"';i++)
+					{
+						parsepsk[i] = pch[i+6];
+					}
+					printf("PSK: %s\n", parsepsk);
+
+					wificonfigtoken++;
+				}
+			}
+
+			if(wificonfigtoken == 2)
+			{
+				wificonfigtoken = 0;
+				printf("Found Wifi AP from %s: %s, %s\n", configfile, parsessid, parsepsk);
+				strcpy((char *)&info->SSID[0], parsessid);
+				strcpy((char *)&info->PWD[0], parsepsk);
+                ret = 1;
+                break;
+			}
+		}
+		fclose(IONWifiConfigurationFile);
+		if(wificonfigtoken != 0)
+		{
+			printf("[WARNING] Invalid configure file\n");
+		}
+	}
+    return ret;
+}
+
+void IONEspWifiHandler(void)
+{
+    do
+    {
+        switch (IONEsp32WifiStatus))
+        {
+        case ION_ESP_WIFI_IDLE:
+            if(IONEspWifiParseConfig(ION_STATION_CFG_FILE, &IONEsp32WifiConfig) == 1)
+            {
+                /* Already have config, so trigger connect*/
+                printf("Already have config, so trigger connect\n");
+                ionesp32_connectwifi(IONEsp32WifiConfig.SSID, IONEsp32WifiConfig.PWD);
+            }
+            else
+            {
+                /* Connect default config, and trigger smartconnect if any */
+                printf("Connect default config, and trigger smartconnect if any\n");
+            }
+            IONEsp32WifiStatus = ION_ESP_WIFI_CONNECTING;
+            break;
+        case ION_ESP_WIFI_CONNECTING:
+            break;
+        case ION_ESP_WIFI_CONNECTED:
+            break;
+        case ION_ESP_WIFI_DISCONNECTING:
+            break;
+        case ION_ESP_WIFI_DISCONNECTED:
+        default:
+            break;
+        }
+        sleep(1);
+    } while (1);
+    
+}
