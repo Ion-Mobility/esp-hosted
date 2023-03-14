@@ -146,6 +146,7 @@ void esp_update_ap_mac(void);
 
 extern volatile uint8_t station_connected;
 extern volatile uint8_t softap_started;
+extern volatile uint8_t smartconnect_started;
 
 /* OTA end timer callback */
 void vTimerCallback( TimerHandle_t xTimer )
@@ -153,9 +154,21 @@ void vTimerCallback( TimerHandle_t xTimer )
 	xTimerDelete(xTimer, 0);
 	esp_restart();
 }
-
+static void req_smartconfig_stop(void)
+{
+	if(smartconnect_started == TRUE)
+	{
+		smartconfig_event_unregister();
+		esp_smartconfig_stop();
+		smartconnect_started = FALSE;
+	}
+}
 static void req_smartconfig_start(void)
 {
+	if(smartconnect_started == TRUE)
+	{
+		return;
+	}
 	ESP_LOGI(TAG,"req_smartconfig_start");
     // ESP_ERROR_CHECK(esp_netif_init());
 	s_wifi_event_group = xEventGroupCreate();
@@ -179,7 +192,7 @@ static void req_smartconfig_start(void)
     ESP_ERROR_CHECK( esp_smartconfig_set_type(SC_TYPE_ESPTOUCH) );
     smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
     ESP_ERROR_CHECK( esp_smartconfig_start(&cfg) );
-
+	smartconnect_started = TRUE;
 	// xTaskCreate(smartconfig_example_task, "smartconfig_example_task", 4096, NULL, 3, NULL);
 }
 void ctrl_smartconnect_start(void)
@@ -193,9 +206,9 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
 	ESP_LOGI(TAG, "%s: event_id: %d\n", __func__, event_id);
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        xEventGroupClearBits(s_wifi_event_group, CONNECTED_BIT);
+
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        xEventGroupSetBits(s_wifi_event_group, CONNECTED_BIT);
+
     } else if (event_base == SC_EVENT && event_id == SC_EVENT_SCAN_DONE) {
         ESP_LOGI(TAG, "Scan done");
     } else if (event_base == SC_EVENT && event_id == SC_EVENT_FOUND_CHANNEL) {
@@ -240,11 +253,7 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
         ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
         esp_wifi_connect();
     } else if (event_base == SC_EVENT && event_id == SC_EVENT_SEND_ACK_DONE) {
-        xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
-		smartconfig_event_unregister();
-		esp_smartconfig_stop();
-		// ESP_ERROR_CHECK(esp_wifi_disconnect());
-		// esp_netif_destroy(sta_netif);
+		req_smartconfig_stop();
 		send_event_data_to_host(CTRL_MSG_ID__Event_StationConnectFromESPTOUCH,
 					&wifi_share, sizeof(IONEspTouchSharingType));
 		ESP_LOGI(TAG, "smartconfig over.");
@@ -585,6 +594,11 @@ static esp_err_t req_connect_ap_handler (CtrlMsg *req,
 	CtrlMsgRespConnectAP *resp_payload = NULL;
 	EventBits_t bits = {0};
 	int retry = 0;
+	
+	if (smartconnect_started == TRUE)
+	{
+		req_smartconfig_stop();
+	}
 
 	if (!req || !resp || !req->req_connect_ap) {
 		ESP_LOGE(TAG, "Invalid parameters");

@@ -81,6 +81,7 @@ static const char TAG_TX_S[] = "CONTROL S -> H";
 volatile uint8_t action = 0;
 volatile uint8_t datapath = 0;
 volatile uint8_t station_connected = 0;
+volatile uint8_t smartconnect_started = 0;
 volatile uint8_t softap_started = 0;
 volatile uint8_t ota_ongoing = 0;
 
