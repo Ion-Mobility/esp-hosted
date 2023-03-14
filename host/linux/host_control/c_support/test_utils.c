@@ -1122,9 +1122,9 @@ int ionesp32_connectdefault(void)
 {	/* implemented Asynchronous */
 	ctrl_cmd_t req = CTRL_CMD_DEFAULT_REQ();
 
-	strcpy((char *)&req.u.wifi_ap_config.ssid, STATION_MODE_SSID);
-	strcpy((char *)&req.u.wifi_ap_config.pwd, STATION_MODE_PWD);
-	strcpy((char *)&req.u.wifi_ap_config.bssid, STATION_MODE_BSSID);
+	strcpy((char *)&req.u.wifi_ap_config.ssid, ION_STATION_MODE_SSID);
+	strcpy((char *)&req.u.wifi_ap_config.pwd, ION_STATION_MODE_PWD);
+	strcpy((char *)&req.u.wifi_ap_config.bssid, ION_STATION_MODE_BSSID);
 	req.u.wifi_ap_config.is_wpa3_supported = STATION_MODE_IS_WPA3_SUPPORTED;
 	req.u.wifi_ap_config.listen_interval = STATION_MODE_LISTEN_INTERVAL;
 
