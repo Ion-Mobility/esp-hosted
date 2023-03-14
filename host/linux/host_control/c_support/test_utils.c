@@ -84,8 +84,8 @@ typedef struct tagIONEspTouchSharingType
 //#endif
 
 #define ION_STATION_MODE_MAC_ADDRESS        "aa:bb:cc:dd:ee:ff"
-#define STATION_MODE_SSID                   "IONSharingNetwork"
-#define STATION_MODE_PWD                    "IONMobility.com"
+#define ION_STATION_MODE_SSID               "IONSharingNetwork"
+#define ION_STATION_MODE_PWD                "IONMobility.com"
 #define ION_STATION_MODE_BSSID              ""
 #define ION_STATION_MODE_IS_WPA3_SUPPORTED  false
 #define ION_STATION_MODE_LISTEN_INTERVAL    5
@@ -1220,7 +1220,7 @@ void IONEspWifiHandler(void)
 {
     do
     {
-        switch (IONEsp32WifiStatus))
+        switch (IONEsp32WifiStatus)
         {
         case ION_ESP_WIFI_IDLE:
             if(IONEspWifiParseConfig(ION_STATION_CFG_FILE, &IONEsp32WifiConfig) == 1)
