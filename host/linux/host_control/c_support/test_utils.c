@@ -1179,8 +1179,8 @@ static uint32_t IONEspWifiSaveConfig(const char *configfile, IONEspWifiConnectIn
 	}
 	else
 	{
-		fprintf(IONWifiConfigurationFile, "ssid=""%s""\n", info.SSID);
-		fprintf(IONWifiConfigurationFile, "#psk=""%s""\n", info.PWD);
+		fprintf(IONWifiConfigurationFile, "ssid=\"%s\"\n", info.SSID);
+		fprintf(IONWifiConfigurationFile, "#psk=\"%s\"\n", info.PWD);
 		fclose(IONWifiConfigurationFile);
 	}
 	return 0;
