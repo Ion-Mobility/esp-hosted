@@ -98,10 +98,10 @@ static const char TAG[] = "SPI_DRIVER";
 #elif defined CONFIG_IDF_TARGET_ESP32S3
 
     #define ESP_SPI_CONTROLLER     2
-    #define GPIO_MOSI              3
-    #define GPIO_MISO              4
-    #define GPIO_SCLK              5
-    #define GPIO_CS                6
+    #define GPIO_MOSI              33
+    #define GPIO_MISO              34
+    #define GPIO_SCLK              35
+    #define GPIO_CS                36
     #define DMA_CHAN               SPI_DMA_CH_AUTO
 
     /* Max supported SPI slave Clock for ESP32-S3 = **60MHz**
