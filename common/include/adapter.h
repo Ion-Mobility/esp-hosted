@@ -45,6 +45,7 @@ typedef enum {
 	ESP_SERIAL_IF,
 	ESP_HCI_IF,
 	ESP_PRIV_IF,
+	ESP_AT_IF,
 	ESP_MAX_IF,
 } ESP_INTERFACE_TYPE;
 

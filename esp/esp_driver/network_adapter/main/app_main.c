@@ -47,6 +47,9 @@
 #include "driver/periph_ctrl.h"
 #include "slave_bt.c"
 
+#include "at-lib.h"
+#include "mempool.h"
+
 static const char TAG[] = "NETWORK_ADAPTER";
 
 #if CONFIG_ESP_WLAN_DEBUG
@@ -78,6 +81,8 @@ static const char TAG_TX_S[] = "CONTROL S -> H";
 
 #define ETH_DATA_LEN                     1500
 
+#define AT_TASK_SLEEP_ms				 100
+
 volatile uint8_t action = 0;
 volatile uint8_t datapath = 0;
 volatile uint8_t station_connected = 0;
@@ -91,6 +96,8 @@ interface_handle_t *if_handle = NULL;
 static QueueHandle_t meta_to_host_queue = NULL;
 static QueueHandle_t to_host_queue[MAX_PRIORITY_QUEUES] = {NULL};
 
+static QueueHandle_t at_cmd_queue = NULL;
+
 
 static protocomm_t *pc_pserial;
 
@@ -100,6 +107,11 @@ static struct rx_data {
 	int len;
 	uint8_t data[4096];
 } r;
+
+typedef struct {
+	char* cmd;
+	BUFF_SIZE_T cmd_length;
+} at_command_t;
 
 uint8_t ap_mac[MAC_LEN] = {0};
 
@@ -311,6 +323,60 @@ void send_task(void* pvParameters)
 	}
 }
 
+void prepare_at_resp_buff_handle(char* at_resp, BUFF_SIZE_T at_resp_length, interface_buffer_handle_t *buff_handle)
+{
+	buff_handle->if_type = ESP_AT_IF;
+	buff_handle->if_num = 0x2;
+	buff_handle->priv_buffer_handle = at_resp;
+	buff_handle->free_buf_handle = free;
+	buff_handle->payload = (uint8_t*)at_resp;
+	buff_handle->payload_len = at_resp_length;
+}
+
+/**
+ * @brief Perform AT handling in ESP32
+ * 
+ * @param pvParameters unused argument
+ */
+void at_handling_task(void* pvParameters)
+{
+	at_command_t recv_at_cmd_to_handle;
+	interface_buffer_handle_t to_host_buff_handle;
+	char *at_response = NULL, *sending_at_response = NULL;
+	BUFF_SIZE_T at_response_length, sending_at_response_length;
+	while (1) {
+		if (xQueueReceive(at_cmd_queue, &recv_at_cmd_to_handle, portMAX_DELAY))
+		{
+			ESP_LOGI(TAG," Get a command '%s'!\n",recv_at_cmd_to_handle.cmd);
+			at_response = MALLOC(MAX_AT_BUFFER_SIZE);
+			at_response_length = ATSlave_HandlingCommand(recv_at_cmd_to_handle.cmd, strlen(recv_at_cmd_to_handle.cmd), at_response);
+			if (!at_response_length)
+			{
+				FREE(at_response);
+				continue;
+			}
+			sending_at_response = MALLOC(MAX_AT_BUFFER_SIZE);
+			ESP_LOGI(TAG," Done Handling! Now convert normal response '%s' to quectel, buffer = %p!\n",at_response, sending_at_response);
+			sending_at_response_length = AT_NormalString_To_QuecTelString(at_response, at_response_length, sending_at_response);
+			ESP_LOGI(TAG," Done converting '%s'!\n",at_response);
+			FREE(at_response);
+			prepare_at_resp_buff_handle(sending_at_response, sending_at_response_length, &to_host_buff_handle);
+			if (send_to_host_queue(&to_host_buff_handle, PRIO_Q_OTHERS) != ESP_OK) 
+			{
+				// Send to host task will not free this buffer, so we must 
+				// free ourselves
+				FREE(sending_at_response);
+			}
+			else
+			{
+				ESP_LOGI(TAG," Send response to host successfully!\n");
+
+			}
+		}
+		usleep(AT_TASK_SLEEP_ms*1000);
+	}
+}
+
 void parse_protobuf_req(void)
 {
 	protocomm_pserial_data_ready(pc_pserial, r.data,
@@ -372,6 +438,24 @@ void process_serial_rx_pkt(uint8_t *buf)
 	}
 }
 
+/**
+ * @brief This function transform Quectel AT command to normal AT command
+ * with NULL terminator for easier processing
+ * 
+ * @param at_cmd_buff buffer to AT command receive from HOST encoded in Quectel format [in]
+ * @param cmd_buff_size size of AT command buffer, including <LF><CR> [in]
+ */
+void forward_to_at_cmd_task(uint8_t *at_cmd_buff, uint32_t cmd_buff_size)
+{
+	at_command_t at_command_to_forward;
+	at_command_to_forward.cmd = malloc(MAX_AT_BUFFER_SIZE);
+	at_command_to_forward.cmd_length = AT_QuecTelString_To_NormalString((char*)at_cmd_buff, cmd_buff_size, at_command_to_forward.cmd);
+	
+	ESP_LOGI(TAG, "Receiving new AT command '%s'\n", at_cmd_buff);
+
+	xQueueSend(at_cmd_queue, &at_command_to_forward, portMAX_DELAY);
+}
+
 void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 {
 	struct esp_payload_header *header = NULL;
@@ -395,6 +479,8 @@ void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 		esp_wifi_internal_tx(ESP_IF_WIFI_AP, payload, payload_len);
 	} else if (buf_handle->if_type == ESP_SERIAL_IF) {
 		process_serial_rx_pkt(buf_handle->payload);
+	} else if (buf_handle->if_type == ESP_AT_IF) {
+		forward_to_at_cmd_task(payload, payload_len);
 	}
 #if defined(CONFIG_BT_ENABLED) && BLUETOOTH_HCI
 	else if (buf_handle->if_type == ESP_HCI_IF) {
@@ -769,9 +855,11 @@ void app_main()
 				sizeof(interface_buffer_handle_t));
 		assert(to_host_queue[prio_q_idx]);
 	}
+	at_cmd_queue = xQueueCreate(3, sizeof(at_command_t));
 
 	assert(xTaskCreate(recv_task , "recv_task" , 4096 , NULL , 22 , NULL) == pdTRUE);
 	assert(xTaskCreate(send_task , "send_task" , 4096 , NULL , 22 , NULL) == pdTRUE);
+	assert(xTaskCreate(at_handling_task , "at_handling_task" , 4096 , NULL , 22 , NULL) == pdTRUE);
 #ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
 	assert(xTaskCreate(task_runtime_stats_task, "task_runtime_stats_task",
 				4096, NULL, 1, NULL) == pdTRUE);
