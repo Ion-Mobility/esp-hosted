@@ -22,29 +22,21 @@ static BUFF_SIZE_T handler_hello(const char* arg, const BUFF_SIZE_T arg_size, ch
 {
     if (IS_TEST_COMMAND(arg, arg_size))
     {
-        printf("Test command!\n");
         memcpy(at_resp, "NO WRITE", sizeof("NO WRITE"));
-        printf("done copy\n");
         return strlen("NO WRITE");
     } else if (IS_READ_COMMAND(arg, arg_size)) 
     {
-        printf("Read command!\n");   
         memcpy(at_resp, basic_response, 3);
-        printf("done copy\n");
         return strlen(basic_response);
     }
     else if (IS_WRITE_COMMAND(arg, arg_size)) 
     {
-        printf("Write command!\n");
         memcpy(at_resp, "i do mean NO WRITE", sizeof("i do mean NO WRITE"));
-        printf("done copy\n");
         return strlen("i do mean NO WRITE");
     }
     else if (IS_EXECUTION_COMMAND(arg, arg_size)) 
     {
-        printf("Execution command!\n");
         memcpy(at_resp, "No execution available", sizeof("No execution available"));
-        printf("done copy\n");
         return strlen("No execution available");
     }
     return 0;

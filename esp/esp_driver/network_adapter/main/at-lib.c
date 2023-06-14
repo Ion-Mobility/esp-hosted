@@ -48,21 +48,14 @@ BUFF_SIZE_T ATSlave_HandlingCommand(const char *at_cmd, const BUFF_SIZE_T cmd_to
     if (index_of_this_cmd != -1)
     {
         command_handler_t found_handler = supported_at_cmds_list[index_of_this_cmd].command_handler;
-        printf("Found! index is %d\n", index_of_this_cmd);
         BUFF_SIZE_T cmd_only_length = strlen(supported_at_cmds_list[index_of_this_cmd].at_command);
         BUFF_SIZE_T arg_size = cmd_total_length - cmd_only_length;
         const char* start_of_cmd_arg = at_cmd + cmd_only_length;
         memset(handling_cmd_arg, 0, MAX_AT_BUFFER_SIZE);
         memcpy(handling_cmd_arg, start_of_cmd_arg, arg_size);
-        printf("Done memcpy handling_cmd_arg\n");
         if (found_handler)
         {
-            printf("Found handler! handling_cmd_arg = %s, arg_size = %d\n", handling_cmd_arg, arg_size);
             ret_resp_length = found_handler(handling_cmd_arg, arg_size, at_resp);
-        }
-        else
-        {
-            printf("Found index but handler not found!\n");
         }
     }
     return ret_resp_length;
