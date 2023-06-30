@@ -29,6 +29,7 @@
 #include "interface.h"
 #include "esp_wpa.h"
 #include "app_main.h"
+#include "driver/gpio.h"
 
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -49,6 +50,9 @@
 
 //tm
 #include "tm_ble.h"
+
+#define GPIO_APP_SELECT_PIN	(36)
+#define GPIO_INPUT_PIN_SEL  (1ULL<<GPIO_APP_SELECT_PIN)
 
 static const char TAG[] = "ION_BLE";
 
@@ -689,105 +693,135 @@ void task_runtime_stats_task(void* pvParameters)
 	}
 }
 #endif
+
+int check_app_pin_config(void) {
+    //zero-initialize the config structure.
+    gpio_config_t io_conf = {};
+    //disable interrupt
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    //set as output mode
+    io_conf.mode = GPIO_MODE_INPUT;
+    //bit mask of the pins that you want to set,e.g.GPIO18/19
+    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
+    //disable pull-down mode
+    io_conf.pull_down_en = 0;
+    //disable pull-up mode
+    io_conf.pull_up_en = 0;
+    //configure GPIO with the given settings
+    gpio_config(&io_conf);
+
+	vTaskDelay(pdMS_TO_TICKS(1000*2));
+	return gpio_get_level(GPIO_APP_SELECT_PIN);
+}
+
 void app_main()
 {
 	esp_err_t ret;
-	uint8_t capa = 0;
-	uint8_t prio_q_idx = 0;
-#ifdef CONFIG_BT_ENABLED
-	uint8_t mac[MAC_LEN] = {0};
-#endif
-	print_firmware_version();
-
-	capa = get_capabilities();
-
 	/* Initialize NVS */
 	ret = nvs_flash_init();
 
 	if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
-	    ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+		ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
 		ESP_ERROR_CHECK(nvs_flash_erase());
 		ret = nvs_flash_init();
 	}
 	ESP_ERROR_CHECK( ret );
 
-#ifdef CONFIG_BT_ENABLED
-	initialise_bluetooth();
 
-	ret = esp_read_mac(mac, ESP_MAC_BT);
-	if (ret) {
-		ESP_LOGE(TAG,"Failed to read BT Mac addr\n");
+	if (!check_app_pin_config()) {
+		ESP_LOGI(TAG, "boot to imx");
+
+		uint8_t capa = 0;
+		uint8_t prio_q_idx = 0;
+	#ifdef CONFIG_BT_ENABLED
+		uint8_t mac[MAC_LEN] = {0};
+	#endif
+		print_firmware_version();
+
+		capa = get_capabilities();
+
+	#ifdef CONFIG_BT_ENABLED
+		initialise_bluetooth();
+
+		ret = esp_read_mac(mac, ESP_MAC_BT);
+		if (ret) {
+			ESP_LOGE(TAG,"Failed to read BT Mac addr\n");
+		} else {
+			ESP_LOGI(TAG, "ESP Bluetooth MAC addr: %2x:%2x:%2x:%2x:%2x:%2x",
+					mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+		}
+	#endif
+
+		pc_pserial = protocomm_new();
+		if (pc_pserial == NULL) {
+			ESP_LOGE(TAG,"Failed to allocate memory for new instance of protocomm ");
+			return;
+		}
+
+		/* Endpoint for control command responses */
+		if (protocomm_add_endpoint(pc_pserial, CTRL_EP_NAME_RESP,
+					data_transfer_handler, NULL) != ESP_OK) {
+			ESP_LOGE(TAG, "Failed to add enpoint");
+			return;
+		}
+
+		/* Endpoint for control notifications for events subscribed by user */
+		if (protocomm_add_endpoint(pc_pserial, CTRL_EP_NAME_EVENT,
+					ctrl_notify_handler, NULL) != ESP_OK) {
+			ESP_LOGE(TAG, "Failed to add enpoint");
+			return;
+		}
+
+		protocomm_pserial_start(pc_pserial, serial_write_data, serial_read_data);
+
+		if_context = interface_insert_driver(event_handler);
+		datapath = 1;
+
+		if (!if_context || !if_context->if_ops) {
+			ESP_LOGE(TAG, "Failed to insert driver\n");
+			return;
+		}
+
+		if_handle = if_context->if_ops->init();
+
+		if (!if_handle) {
+			ESP_LOGE(TAG, "Failed to initialize driver\n");
+			return;
+		}
+
+		sleep(1);
+
+		/* send capabilities to host */
+		generate_startup_event(capa);
+
+		meta_to_host_queue = xQueueCreate(TO_HOST_QUEUE_SIZE*3, sizeof(uint8_t));
+		assert(meta_to_host_queue);
+		for (prio_q_idx=0; prio_q_idx<MAX_PRIORITY_QUEUES; prio_q_idx++) {
+			to_host_queue[prio_q_idx] = xQueueCreate(TO_HOST_QUEUE_SIZE,
+					sizeof(interface_buffer_handle_t));
+			assert(to_host_queue[prio_q_idx]);
+		}
+
+		assert(xTaskCreate(recv_task , "recv_task" , 4096 , NULL , 22 , NULL) == pdTRUE);
+		assert(xTaskCreate(send_task , "send_task" , 4096 , NULL , 22 , NULL) == pdTRUE);
+	#ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
+		assert(xTaskCreate(task_runtime_stats_task, "task_runtime_stats_task",
+					4096, NULL, 1, NULL) == pdTRUE);
+	#endif
+
+
+		// tcpip_adapter_init();
+
+		// ESP_ERROR_CHECK(initialise_wifi());
+		// // smartconfig_initialize();
+
+		ESP_LOGI(TAG,"Initial set up done");
+
+		sleep(1);
+		send_event_to_host(CTRL_MSG_ID__Event_ESPInit);
 	} else {
-		ESP_LOGI(TAG, "ESP Bluetooth MAC addr: %2x:%2x:%2x:%2x:%2x:%2x",
-				mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+		ESP_LOGI(TAG, "boot to tm");
+		tm_ble_init();
+		tm_ble_start_advertise();
 	}
-#endif
-
-	pc_pserial = protocomm_new();
-	if (pc_pserial == NULL) {
-		ESP_LOGE(TAG,"Failed to allocate memory for new instance of protocomm ");
-		return;
-	}
-
-	/* Endpoint for control command responses */
-	if (protocomm_add_endpoint(pc_pserial, CTRL_EP_NAME_RESP,
-				data_transfer_handler, NULL) != ESP_OK) {
-		ESP_LOGE(TAG, "Failed to add enpoint");
-		return;
-	}
-
-	/* Endpoint for control notifications for events subscribed by user */
-	if (protocomm_add_endpoint(pc_pserial, CTRL_EP_NAME_EVENT,
-				ctrl_notify_handler, NULL) != ESP_OK) {
-		ESP_LOGE(TAG, "Failed to add enpoint");
-		return;
-	}
-
-	protocomm_pserial_start(pc_pserial, serial_write_data, serial_read_data);
-
-	if_context = interface_insert_driver(event_handler);
-	datapath = 1;
-
-	if (!if_context || !if_context->if_ops) {
-		ESP_LOGE(TAG, "Failed to insert driver\n");
-		return;
-	}
-
-	if_handle = if_context->if_ops->init();
-
-	if (!if_handle) {
-		ESP_LOGE(TAG, "Failed to initialize driver\n");
-		return;
-	}
-
-	sleep(1);
-
-	/* send capabilities to host */
-	generate_startup_event(capa);
-
-	meta_to_host_queue = xQueueCreate(TO_HOST_QUEUE_SIZE*3, sizeof(uint8_t));
-	assert(meta_to_host_queue);
-	for (prio_q_idx=0; prio_q_idx<MAX_PRIORITY_QUEUES; prio_q_idx++) {
-		to_host_queue[prio_q_idx] = xQueueCreate(TO_HOST_QUEUE_SIZE,
-				sizeof(interface_buffer_handle_t));
-		assert(to_host_queue[prio_q_idx]);
-	}
-
-	assert(xTaskCreate(recv_task , "recv_task" , 4096 , NULL , 22 , NULL) == pdTRUE);
-	assert(xTaskCreate(send_task , "send_task" , 4096 , NULL , 22 , NULL) == pdTRUE);
-#ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
-	assert(xTaskCreate(task_runtime_stats_task, "task_runtime_stats_task",
-				4096, NULL, 1, NULL) == pdTRUE);
-#endif
-
-
-	// tcpip_adapter_init();
-
-	// ESP_ERROR_CHECK(initialise_wifi());
-	// // smartconfig_initialize();
-
-	ESP_LOGI(TAG,"Initial set up done");
-
-	sleep(1);
-	send_event_to_host(CTRL_MSG_ID__Event_ESPInit);
 }
