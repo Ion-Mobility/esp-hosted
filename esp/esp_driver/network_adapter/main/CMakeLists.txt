@@ -5,8 +5,6 @@ set(COMPONENT_SRCS
     "app_main.c"
     "slave_bt.c"
     "mempool.c"
-    "at-commands-library.c"
-    "at-lib.c"
 )
 set(COMPONENT_ADD_INCLUDEDIRS "." "../../../../common/include")
 

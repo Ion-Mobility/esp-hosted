@@ -632,7 +632,9 @@ static esp_err_t req_connect_ap_handler (CtrlMsg *req,
 			pdFALSE,
 			TIMEOUT);
 		ESP_LOGI(TAG, "Disconnected from previously connected AP");
+#if CONFIG_ESP_STA_WLAN_DATA_PATH
 		esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_STA, NULL);
+#endif
 		xEventGroupClearBits(wifi_event_group,
 			(WIFI_CONNECTED_BIT | WIFI_FAIL_BIT |
 			 WIFI_NO_AP_FOUND_BIT | WIFI_WRONG_PASSWORD_BIT));
@@ -740,7 +742,9 @@ static esp_err_t req_connect_ap_handler (CtrlMsg *req,
 					req->req_connect_ap->ssid ? req->req_connect_ap->ssid :"(null)",
 					req->req_connect_ap->pwd ? req->req_connect_ap->pwd :"(null)");
 			station_connected = true;
+#if CONFIG_ESP_STA_WLAN_DATA_PATH
 			esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_STA, (wifi_rxcb_t) wlan_sta_rx_callback);
+#endif
 			break;
 		} else {
 			if (bits & WIFI_NO_AP_FOUND_BIT) {
@@ -759,7 +763,9 @@ static esp_err_t req_connect_ap_handler (CtrlMsg *req,
 			} else {
 				ESP_LOGE(TAG, "Timeout occured");
 			}
+#if CONFIG_ESP_STA_WLAN_DATA_PATH
 			esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_STA, NULL);
+#endif
 		}
 
 		if (event_registered)

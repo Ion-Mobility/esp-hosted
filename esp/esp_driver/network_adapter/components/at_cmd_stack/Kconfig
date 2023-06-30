@@ -1,0 +1,10 @@
+menu "AT command stack configuration"
+
+    config TURN_ON_DEEP_DEBUG
+        bool "Turn on DEEP_DEBUG"
+        default y
+        help
+            Configure to print deep debug in format "[<Filename>, <Line>] <debug_message>"
+            in AT command stack
+
+endmenu

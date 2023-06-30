@@ -84,4 +84,16 @@ menu "Example Configuration"
         help
             UART Baudrate for HCI over ESP32C3/ESP32S3. Please use standard baudrate.
 
+    config ESP_STA_WLAN_DATA_PATH
+        bool "WLAN Data Path in Wifi STA mode"
+        default n
+        help
+            Enable/disable WLAN data path from ESP32 to Host and from Host to
+            ESP32 if wifi is in STA mode.
+
+    config USE_ION_AT_COMMAND
+        bool "ION AT command for ESP32-WiFi"
+        default y
+        help
+            Enable/disable ION AT command for advanced controlling ESP32-WiFi.
 endmenu
