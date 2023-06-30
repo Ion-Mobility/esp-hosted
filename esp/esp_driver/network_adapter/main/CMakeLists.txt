@@ -1,5 +1,15 @@
-set(COMPONENT_SRCS "slave_control.c" "../../../../common/esp_hosted_config.pb-c.c" "protocomm_pserial.c" "app_main.c" "slave_bt.c" "mempool.c")
-set(COMPONENT_ADD_INCLUDEDIRS "." "../../../../common/include")
+set(COMPONENT_SRCS "slave_control.c"
+                   "../../../../common/esp_hosted_config.pb-c.c"
+                   "protocomm_pserial.c"
+                   "app_main.c"
+                   "slave_bt.c"
+                   "mempool.c"
+                   "tm_ble_gatts_server.c"
+                   "tm_spi_slave_driver.c"
+                   "tm_ble.c"
+                   "tm_spi_slave.c")
+                   set(COMPONENT_ADD_INCLUDEDIRS "."
+                                                 "../../../../common/include")
 
 if(CONFIG_ESP_SDIO_HOST_INTERFACE)
     list(APPEND COMPONENT_SRCS sdio_slave_api.c)

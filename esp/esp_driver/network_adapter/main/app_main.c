@@ -47,7 +47,10 @@
 #include "driver/periph_ctrl.h"
 #include "slave_bt.c"
 
-static const char TAG[] = "NETWORK_ADAPTER";
+//tm
+#include "tm_ble.h"
+
+static const char TAG[] = "ION_BLE";
 
 #if CONFIG_ESP_WLAN_DEBUG
 static const char TAG_RX[] = "H -> S";
@@ -778,10 +781,10 @@ void app_main()
 #endif
 
 
-	tcpip_adapter_init();
+	// tcpip_adapter_init();
 
-	ESP_ERROR_CHECK(initialise_wifi());
-	// smartconfig_initialize();
+	// ESP_ERROR_CHECK(initialise_wifi());
+	// // smartconfig_initialize();
 
 	ESP_LOGI(TAG,"Initial set up done");
 
