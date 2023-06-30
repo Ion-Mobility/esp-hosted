@@ -1,5 +1,4 @@
-set(COMPONENT_SRCS "slave_control.c"
-                   "../../../../common/esp_hosted_config.pb-c.c"
+set(COMPONENT_SRCS "../../../../common/esp_hosted_config.pb-c.c"
                    "protocomm_pserial.c"
                    "app_main.c"
                    "slave_bt.c"
