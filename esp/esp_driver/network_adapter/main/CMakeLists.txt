@@ -3,11 +3,12 @@ set(COMPONENT_SRCS "../../../../common/esp_hosted_config.pb-c.c"
                    "app_main.c"
                    "slave_bt.c"
                    "mempool.c"
-                   "tm_ble_gatts_server.c"
-                   "tm_spi_slave_driver.c"
-                   "tm_ble.c"
-                   "tm_spi_slave.c")
+                   "tm/tm_ble_gatts_server.c"
+                   "tm/tm_spi_slave_driver.c"
+                   "tm/tm_ble.c"
+                   "tm/tm_atcmd.c")
                    set(COMPONENT_ADD_INCLUDEDIRS "."
+                                                 "./tm"
                                                  "../../../../common/include")
 
 if(CONFIG_ESP_SDIO_HOST_INTERFACE)

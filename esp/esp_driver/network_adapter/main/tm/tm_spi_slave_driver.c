@@ -33,12 +33,12 @@ void spi_slave_pull_interupt_low(void) {
 
 //Called after a transaction is queued and ready for pickup by master. We use this to set the handshake line high.
 void my_post_setup_cb(spi_slave_transaction_t *trans) {
-    gpio_set_level(GPIO_HANDSHAKE, 1);
+    WRITE_PERI_REG(GPIO_OUT_W1TS_REG, (1<<GPIO_HANDSHAKE));
 }
 
 //Called after transaction is sent/received. We use this to set the handshake line low.
 void my_post_trans_cb(spi_slave_transaction_t *trans) {
-    gpio_set_level(GPIO_HANDSHAKE, 0);
+     WRITE_PERI_REG(GPIO_OUT_W1TC_REG, (1<<GPIO_HANDSHAKE));
 }
 
 //Main application

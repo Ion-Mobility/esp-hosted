@@ -7,7 +7,7 @@
 #include "nvs_flash.h"
 
 #include "tm_ble_gatts_server.h"
-#include "tm_spi_slave.h"
+#include "tm_atcmd.h"
 #include "tm_ble.h"
 
 #define BLE_TASK_PRIO           3
@@ -35,12 +35,12 @@ static void ble_task(void *arg)
                     // user request to connect after scanned
                     ESP_LOGI(ION_BLE_TAG, "user request to connect");
                     // bike's screen should show "connect to phone"
-                    spi_slave_send_ble_connect_event();
+                    // spi_slave_send_ble_connect_event();
                 }
                 if ((xEventGroupValue & REQUEST_TO_PAIR) !=0) {
                     // generated passkey
                     ESP_LOGI(ION_BLE_TAG, "passkey generated");
-                    spi_slave_display_6digits_pairing_number();
+                    // spi_slave_display_6digits_pairing_number();
                 }
                 if ((xEventGroupValue & CONFIRM_PASSKEY) !=0) {
                     // this event is received from 148 when user press(o) on bike
@@ -49,7 +49,7 @@ static void ble_task(void *arg)
                 if ((xEventGroupValue & DISCONNECT) !=0) {
                     // BLE disconnect
                     ESP_LOGI(ION_BLE_TAG, "BLE disconected");
-                    spi_slave_send_ble_disconnect_event();
+                    // spi_slave_send_ble_disconnect_event();
                     tm_ble_start_advertise();
                     break;
                 }

@@ -50,8 +50,9 @@
 
 //tm
 #include "tm_ble.h"
+#include "tm_atcmd.h"
 
-#define GPIO_APP_SELECT_PIN	(36)
+#define GPIO_APP_SELECT_PIN	(20)
 #define GPIO_INPUT_PIN_SEL  (1ULL<<GPIO_APP_SELECT_PIN)
 
 static const char TAG[] = "ION_BLE";
@@ -554,6 +555,7 @@ void app_main()
 	} else {
 		ESP_LOGI(TAG, "boot to tm");
 		tm_ble_init();
+		tm_atcmd_tasks_init();
 		tm_ble_start_advertise();
 	}
 }
