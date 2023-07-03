@@ -53,4 +53,20 @@ extern mqtt_service_pkt_status_t mqtt_service_connect(int client_index,
     const char *pass, uint16_t port,
     esp_mqtt_connect_return_code_t *connect_ret_code);
 
+
+/**
+ * @brief Issue a MQTT client to connect to specified topic and QOS level
+ * 
+ * @param client_index index of MQTT client [in]
+ * @param topic NULL-terminated string of topic [in]
+ * @param qos QOS level, can be MQTT_QOS_AT_MOST_ONCE, MQTT_QOS_AT_LEAST_ONCE
+ * or MQTT_QOS_EXACTLY_ONCE [in]
+ * @retval MQTT_SERVICE_PACKET_STATUS_OK if subscribe topic is good
+ * @retval MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND if MQTT client failed to
+ * send subscribtion packet due to connectivity, not connect to broker or no
+ * ACK from server
+ */
+extern mqtt_service_pkt_status_t mqtt_service_subscribe(int client_index,
+    const char *topic, mqtt_qos_t qos);
+
 #endif

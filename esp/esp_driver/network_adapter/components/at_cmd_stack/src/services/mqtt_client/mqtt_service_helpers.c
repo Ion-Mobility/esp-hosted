@@ -46,11 +46,11 @@ static const char * send_mode_string[] =
 
 static const char * will_qos_string[] =
 {
-    [MQTT_WILL_QOS_AT_MOST_ONCE] = 
+    [MQTT_QOS_AT_MOST_ONCE] = 
         "at most once",
-    [MQTT_WILL_QOS_AT_LEAST_ONCE] = 
+    [MQTT_QOS_AT_LEAST_ONCE] = 
         "at least once",
-    [MQTT_WILL_QOS_EXACTLY_ONCE] = 
+    [MQTT_QOS_EXACTLY_ONCE] = 
         "exactly once",
 };
 

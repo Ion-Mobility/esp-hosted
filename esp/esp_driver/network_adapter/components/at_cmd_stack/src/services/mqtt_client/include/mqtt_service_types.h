@@ -18,7 +18,7 @@
 #define MQTT_CLIENT_VERSION_DEFAULT MQTT_VERSION_V3_1
 #define MQTT_CLIENT_PDPCID_DEFAULT 1
 #define MQTT_CLIENT_WILL_FG_DEFAULT false
-#define MQTT_CLIENT_WILL_QOS_DEFAULT MQTT_WILL_QOS_AT_MOST_ONCE
+#define MQTT_CLIENT_WILL_QOS_DEFAULT MQTT_QOS_AT_MOST_ONCE
 #define MQTT_CLIENT_WILL_RETAIN_DEFAULT false
 #define MQTT_CLIENT_PACKET_TIMEOUT_S_DEFAULT 5
 #define MQTT_CLIENT_RETRY_TIMES_DEFAULT 3
@@ -47,10 +47,10 @@ typedef enum {
 } mqtt_session_type_t;
 
 typedef enum {
-    MQTT_WILL_QOS_AT_MOST_ONCE = 0,
-    MQTT_WILL_QOS_AT_LEAST_ONCE,
-    MQTT_WILL_QOS_EXACTLY_ONCE,
-} mqtt_will_qos_t;
+    MQTT_QOS_AT_MOST_ONCE = 0,
+    MQTT_QOS_AT_LEAST_ONCE,
+    MQTT_QOS_EXACTLY_ONCE,
+} mqtt_qos_t;
 
 
 typedef enum {
@@ -88,7 +88,7 @@ typedef struct {
 
 typedef struct {
     bool is_require_will_flag;
-    mqtt_will_qos_t will_qos;
+    mqtt_qos_t will_qos;
     bool is_will_retain;
     char will_topic[256];
     char will_message[256];
