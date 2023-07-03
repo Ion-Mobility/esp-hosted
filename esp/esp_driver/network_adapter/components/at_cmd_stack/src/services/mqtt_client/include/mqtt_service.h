@@ -69,4 +69,22 @@ extern mqtt_service_pkt_status_t mqtt_service_connect(int client_index,
 extern mqtt_service_pkt_status_t mqtt_service_subscribe(int client_index,
     const char *topic, mqtt_qos_t qos);
 
+/**
+ * @brief Issue a MQTT client to publish a message to particular topic
+ * 
+ * @param client_index index of MQTT client [in]
+ * @param topic NULL-terminated string of topic [in]
+ * @param msg NULL-terminated string of message need to publish [in]
+ * @param qos QOS level, can be MQTT_QOS_AT_MOST_ONCE, MQTT_QOS_AT_LEAST_ONCE
+ * or MQTT_QOS_EXACTLY_ONCE [in]
+ * @param is_retain whether published is retained or not [in]
+ * @retval MQTT_SERVICE_PACKET_STATUS_OK if publish message to topic is good
+ * @retval MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND if MQTT client failed to
+ * send publish packet due to connectivity, not connect to broker or no
+ * ACK from server
+ */
+extern mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
+    const char *topic, const char* msg, mqtt_qos_t qos,
+    bool is_retain);
+
 #endif

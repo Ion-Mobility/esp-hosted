@@ -208,6 +208,27 @@ mqtt_service_pkt_status_t mqtt_service_subscribe(int client_index,
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
 
+mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
+    const char *topic, const char* msg, mqtt_qos_t qos,
+    bool is_retain)
+{
+    uint32_t connect_status_bit = xEventGroupGetBits(
+        mqtt_connect_status_eventgroup[client_index]);
+    bool is_broker_connected = 
+        (connect_status_bit == MQTT_CONNECT_STATUS_CONNECTED_BIT);
+    MUST_BE_CORRECT_OR_EXIT(is_broker_connected, 
+        MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND);
+
+    esp_mqtt_client_handle_t client = 
+        mqtt_service_clients_handle_table[client_index];
+    if (esp_mqtt_client_publish(client, topic, msg, strlen(msg), qos, 
+        is_retain) == -1)
+        return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
+    
+    return MQTT_SERVICE_PACKET_STATUS_OK;
+}
+
+
 //===============================
 // Private functions definition
 //===============================
@@ -221,6 +242,9 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     case MQTT_EVENT_CONNECTED:
         DEEP_DEBUG("Client %d connected to broker!\n", client_idx);
         announce_connect_request_success(client_idx);
+        break;
+    case MQTT_EVENT_PUBLISHED:
+        DEEP_DEBUG("Client %d published a data\n", client_idx);
         break;
 
     case MQTT_EVENT_DATA:
