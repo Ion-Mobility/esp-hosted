@@ -8,8 +8,10 @@
 #include "freertos/event_groups.h"
 #include "sys_common_funcs.h"
 
-#define CLEAR_RECV_BUFF_GROUP(buff_group_ptr) \
-    memset(buff_group_ptr, 0, sizeof(recv_buffer_group_t))
+#define CLEAR_RECV_BUFF_GROUP(buff_group_ptr) do {\
+    memset((*buff_group_ptr).buff, 0, sizeof(recv_buffer_t) * MAX_NUM_OF_RECV_BUFFER); \
+    (*buff_group_ptr).current_empty_buff_index = 0; \
+} while (0)
 
 static EventGroupHandle_t mqtt_connect_req_eventgroup[MAX_NUM_OF_MQTT_CLIENT], 
     mqtt_connect_status_eventgroup[MAX_NUM_OF_MQTT_CLIENT];
@@ -27,10 +29,10 @@ static recv_buffer_group_t local_recv_buffer_group[MAX_NUM_OF_MQTT_CLIENT] =
             .topic_len = 0,
             .msg = NULL,
             .msg_len = 0,
-        }
+        },
+        .current_empty_buff_index = 0,
     },
 };
-static uint8_t current_empty_recv_buffer_index[MAX_NUM_OF_MQTT_CLIENT] = {0};
 
 static bool is_mqtt_service_initialized = false;
 
@@ -480,7 +482,7 @@ static int copy_new_sub_data_to_local_recv_buff(int client_idx,
     const char *topic, uint16_t topic_len, const char *msg, uint32_t msg_len)
 {
     uint8_t *client_current_empty_recv_buff_index = 
-        &current_empty_recv_buffer_index[client_idx];
+        &local_recv_buffer_group[client_idx].current_empty_buff_index;
     if (*client_current_empty_recv_buff_index >= MAX_NUM_OF_RECV_BUFFER)
     {
         DEEP_DEBUG("client %d's current empty index = %d, mean recv buffer is full!\n", 

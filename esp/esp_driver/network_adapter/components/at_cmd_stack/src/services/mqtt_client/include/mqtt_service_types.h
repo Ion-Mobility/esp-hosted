@@ -118,6 +118,7 @@ typedef struct {
 
 typedef struct {
     recv_buffer_t buff[MAX_NUM_OF_RECV_BUFFER];
+    uint8_t current_empty_buff_index;
 } recv_buffer_group_t;
 
 typedef struct {
