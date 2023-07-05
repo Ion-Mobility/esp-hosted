@@ -8,31 +8,17 @@
 #include "freertos/event_groups.h"
 #include "sys_common_funcs.h"
 
-#define CLEAR_RECV_BUFF_GROUP(buff_group_ptr) do {\
-    memset((*buff_group_ptr).buff, 0, sizeof(recv_buffer_t) * MAX_NUM_OF_RECV_BUFFER); \
-    (*buff_group_ptr).current_empty_buff_index = 0; \
+#define CLEAR_RECV_BUFF_GROUP(buff_group) do {\
+    memset(buff_group.buff, 0, sizeof(recv_buffer_t) * MAX_NUM_OF_RECV_BUFFER); \
+    buff_group.current_empty_buff_index = 0; \
 } while (0)
 
-static EventGroupHandle_t mqtt_connect_req_eventgroup[MAX_NUM_OF_MQTT_CLIENT], 
-    mqtt_connect_status_eventgroup[MAX_NUM_OF_MQTT_CLIENT];
-
-
-static recv_buffer_group_t local_recv_buffer_group[MAX_NUM_OF_MQTT_CLIENT] =
-{
-    { // Initialize local buffer group for client #0 and buff[0] only to 
-      // make variable `local_recv_buffer_group` locate in 
-      // .data section. Must initialize later!
-        .buff[0] = 
-        {
-            .is_unread = true,
-            .topic = NULL,
-            .topic_len = 0,
-            .msg = NULL,
-            .msg_len = 0,
-        },
-        .current_empty_buff_index = 0,
-    },
-};
+typedef struct {
+    esp_mqtt_client_handle_t esp_client_handle;
+    EventGroupHandle_t connect_req_event_group;
+    EventGroupHandle_t connect_status_event_group;
+    recv_buffer_group_t recv_buff_group;
+} mqtt_service_client_t;
 
 static bool is_mqtt_service_initialized = false;
 
@@ -56,8 +42,7 @@ static const ip_addr_t default_dns_server[] =
         IPADDR4_INIT_BYTES(8, 8, 4, 4), // Google DNS server
     };
 
-static esp_mqtt_client_handle_t mqtt_service_clients_handle_table
-    [MAX_NUM_OF_MQTT_CLIENT];
+static mqtt_service_client_t mqtt_service_clients_table[MAX_NUM_OF_MQTT_CLIENT] = {0};
 
 //================================
 // Private functions declaration
@@ -124,16 +109,18 @@ mqtt_service_status_t mqtt_service_init()
         // be configured again when perform connecting, publishing,
         // subscribing
         esp_mqtt_client_config_t dummy_config ={0};
-        mqtt_service_clients_handle_table[index] = 
+        mqtt_service_client_t *service_client_handle = 
+            &mqtt_service_clients_table[index];
+        service_client_handle->esp_client_handle = 
             esp_mqtt_client_init(&dummy_config);
-        esp_mqtt_client_register_event(mqtt_service_clients_handle_table[index],
+        esp_mqtt_client_register_event(service_client_handle->esp_client_handle,
             ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
-        mqtt_connect_req_eventgroup[index] = xEventGroupCreate();
-        mqtt_connect_status_eventgroup[index] = xEventGroupCreate();
+        service_client_handle->connect_req_event_group = xEventGroupCreate();
+        service_client_handle->connect_status_event_group = xEventGroupCreate();
         
         // must initialize connection status to not connected
         change_connection_status(index, MQTT_CONNECTION_STATUS_NOT_CONNECTED);
-        CLEAR_RECV_BUFF_GROUP(&local_recv_buffer_group[index]);
+        CLEAR_RECV_BUFF_GROUP(service_client_handle->recv_buff_group);
     }
 
     is_mqtt_service_initialized = true;
@@ -144,7 +131,7 @@ mqtt_client_connection_status_t mqtt_service_get_connection_status(
     int client_index)
 {
     uint32_t connect_status_bit = xEventGroupGetBits(
-        mqtt_connect_status_eventgroup[client_index]
+        mqtt_service_clients_table[client_index].connect_status_event_group
     );
     if (connect_status_bit == MQTT_CONNECT_STATUS_CONNECTED_BIT)
     {
@@ -170,7 +157,7 @@ mqtt_service_pkt_status_t mqtt_service_connect(int client_index,
     };
 
     esp_mqtt_client_handle_t client = 
-        mqtt_service_clients_handle_table[client_index];
+        mqtt_service_clients_table[client_index].esp_client_handle;
     
     mqtt_client_restart(client, &client_config);
     change_connection_status(client_index, 
@@ -198,14 +185,14 @@ mqtt_service_pkt_status_t mqtt_service_subscribe(int client_index,
     const char *topic, mqtt_qos_t qos)
 {
     uint32_t connect_status_bit = xEventGroupGetBits(
-        mqtt_connect_status_eventgroup[client_index]);
+        mqtt_service_clients_table[client_index].connect_status_event_group);
     bool is_broker_connected = 
         (connect_status_bit == MQTT_CONNECT_STATUS_CONNECTED_BIT);
     MUST_BE_CORRECT_OR_EXIT(is_broker_connected, 
         MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND);
 
     esp_mqtt_client_handle_t client = 
-        mqtt_service_clients_handle_table[client_index];
+        mqtt_service_clients_table[client_index].esp_client_handle;
     if (esp_mqtt_client_subscribe(client, topic, (int) qos) == -1)
         return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
     
@@ -217,14 +204,14 @@ mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
     bool is_retain)
 {
     uint32_t connect_status_bit = xEventGroupGetBits(
-        mqtt_connect_status_eventgroup[client_index]);
+        mqtt_service_clients_table[client_index].connect_status_event_group);
     bool is_broker_connected = 
         (connect_status_bit == MQTT_CONNECT_STATUS_CONNECTED_BIT);
     MUST_BE_CORRECT_OR_EXIT(is_broker_connected, 
         MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND);
 
     esp_mqtt_client_handle_t client = 
-        mqtt_service_clients_handle_table[client_index];
+        mqtt_service_clients_table[client_index].esp_client_handle;
     if (esp_mqtt_client_publish(client, topic, msg, strlen(msg), qos, 
         is_retain) == -1)
         return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
@@ -244,10 +231,12 @@ mqtt_service_status_t mqtt_service_get_recv_buff_group_status(
     MUST_BE_CORRECT_OR_EXIT(is_client_connected, 
         MQTT_SERVICE_STATUS_ERROR);
 
+    recv_buffer_group_t *recv_group_to_get_status = 
+        &mqtt_service_clients_table[client_index].recv_buff_group;
     for (int buff_index = 0; buff_index < MAX_NUM_OF_RECV_BUFFER; buff_index++)
     {
         out_recv_buff_group->buff[buff_index].is_unread = 
-            local_recv_buffer_group[client_index].buff[buff_index].is_unread;
+            recv_group_to_get_status->buff[buff_index].is_unread;
     }
 
     return MQTT_SERVICE_PACKET_STATUS_OK;
@@ -267,7 +256,8 @@ mqtt_service_status_t mqtt_service_get_recv_buff_group(
 
     // Simply copy local buffer group to output buffer group
     // NOTE: caller is responsible for free allocated buffer of topic and message
-    memcpy(out_recv_buff_group, &local_recv_buffer_group[client_index], 
+    memcpy(out_recv_buff_group, 
+        &mqtt_service_clients_table[client_index].recv_buff_group,
         sizeof(recv_buffer_group_t));
 
     return MQTT_SERVICE_PACKET_STATUS_OK;
@@ -287,7 +277,7 @@ mqtt_service_status_t mqtt_service_clear_recv_buff_group(
 
     DEEP_DEBUG("Before clear buffer group\n");
     print_out_unread_buffer(client_index);
-    CLEAR_RECV_BUFF_GROUP(&local_recv_buffer_group[client_index]);
+    CLEAR_RECV_BUFF_GROUP(mqtt_service_clients_table[client_index].recv_buff_group);
     DEEP_DEBUG("Before clear buffer group\n");
     print_out_unread_buffer(client_index);
 
@@ -363,13 +353,16 @@ static uint32_t wait_for_connect_req_status(int client_index, uint32_t wait_ms)
         MQTT_CONNECT_REQUEST_FAILED_SERVER_BIT ||
         MQTT_CONNECT_REQUEST_FAILED_USERNAME_PASSWORD_BIT ||
         MQTT_CONNECT_REQUEST_FAILED_AUTHORIZE_BIT;
-    xEventGroupClearBits(mqtt_connect_req_eventgroup[client_index], 
+    
+    mqtt_service_client_t *service_client_handle = 
+        &mqtt_service_clients_table[client_index];
+    xEventGroupClearBits(service_client_handle->connect_req_event_group, 
         total_bits_to_wait);
-    xEventGroupClearBits(mqtt_connect_status_eventgroup[client_index], 
+    xEventGroupClearBits(service_client_handle->connect_status_event_group, 
         MQTT_CONNECT_STATUS_CONNECTED_BIT);
-    xEventGroupSetBits(mqtt_connect_status_eventgroup[client_index], 
+    xEventGroupSetBits(service_client_handle->connect_status_event_group, 
         MQTT_CONNECT_STATUS_NOT_CONNECTED_BIT);
-    return xEventGroupWaitBits(mqtt_connect_req_eventgroup[client_index],
+    return xEventGroupWaitBits(service_client_handle->connect_req_event_group,
         total_bits_to_wait,
         pdFALSE,
         pdFALSE,
@@ -431,7 +424,9 @@ static esp_mqtt_connect_return_code_t map_event_bit_to_connect_ret_code(
 
 static void announce_connect_request_success(int client_index)
 {
-    xEventGroupSetBits(mqtt_connect_req_eventgroup[client_index], 
+    mqtt_service_client_t *service_client_handle = 
+        &mqtt_service_clients_table[client_index];
+    xEventGroupSetBits(service_client_handle->connect_req_event_group, 
         MQTT_CONNECT_REQUEST_SUCCESS_BIT);
     change_connection_status(client_index, MQTT_CONNECTION_STATUS_CONNECTED);
 }
@@ -439,9 +434,11 @@ static void announce_connect_request_success(int client_index)
 static void announce_connect_request_fail(int client_index, 
     esp_mqtt_connect_return_code_t connect_req_ret_code)
 {
+    mqtt_service_client_t *service_client_handle = 
+        &mqtt_service_clients_table[client_index];
     uint32_t connect_req_bit = map_connect_ret_code_to_event_bits(
         connect_req_ret_code);
-    xEventGroupSetBits(mqtt_connect_req_eventgroup[client_index], 
+    xEventGroupSetBits(service_client_handle->connect_req_event_group, 
         connect_req_bit);
     change_connection_status(client_index, 
         MQTT_CONNECTION_STATUS_NOT_CONNECTED);
@@ -451,7 +448,7 @@ static int find_index_from_client_handle(esp_mqtt_client_handle_t client)
 {
     for (int index = 0; index < MAX_NUM_OF_MQTT_CLIENT; index++)
     {
-        if (client == mqtt_service_clients_handle_table[index])
+        if (client == mqtt_service_clients_table[index].esp_client_handle)
             return index;
     }
     return -1;
@@ -460,19 +457,21 @@ static int find_index_from_client_handle(esp_mqtt_client_handle_t client)
 static void change_connection_status(int client_index, 
     mqtt_client_connection_status_t status_to_change)
 {
+    mqtt_service_client_t *service_client_handle = 
+        &mqtt_service_clients_table[client_index];
     switch (status_to_change)
     {
     case MQTT_CONNECTION_STATUS_CONNECTED:
-        xEventGroupClearBits(mqtt_connect_status_eventgroup[client_index], 
+        xEventGroupClearBits(service_client_handle->connect_status_event_group, 
             MQTT_CONNECT_STATUS_NOT_CONNECTED_BIT);
-        xEventGroupSetBits(mqtt_connect_status_eventgroup[client_index], 
+        xEventGroupSetBits(service_client_handle->connect_status_event_group, 
             MQTT_CONNECT_STATUS_CONNECTED_BIT); 
         break;
     
     case MQTT_CONNECTION_STATUS_NOT_CONNECTED:
-        xEventGroupClearBits(mqtt_connect_status_eventgroup[client_index], 
+        xEventGroupClearBits(service_client_handle->connect_status_event_group, 
             MQTT_CONNECT_STATUS_CONNECTED_BIT);
-        xEventGroupSetBits(mqtt_connect_status_eventgroup[client_index], 
+        xEventGroupSetBits(service_client_handle->connect_status_event_group, 
             MQTT_CONNECT_STATUS_NOT_CONNECTED_BIT); 
         break;
     }
@@ -481,8 +480,10 @@ static void change_connection_status(int client_index,
 static int copy_new_sub_data_to_local_recv_buff(int client_idx, 
     const char *topic, uint16_t topic_len, const char *msg, uint32_t msg_len)
 {
+    mqtt_service_client_t *service_client_handle = 
+        &mqtt_service_clients_table[client_idx];
     uint8_t *client_current_empty_recv_buff_index = 
-        &local_recv_buffer_group[client_idx].current_empty_buff_index;
+        &service_client_handle->recv_buff_group.current_empty_buff_index;
     if (*client_current_empty_recv_buff_index >= MAX_NUM_OF_RECV_BUFFER)
     {
         DEEP_DEBUG("client %d's current empty index = %d, mean recv buffer is full!\n", 
@@ -490,7 +491,7 @@ static int copy_new_sub_data_to_local_recv_buff(int client_idx,
         return -1;
     }
     recv_buffer_t *copy_recv_buff = 
-        &local_recv_buffer_group[client_idx].
+        &service_client_handle->recv_buff_group.
         buff[*client_current_empty_recv_buff_index];
     
     copy_recv_buff->topic = sys_mem_calloc(topic_len + 1, 1);
@@ -508,8 +509,10 @@ static int copy_new_sub_data_to_local_recv_buff(int client_idx,
 
 static void print_out_unread_buffer(int client_idx)
 {
+    mqtt_service_client_t *service_client_handle = 
+        &mqtt_service_clients_table[client_idx];
     recv_buffer_group_t *printing_recv_buff_group = 
-        &local_recv_buffer_group[client_idx];
+        &service_client_handle->recv_buff_group;
     for (int buff_index = 0; buff_index < MAX_NUM_OF_RECV_BUFFER; buff_index++)
     {
         recv_buffer_t printing_recv_buff = 
