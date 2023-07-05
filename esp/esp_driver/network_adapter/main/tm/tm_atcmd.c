@@ -26,6 +26,10 @@ static esp_err_t tm_atcmd_recv(char* cmd, int* len);
 static esp_err_t tm_atcmd_process(char* cmd, int cmd_len, char* res, int* res_len);
 static esp_err_t tm_atcmd_resp(char* res, int len);
 
+//todo: the "info" variable is for temporary test the flow
+// later replace it with message from other task
+int info = LOGIN;
+
 static void tm_atcmd_task(void *arg)
 {
     esp_err_t ret = ESP_OK;
@@ -78,10 +82,38 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len, char* res, int* res_le
     int cmd_id = tm_atcmd_recv_parser(cmd, cmd_len);
     login_t login = {0};
     charge_t charge = {0};
+    battery_t battery = {0};
+    trip_t trip = {0};
+    bool ret;
 
     switch (cmd_id) {
         case EVENT_START:
-            snprintf(res, ATCMD_CMD_LEN+1, "OK+CHARGE\r\n");
+            switch (info) {
+                case LOGIN:
+                    snprintf(res, ATCMD_CMD_LEN+1, "OK+LOGIN\r\n");
+                break;
+                case CHARGE:
+                    snprintf(res, ATCMD_CMD_LEN+1, "OK+CHARGE\r\n");
+                break;
+                case BATTERY:
+                    snprintf(res, ATCMD_CMD_LEN+1, "OK+BATTERY\r\n");
+                break;
+                case LAST_TRIP:
+                    snprintf(res, ATCMD_CMD_LEN+1, "OK+TRIP\r\n");
+                break;
+                case LOCK:
+                    // auto lock, phone send 16 bytes key to lock via ble
+                    snprintf(res, ATCMD_CMD_LEN+1, "OK+LOCK,1234567890123456\r\n");
+                break;
+                case UNLOCK:
+                    // auto unlock, phone send 16 bytes key to unlock via ble
+                    snprintf(res, ATCMD_CMD_LEN+1, "OK+UNLOCK,1234567890123456\r\n");
+                break;
+                default:
+                    snprintf(res, ATCMD_CMD_LEN+1, "OK\r\n");
+                break;
+            }
+            
             *res_len = strlen(res);
         break;
         case DATA_LOGIN:
@@ -110,6 +142,7 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len, char* res, int* res_le
 
             snprintf(res, ATCMD_CMD_LEN+1, "OK\r\n");
             *res_len = strlen(res);
+            info = CHARGE;
         break;
 
         case DATA_CHARGE:
@@ -133,12 +166,80 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len, char* res, int* res_le
 
             snprintf(res, ATCMD_CMD_LEN+1, "OK\r\n");
             *res_len = strlen(res);
+            info = BATTERY;
+        break;
+
+        case DATA_BATTERY:
+            //0         1         2         3         4         5
+            //01234567890123456789012345678901234567890123456789012
+            //AT+BATTERY,xxx,xxxxx
+            //level,estimate range
+            memset(&battery, 0, sizeof(battery_t));
+            battery.level           = atoi(&cmd[11]);
+            battery.estimate_range  = atoi(&cmd[15]);
+
+            ESP_LOGI(ION_TM_ATCMD_TAG, "battery level           %d",battery.level);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "estimate range vol      %d",battery.estimate_range);
+
+            snprintf(res, ATCMD_CMD_LEN+1, "OK\r\n");
+            *res_len = strlen(res);
+            info = LAST_TRIP;
+        break;
+
+        case DATA_TRIP:
+            //0         1         2         3         4         5
+            //01234567890123456789012345678901234567890123456789012
+            //AT+TRIP,xxxxx,xxxxx,xxxxx
+            //distance, ride_time, elec_used
+            memset(&trip, 0, sizeof(trip_t));
+            trip.distance       = atoi(&cmd[8]);
+            trip.ride_time      = atoi(&cmd[14]);
+            trip.elec_used      = atoi(&cmd[20]);
+
+            ESP_LOGI(ION_TM_ATCMD_TAG, "last trip distance      %d",trip.distance);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "last trip ride time     %d",trip.ride_time);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "last trip electric used %d",trip.elec_used);
+
+            snprintf(res, ATCMD_CMD_LEN+1, "OK\r\n");
+            *res_len = strlen(res);
+            info = LOCK;
+        break;
+
+        case EVENT_LOCK:
+            //0         1         2         3         4         5
+            //01234567890123456789012345678901234567890123456789012
+            //AT+LOCKED,x
+            ret = atoi(&cmd[10]);
+            if (ret)
+                ESP_LOGI(ION_TM_ATCMD_TAG, "bike successful locked by phone");
+            else
+                ESP_LOGI(ION_TM_ATCMD_TAG, "bike failed to lock by phone");
+
+            snprintf(res, ATCMD_CMD_LEN+1, "OK\r\n");
+            *res_len = strlen(res);
+            info = UNLOCK;
+        break;
+
+        case EVENT_UNLOCK:
+            //0         1         2         3         4         5
+            //01234567890123456789012345678901234567890123456789012
+            //AT+UNLOCKED,x
+            ret = atoi(&cmd[12]);
+            if (ret)
+                ESP_LOGI(ION_TM_ATCMD_TAG, "bike successful unlocked by phone");
+            else
+                ESP_LOGI(ION_TM_ATCMD_TAG, "bike failed to unlock by phone");
+
+            snprintf(res, ATCMD_CMD_LEN+1, "OK\r\n");
+            *res_len = strlen(res);
+            info = UNKNOWN;
         break;
 
         default:
             ESP_LOGI(ION_TM_ATCMD_TAG, "CMD NOT FOUND");
             snprintf(res, ATCMD_CMD_LEN+1, "ERR\r\n");
             *res_len = strlen(res);
+            info = LOGIN;
         break;
     }
     vTaskDelay(pdMS_TO_TICKS(1000));
@@ -154,82 +255,4 @@ static esp_err_t tm_atcmd_resp(char* res, int len) {
     t.rx_buffer=NULL;
     memcpy(sendbuf, res, len);
     return spi_slave_transmit(RCV_HOST, &t, portMAX_DELAY);
-}
-
-// construct response command
-int tm_atcmd_resp_construct(char* cmd, int len) {
-    if (len < CMD_MIN_LEN || len > CMD_MAX_LEN)
-        return -1;
-
-    if (strncmp(CMD_PREFIX, cmd, CMD_MIN_LEN) < 0)
-        return -1;
-
-    int ret = -1;
-
-    // command below is parse with alphabet order, when adding new command, make sure it's in right order
-    switch (cmd[CMD_START_CHAR_INDEX]) {
-        case '?':
-            //AT+?
-            if (terminate_check(&cmd[CMD_START_CHAR_INDEX+1]))
-                ret = EVENT_START;
-            else
-                ret = -1;
-        break;
-
-        case 'L':
-            //AT+LOGIN,...
-            if (strncmp("LOGIN",&cmd[CMD_START_CHAR_INDEX+1], sizeof("LOGIN") == 0)) {
-                ret = DATA_LOGIN;
-                break;
-            }
-            ret = -1;
-        break;
-
-        case 'C':
-            //AT+CHARGE,...
-            if (strncmp("CHARGE",&cmd[CMD_START_CHAR_INDEX+1], sizeof("CHARGE") != 0)) {
-                ret = DATA_CHARGE;
-                break;
-            }
-            ret = -1;
-        break;
-
-        case 'B':
-            //AT+BATTERY,...
-            if (strncmp("BATTERY",&cmd[CMD_START_CHAR_INDEX+1], sizeof("BATTERY") != 0)) {
-                ret = DATA_BATTERY;
-                break;
-            }
-            //AT+BUTTON,...
-            if (strncmp("BUTTON",&cmd[CMD_START_CHAR_INDEX+1], sizeof("BUTTON") != 0)) {
-                ret = EVENT_BUTTON;
-                break;
-            }
-            ret = -1;
-        break;
-
-        case 'T':
-            //AT+TRIP,...
-            if (strncmp("TRIP",&cmd[CMD_START_CHAR_INDEX+1], sizeof("TRIP") != 0)) {
-                ret = DATA_TRIP;
-                break;
-            }
-            ret = -1;
-        break;
-
-        case 'S':
-            //AT+SMART_KEY,...
-            if (strncmp("SMART_KEY",&cmd[CMD_START_CHAR_INDEX+1], sizeof("SMART_KEY") != 0)) {
-                ret = DATA_SMART_KEY;
-                break;
-            }
-            ret = -1;
-        break;
-
-        default:
-            ret = -1;
-        break;
-    }
-
-    return ret;
 }

@@ -46,18 +46,19 @@ int tm_atcmd_recv_parser(char* cmd, int len) {
                 ret = DATA_LOGIN;
                 break;
             }
+            if (strncmp("LOCK",&cmd[CMD_START_CHAR_INDEX], sizeof("LOCK")-1) == 0) {
+                ret = EVENT_LOCK;
+                break;
+            }
             ret = -1;
         break;
 
         case 'C':
             //AT+CHARGE,...
-            ESP_LOGI(ATCMD_PARSER_TAG, "AT+CHARGE");
             if (strncmp("CHARGE",&cmd[CMD_START_CHAR_INDEX], sizeof("CHARGE")-1) == 0) {
-                ESP_LOGI(ATCMD_PARSER_TAG, "AT+CHARGE");
                 ret = DATA_CHARGE;
                 break;
             }
-            ESP_LOGI(ATCMD_PARSER_TAG, "not AT+CHARGE");
             ret = -1;
         break;
 
@@ -84,10 +85,10 @@ int tm_atcmd_recv_parser(char* cmd, int len) {
             ret = -1;
         break;
 
-        case 'S':
-            //AT+SMART_KEY,...
-            if (strncmp("SMART_KEY",&cmd[CMD_START_CHAR_INDEX], sizeof("SMART_KEY")-1) == 0) {
-                ret = DATA_SMART_KEY;
+        case 'U':
+            //AT+UNLOCK,x
+            if (strncmp("UNLOCK",&cmd[CMD_START_CHAR_INDEX], sizeof("UNLOCK")-1) != 0) {
+                ret = EVENT_UNLOCK;
                 break;
             }
             ret = -1;

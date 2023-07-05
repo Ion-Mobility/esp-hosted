@@ -36,12 +36,11 @@ typedef enum {
                                     //        ride time(mins)                               (2 bytes)
                                     //        electric used(kWh)                            (2 bytes)
 
-    DATA_SMART_KEY      =5,         //AT+SMART_KEY,lock/unlock event,                       (1 byte)
-                                    //            ,key valid/invalid                        (1 byte)
-
+    EVENT_LOCK          =5,         //AT+LOCK,x
+    EVENT_UNLOCK        =6,         //AT+UNLOCK,x
                                     //user press (o) button event
-    EVENT_BUTTON        =6,         //AT+BUTTON                                             (1 byte)
-    MAX_CMD_SUPPORTED   =7
+    EVENT_BUTTON        =7,         //AT+BUTTON                                             (1 byte)
+    MAX_CMD_SUPPORTED   =8
 } at_cmd_recv_t;
 
 
@@ -50,7 +49,9 @@ typedef enum {
     CHARGE              =1,          //OK+CHARGE
     BATTERY             =2,          //OK+BATTERY
     LAST_TRIP           =3,          //OK+TRIP
-    SMART_KEY           =4           //OK+KEY,keylen,keystring
+    LOCK                =4,          //OK+LOCK,keystring
+    UNLOCK              =5,          //OK+UNLOCK,keystring
+    UNKNOWN             =6
 } at_cmd_resp_t;
 
 // parse command
