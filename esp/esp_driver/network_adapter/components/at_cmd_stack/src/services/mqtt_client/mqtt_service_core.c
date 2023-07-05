@@ -8,26 +8,31 @@
 #include "freertos/event_groups.h"
 #include "sys_common_funcs.h"
 
-
-typedef struct {
-    bool is_read;
-
-    // since topic length can up to 65535 bytes, it's not wise to statically
-    // allocate topic buffer
-    char* topic;
-    uint16_t topic_len;
-
-    // since message length can up to 268,435,456 bytes, it's not wise to
-    // statically allocate msg buffer
-    char* msg;
-    uint32_t msg_len;
-} recv_buffer_t;
+#define CLEAR_RECV_BUFF_GROUP(buff_group_ptr) \
+    memset(buff_group_ptr, 0, sizeof(recv_buffer_group_t))
 
 static EventGroupHandle_t mqtt_connect_req_eventgroup[MAX_NUM_OF_MQTT_CLIENT], 
     mqtt_connect_status_eventgroup[MAX_NUM_OF_MQTT_CLIENT];
 
-static recv_buffer_t local_recv_buffers[MAX_NUM_OF_RECV_BUFFER];
-static uint8_t current_empty_recv_buffer_index = 0;
+
+static recv_buffer_group_t local_recv_buffer_group[MAX_NUM_OF_MQTT_CLIENT] =
+{
+    { // Initialize local buffer group for client #0 and buff[0] only to 
+      // make variable `local_recv_buffer_group` locate in 
+      // .data section. Must initialize later!
+        .buff[0] = 
+        {
+            .is_unread = true,
+            .topic = NULL,
+            .topic_len = 0,
+            .msg = NULL,
+            .msg_len = 0,
+        }
+    },
+};
+static uint8_t current_empty_recv_buffer_index[MAX_NUM_OF_MQTT_CLIENT] = {0};
+
+static bool is_mqtt_service_initialized = false;
 
 #define DEFAULT_PACKET_TIMEOUT_s 10
 
@@ -84,10 +89,10 @@ static void announce_connect_request_fail(int client_index,
 static void change_connection_status(int client_index, 
     mqtt_client_connection_status_t status_to_change);
 
-static int copy_new_sub_data_to_local_recv_buff(const char *topic,
-    uint16_t topic_len, const char *msg, uint32_t msg_len);
+static int copy_new_sub_data_to_local_recv_buff(int client_idx, 
+    const char *topic, uint16_t topic_len, const char *msg, uint32_t msg_len);
 
-static void print_out_unread_buffer();
+static void print_out_unread_buffer(int client_idx);
 
 /**
  * @brief Find the client index of givent MQTT client handle
@@ -126,13 +131,10 @@ mqtt_service_status_t mqtt_service_init()
         
         // must initialize connection status to not connected
         change_connection_status(index, MQTT_CONNECTION_STATUS_NOT_CONNECTED);
+        CLEAR_RECV_BUFF_GROUP(&local_recv_buffer_group[index]);
     }
 
-    for (int index = 0; index < MAX_NUM_OF_RECV_BUFFER; index++)
-    {
-        local_recv_buffers[index].is_read = true;
-    }
-
+    is_mqtt_service_initialized = true;
     return MQTT_SERVICE_STATUS_OK;
 }
 
@@ -228,6 +230,67 @@ mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
 
+mqtt_service_status_t mqtt_service_get_recv_buff_group_status(
+    int client_index, recv_buffer_group_t *out_recv_buff_group)
+{
+    MUST_BE_CORRECT_OR_EXIT(is_mqtt_service_initialized, 
+        MQTT_SERVICE_STATUS_ERROR);
+    mqtt_client_connection_status_t connection_status = 
+        mqtt_service_get_connection_status(client_index);
+    bool is_client_connected = 
+        (connection_status == MQTT_CONNECTION_STATUS_CONNECTED);
+    MUST_BE_CORRECT_OR_EXIT(is_client_connected, 
+        MQTT_SERVICE_STATUS_ERROR);
+
+    for (int buff_index = 0; buff_index < MAX_NUM_OF_RECV_BUFFER; buff_index++)
+    {
+        out_recv_buff_group->buff[buff_index].is_unread = 
+            local_recv_buffer_group[client_index].buff[buff_index].is_unread;
+    }
+
+    return MQTT_SERVICE_PACKET_STATUS_OK;
+}
+
+mqtt_service_status_t mqtt_service_get_recv_buff_group(
+    int client_index, recv_buffer_group_t *out_recv_buff_group)
+{
+    MUST_BE_CORRECT_OR_EXIT(is_mqtt_service_initialized, 
+        MQTT_SERVICE_STATUS_ERROR);
+    mqtt_client_connection_status_t connection_status = 
+        mqtt_service_get_connection_status(client_index);
+    bool is_client_connected = 
+        (connection_status == MQTT_CONNECTION_STATUS_CONNECTED);
+    MUST_BE_CORRECT_OR_EXIT(is_client_connected, 
+        MQTT_SERVICE_STATUS_ERROR);
+
+    // Simply copy local buffer group to output buffer group
+    // NOTE: caller is responsible for free allocated buffer of topic and message
+    memcpy(out_recv_buff_group, &local_recv_buffer_group[client_index], 
+        sizeof(recv_buffer_group_t));
+
+    return MQTT_SERVICE_PACKET_STATUS_OK;
+}
+
+mqtt_service_status_t mqtt_service_clear_recv_buff_group(
+    int client_index)
+{
+    MUST_BE_CORRECT_OR_EXIT(is_mqtt_service_initialized, 
+        MQTT_SERVICE_STATUS_ERROR);
+    mqtt_client_connection_status_t connection_status = 
+        mqtt_service_get_connection_status(client_index);
+    bool is_client_connected = 
+        (connection_status == MQTT_CONNECTION_STATUS_CONNECTED);
+    MUST_BE_CORRECT_OR_EXIT(is_client_connected, 
+        MQTT_SERVICE_STATUS_ERROR);
+
+    DEEP_DEBUG("Before clear buffer group\n");
+    print_out_unread_buffer(client_index);
+    CLEAR_RECV_BUFF_GROUP(&local_recv_buffer_group[client_index]);
+    DEEP_DEBUG("Before clear buffer group\n");
+    print_out_unread_buffer(client_index);
+
+    return MQTT_SERVICE_PACKET_STATUS_OK;
+}
 
 //===============================
 // Private functions definition
@@ -249,8 +312,9 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
     case MQTT_EVENT_DATA:
         DEEP_DEBUG("Client %d got a data\n", client_idx);
-        result = copy_new_sub_data_to_local_recv_buff(event->topic, 
-            (uint16_t) event->topic_len, event->data, (uint32_t)event->data_len);
+        result = copy_new_sub_data_to_local_recv_buff(client_idx, 
+            event->topic, (uint16_t) event->topic_len, event->data, 
+            (uint32_t)event->data_len);
         if (result)
         {
             DEEP_DEBUG("Recv buffer is full! Discard...\n");
@@ -412,39 +476,48 @@ static void change_connection_status(int client_index,
     }
 }
 
-static int copy_new_sub_data_to_local_recv_buff(const char *topic,
-    uint16_t topic_len, const char *msg, uint32_t msg_len)
+static int copy_new_sub_data_to_local_recv_buff(int client_idx, 
+    const char *topic, uint16_t topic_len, const char *msg, uint32_t msg_len)
 {
-    if (current_empty_recv_buffer_index >= MAX_NUM_OF_RECV_BUFFER)
+    uint8_t *client_current_empty_recv_buff_index = 
+        &current_empty_recv_buffer_index[client_idx];
+    if (*client_current_empty_recv_buff_index >= MAX_NUM_OF_RECV_BUFFER)
     {
-        DEEP_DEBUG("current empty index = %d, mean recv buffer is full!\n", 
-            current_empty_recv_buffer_index);
+        DEEP_DEBUG("client %d's current empty index = %d, mean recv buffer is full!\n", 
+            client_idx, *client_current_empty_recv_buff_index);
         return -1;
     }
-    recv_buffer_t *buffer_entry_to_copy_to = 
-        &local_recv_buffers[current_empty_recv_buffer_index];
-    buffer_entry_to_copy_to->topic = sys_mem_calloc(topic_len + 1, 1);
-    memcpy(buffer_entry_to_copy_to->topic, topic, topic_len);
-    buffer_entry_to_copy_to->topic_len = topic_len;
+    recv_buffer_t *copy_recv_buff = 
+        &local_recv_buffer_group[client_idx].
+        buff[*client_current_empty_recv_buff_index];
+    
+    copy_recv_buff->topic = sys_mem_calloc(topic_len + 1, 1);
+    memcpy(copy_recv_buff->topic, topic, topic_len);
+    copy_recv_buff->topic_len = topic_len;
 
-    buffer_entry_to_copy_to->msg = sys_mem_calloc(msg_len + 1, 1);
-    memcpy(buffer_entry_to_copy_to->msg, msg, msg_len);
-    buffer_entry_to_copy_to->msg_len = msg_len;
+    copy_recv_buff->msg = sys_mem_calloc(msg_len + 1, 1);
+    memcpy(copy_recv_buff->msg, msg, msg_len);
+    copy_recv_buff->msg_len = msg_len;
 
-    buffer_entry_to_copy_to->is_read = false;
-    current_empty_recv_buffer_index++;
+    copy_recv_buff->is_unread = true;
+    (*client_current_empty_recv_buff_index)++;
     return 0;
 }
 
-static void print_out_unread_buffer()
+static void print_out_unread_buffer(int client_idx)
 {
-    for (int index = 0; index < MAX_NUM_OF_RECV_BUFFER; index++)
+    recv_buffer_group_t *printing_recv_buff_group = 
+        &local_recv_buffer_group[client_idx];
+    for (int buff_index = 0; buff_index < MAX_NUM_OF_RECV_BUFFER; buff_index++)
     {
-        if (!local_recv_buffers[index].is_read)
+        recv_buffer_t printing_recv_buff = 
+            printing_recv_buff_group->buff[buff_index];
+        if (printing_recv_buff.is_unread)
         {
-            DEEP_DEBUG("print_unread: index %d, topic is '%s', data is '%s'\n",
-                index, local_recv_buffers[index].topic, 
-                local_recv_buffers[index].msg);
+            DEEP_DEBUG("print_unread: client %d, buff index %d, topic is '%s', data is '%s'\n",
+                client_idx, buff_index, 
+                printing_recv_buff.topic, 
+                printing_recv_buff.msg);
         }
         else
         {

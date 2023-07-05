@@ -5,6 +5,8 @@
 #include <stdbool.h>
 
 
+#define MAX_NUM_OF_RECV_BUFFER  5
+
 #define MQTT_CID_MIN            1
 #define MQTT_CID_MAX            7
 
@@ -99,6 +101,24 @@ typedef struct {
     mqtt_recv_mode_t recv_mode;
     mqtt_recv_length_mode_t recv_length_mode;
 } mqtt_recv_info_t;
+
+typedef struct {
+    bool is_unread;
+
+    // since topic length can up to 65535 bytes, it's not wise to statically
+    // allocate topic buffer
+    char* topic;
+    uint16_t topic_len;
+
+    // since message length can up to 268,435,456 bytes, it's not wise to
+    // statically allocate msg buffer
+    char* msg;
+    uint32_t msg_len;
+} recv_buffer_t;
+
+typedef struct {
+    recv_buffer_t buff[MAX_NUM_OF_RECV_BUFFER];
+} recv_buffer_group_t;
 
 typedef struct {
     mqtt_vsn_t mqtt_version;

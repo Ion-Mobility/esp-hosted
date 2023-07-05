@@ -87,4 +87,43 @@ extern mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
     const char *topic, const char* msg, mqtt_qos_t qos,
     bool is_retain);
 
+/**
+ * @brief Only get the status of a MQTT client's receive buffer group status
+ * 
+ * @param client_index index of MQTT client [in]
+ * @param out_recv_buff_group pointer to output receive buffer group. Only
+ * status part 'is_unread` is updated [out]
+ * @retval MQTT_SERVICE_STATUS_OK if get receive buffer successfully 
+ * @retval MQTT_SERVICE_STATUS_ERROR if MQTT service is not initialized or
+ * no connection to MQTT broker
+ */
+extern mqtt_service_status_t mqtt_service_get_recv_buff_group_status(
+    int client_index, recv_buffer_group_t *out_recv_buff_group);
+
+/**
+ * @brief Transfer receive buffer group of a client from MQTT service to caller
+ * This APIs also de-init MQTT service receive buffer group of that client
+ * @note Caller must free the topic and message buffer
+ * 
+ * @param client_index index of MQTT client [in]
+ * @param out_recv_buff_group pointer to output receive buffer group [out]
+ * @retval MQTT_SERVICE_STATUS_OK if get receive buffer successfully 
+ * @retval MQTT_SERVICE_STATUS_ERROR if MQTT service is not initialized or
+ * no connection to MQTT broker
+ */
+extern mqtt_service_status_t mqtt_service_get_recv_buff_group(
+    int client_index, recv_buffer_group_t *out_recv_buff_group);
+
+/**
+ * @brief Clear the receive buffer group of a MQTT client
+ * 
+ * @param client_index index of MQTT client [in]
+ * @param out_recv_buff_group pointer to output receive buffer group [out]
+ * @retval MQTT_SERVICE_STATUS_OK if get receive buffer successfully 
+ * @retval MQTT_SERVICE_STATUS_ERROR if MQTT service is not initialized or
+ * no connection to MQTT broker
+ */
+extern mqtt_service_status_t mqtt_service_clear_recv_buff_group(
+    int client_index);
+
 #endif
