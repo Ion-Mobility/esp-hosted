@@ -20,11 +20,12 @@ enum
 };
 
 typedef enum {
-    CONNECT = BIT0,             //ESP_GATTS_CONNECT_EVT
+    CONNECTING = BIT0,          //ESP_GATTS_CONNECT_EVT
     REQUEST_TO_PAIR = BIT1,     //ESP_GAP_BLE_NC_REQ_EVT
     CONFIRM_PASSKEY = BIT2,     //ESP_GAP_BLE_KEY_EVT
     START_ADVERTISE = BIT3,
-    DISCONNECT = BIT4
+    DISCONNECT = BIT4,
+    CONNECTED = BIT5
 } ion_ble_event_t;
 
 extern EventGroupHandle_t ion_ble_event_group;

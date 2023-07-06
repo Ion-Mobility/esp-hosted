@@ -8,6 +8,7 @@
 
 #include "tm_ble_gatts_server.h"
 #include "tm_atcmd.h"
+#include "tm_atcmd_parser.h"
 #include "tm_ble.h"
 
 #define BLE_TASK_PRIO           3
@@ -17,6 +18,8 @@ static void ble_task(void *arg)
 {
     ion_ble_event_group = xEventGroupCreate();
     EventBits_t xEventGroupValue;
+    ble_to_tm_msg_t ble_to_tm_msg = {0};
+
     while(1) {
         xEventGroupValue = xEventGroupWaitBits(ion_ble_event_group, START_ADVERTISE, true, true, portMAX_DELAY);
         if ((xEventGroupValue & START_ADVERTISE) !=0) {
@@ -26,12 +29,13 @@ static void ble_task(void *arg)
 
             while(1) {
                 // wait for connect & pairing event
-                xEventGroupValue = xEventGroupWaitBits(ion_ble_event_group, CONNECT | REQUEST_TO_PAIR |
-                                                                            CONFIRM_PASSKEY | DISCONNECT,
+                xEventGroupValue = xEventGroupWaitBits(ion_ble_event_group, CONNECTING      | REQUEST_TO_PAIR   |
+                                                                            CONFIRM_PASSKEY | DISCONNECT        |
+                                                                            CONNECTED,
                                                                             true,//clear on exit
                                                                             false,//do not wait for all bits to be triggered
                                                                             portMAX_DELAY);
-                if ((xEventGroupValue & CONNECT) !=0) {
+                if ((xEventGroupValue & CONNECTING) !=0) {
                     // user request to connect after scanned
                     ESP_LOGI(ION_BLE_TAG, "user request to connect");
                     // bike's screen should show "connect to phone"
@@ -51,6 +55,16 @@ static void ble_task(void *arg)
                     ESP_LOGI(ION_BLE_TAG, "BLE disconected");
                     // spi_slave_send_ble_disconnect_event();
                     tm_ble_start_advertise();
+                    break;
+                }
+                if ((xEventGroupValue & CONNECTED) !=0) {
+                    // BLE disconnect
+                    ESP_LOGI(ION_BLE_TAG, "BLE connected");
+                    ble_to_tm_msg.msg_id = LOGIN;
+                    ble_to_tm_msg.len = 0;
+                    to_tm_login_msg(&ble_to_tm_msg);
+                    // spi_slave_send_ble_disconnect_event();
+                    // tm_ble_start_advertise();
                     break;
                 }
             }

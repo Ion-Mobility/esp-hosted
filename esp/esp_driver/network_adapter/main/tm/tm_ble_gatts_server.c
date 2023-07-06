@@ -329,6 +329,9 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
             ESP_LOGI(GATTS_TABLE_TAG, "auth mode = %s",esp_auth_req_to_str(param->ble_security.auth_cmpl.auth_mode));
         }
         show_bonded_devices();
+
+        //vle send login event to 148, we should send login info to phone
+        xEventGroupSetBits(ion_ble_event_group, CONNECTED);
         break;
     }
     case ESP_GAP_BLE_REMOVE_BOND_DEV_COMPLETE_EVT: {
@@ -394,7 +397,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_CONNECT_EVT");
             /* start security connect with peer device when receive the connect event sent by the master */
             esp_ble_set_encryption(param->connect.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM);
-            xEventGroupSetBits(ion_ble_event_group, CONNECT);
+            xEventGroupSetBits(ion_ble_event_group, CONNECTING);
             break;
         case ESP_GATTS_DISCONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_DISCONNECT_EVT, disconnect reason 0x%x", param->disconnect.reason);

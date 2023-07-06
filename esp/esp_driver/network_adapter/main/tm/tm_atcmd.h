@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define BLE_TO_TM_MSG_MAX_LEN   128
+#define TM_TO_BLE_MSG_MAX_LEN   128
+
 typedef struct {
     int8_t battery;
     uint16_t est_range;
@@ -32,4 +35,11 @@ typedef struct {
     uint16_t elec_used;
 } trip_t;
 
+typedef struct {
+    uint8_t msg_id;
+    uint8_t len;
+    uint8_t data[BLE_TO_TM_MSG_MAX_LEN];
+} ble_to_tm_msg_t;
+
 extern void tm_atcmd_tasks_init(void);
+extern void to_tm_login_msg(ble_to_tm_msg_t* pMsg);
