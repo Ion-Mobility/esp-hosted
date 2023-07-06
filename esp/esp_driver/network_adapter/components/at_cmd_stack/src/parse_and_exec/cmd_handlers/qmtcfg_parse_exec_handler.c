@@ -259,7 +259,7 @@ QMTCFG_WRITE_PARSE_HANLDER(keepalive) (const char *arg,
     INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
 
     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(keepalive_time_s, uint8_t,
-        MQTT_CID_MIN, MQTT_CID_MAX, tmp_buff, at_resp);
+        0, MQTT_MAX_KEEPALIVE_TIME_s, tmp_buff, at_resp);
 
     FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
 }
@@ -270,7 +270,8 @@ QMTCFG_WRITE_PARSE_HANLDER(session) (const char *arg,
     INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
 
     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(session_type, uint8_t,
-        MQTT_CID_MIN, MQTT_CID_MAX, tmp_buff, at_resp);
+        SESSION_TYPE_STORE_AFTER_DISCONNECT, SESSION_TYPE_CLEAR_AFTER_DISCONNECT,
+        tmp_buff, at_resp);
 
     FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
 }
