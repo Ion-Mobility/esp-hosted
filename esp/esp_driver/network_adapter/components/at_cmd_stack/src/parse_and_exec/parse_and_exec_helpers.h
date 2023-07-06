@@ -167,8 +167,8 @@ extern int convert_and_validate(const char* str,
     { \
         DEEP_DEBUG("Not found required quoted string token!\n"); \
     } \
-    if ((token[0] != '"') || \
-        (token[strlen(token) - 1] != '"')) \
+    else if ((token != NULL) && ((token[0] != '"') || \
+        (token[strlen(token) - 1] != '"'))) \
     { \
         DEEP_DEBUG("Found token not properly quoted!\n"); \
     } \
