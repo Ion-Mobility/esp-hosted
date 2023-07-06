@@ -401,8 +401,9 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
             break;
         case ESP_GATTS_DISCONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_DISCONNECT_EVT, disconnect reason 0x%x", param->disconnect.reason);
+            xEventGroupSetBits(ion_ble_event_group, DISCONNECT);
             /* start advertising again when missing the connect */
-            esp_ble_gap_ext_adv_start(NUM_EXT_ADV_SET, &ext_adv[0]);
+            // esp_ble_gap_ext_adv_start(NUM_EXT_ADV_SET, &ext_adv[0]);
             break;
         case ESP_GATTS_OPEN_EVT:
             break;

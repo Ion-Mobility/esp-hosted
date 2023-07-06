@@ -18,6 +18,7 @@
 #define ATCMD_TASK_PRIO     3
 #define ATCMD_CMD_LEN       128
 #define ATCMD_TIMEOUT       2000        //ms
+#define ATCMD_SMART_KEY_LEN 16
 #define ION_TM_ATCMD_TAG    "TM_ATCMD"
 
 QueueHandle_t ble_to_tm_queue;
@@ -38,8 +39,27 @@ static void tm_atcmd_task(void *arg)
 
         switch (ble_to_tm_msg.msg_id) {
             case LOGIN:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "user login");
-                info = LOGIN;
+                ESP_LOGI(ION_TM_ATCMD_TAG, "login info");
+                break;
+
+            case CHARGE:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "charge info");
+                break;
+
+            case BATTERY:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "battery info");
+                break;
+
+            case LAST_TRIP:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "last trip info");
+                break;
+
+            case LOCK:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "lock info");
+                break;
+
+            case UNLOCK:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "unlock info");
                 break;
 
             default:
@@ -111,6 +131,7 @@ static esp_err_t tm_atcmd_recv(char* cmd, int* len) {
 static esp_err_t tm_atcmd_process(char* cmd, int cmd_len, ble_to_tm_msg_t* msg) {
 
     WORD_ALIGNED_ATTR char txbuf[ATCMD_CMD_LEN+1]="";
+    uint8_t key[ATCMD_SMART_KEY_LEN];
     login_t login = {0};
     charge_t charge = {0};
     battery_t battery = {0};
@@ -143,11 +164,23 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len, ble_to_tm_msg_t* msg) 
                 break;
                 case LOCK:
                     // auto lock, phone send 16 bytes key to lock via ble
-                    snprintf(txbuf, ATCMD_CMD_LEN+1, "OK+LOCK,1234567890123456\r\n");
+                    if (msg->len > ATCMD_SMART_KEY_LEN)
+                        snprintf(txbuf, ATCMD_CMD_LEN+1, "ERR,invalid param\r\n");
+                    else {
+                        memcpy(key, msg->data, ATCMD_SMART_KEY_LEN);
+                        snprintf(txbuf, ATCMD_CMD_LEN+1, "OK+LOCK,%s\r\n",key);
+                        // snprintf(txbuf, ATCMD_CMD_LEN+1, "OK+LOCK,1234567890123456\r\n");
+                    }
                 break;
                 case UNLOCK:
                     // auto unlock, phone send 16 bytes key to unlock via ble
-                    snprintf(txbuf, ATCMD_CMD_LEN+1, "OK+UNLOCK,1234567890123456\r\n");
+                    if (msg->len > ATCMD_SMART_KEY_LEN)
+                        snprintf(txbuf, ATCMD_CMD_LEN+1, "ERR,invalid param\r\n");
+                    else {
+                        memcpy(key, msg->data, ATCMD_SMART_KEY_LEN);
+                        snprintf(txbuf, ATCMD_CMD_LEN+1, "OK+UNLOCK,%s\r\n",key);
+                        // snprintf(txbuf, ATCMD_CMD_LEN+1, "OK+UNLOCK,1234567890123456\r\n");
+                    }
                 break;
                 default:
                     snprintf(txbuf, ATCMD_CMD_LEN+1, "OK\r\n");
