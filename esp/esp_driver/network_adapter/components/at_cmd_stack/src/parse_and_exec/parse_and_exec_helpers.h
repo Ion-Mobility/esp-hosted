@@ -23,9 +23,20 @@
     return strlen(ok_string); \
 } while (0)
 
-#define MUST_BE_CORRECT_OR_RESPOND_ERROR(condition, resp)  do { \
+/**
+ * @brief Check if condition is satisfy. If not, free temporary buffer of
+ * parse and exec handler and response 'ERR'
+ * 
+ * @param condition the condition to check [in]
+ * @param tmp_buff temporary buffer in usual parse and exec handler. When
+ * exit due to invalid value, temporary buffer must be free [out]
+ * @param resp pointer to AT response, in case fail to validate [out]
+ * 
+ */
+#define MUST_BE_CORRECT_OR_RESPOND_ERROR(condition, tmp_buff, resp)  do { \
     if (!(condition)) { \
         DEEP_DEBUG("Condition not satisfy. Return 'ERR' response!\n"); \
+        sys_mem_free(tmp_buff); \
         RETURN_RESPONSE_ERROR(resp); \
     } \
 } while (0)
@@ -35,6 +46,196 @@
     return val; \
 } while(0)
 
+/**
+ * @brief Convert and validate a string to unsigned long integer
+ * 
+ * @param str input string to convert [in]
+ * @param converted_number converted number [out]
+ * @retval 0 if input string is valid
+ * @retval 1 if input string is invalid
+ */
+extern int convert_and_validate(const char* str, 
+    long int* converted_number);
+
+/**
+ * @brief Get next token, validate and assign to a unsigned long integer. 
+ * If no token is found or valus is out of range, return 'ERR' response.
+ * 
+ * @note Can only be used in parse and exec handler
+ * 
+ * @param dest the value to assign to. MUST NOT a pointer [out]
+ * @param min the minimum value must meet [in]
+ * @param max the maximum value must meet [in]
+ * @param input_str the string to tokenize [in,out]
+ * @param token token variable [in]
+ * @param tokenize_context tokenize context. That mean origial string must 
+ * be tokenized once [in,out]
+ * @param tmp_buff temporary buffer in usual parse and exec handler. When
+ * exit due to invalid value, temporary buffer must be free [in]
+ * @param resp pointer to AT response, in case fail to validate [out]
+ */
+#define TOKENIZE_AND_ASSIGN_REQUIRED_LINT_PARAM(dest, \
+    min, max, input_str, token, tokenize_context, tmp_buff, resp)  do { \
+    token = sys_strtok(input_str, param_delim, &tokenize_context); \
+    if (token != NULL) \
+    { \
+        int is_cond_satisfy = !convert_and_validate(token, (long int*)&dest); \
+        if (!is_cond_satisfy) \
+        { \
+            DEEP_DEBUG("Converted lint stage for token '%s' wrong\n", token); \
+        } \
+        MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, tmp_buff, resp); \
+        is_cond_satisfy = ((dest >= min) && (dest <= max)); \
+        if (!is_cond_satisfy) \
+        { \
+            DEEP_DEBUG("converted lint %ld not within range (%ld,%ld)\n", \
+                dest, (long int)min, (long int)max); \
+        } \
+        MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, tmp_buff, resp); \
+    } \
+    else \
+    { \
+        DEEP_DEBUG("Need to tokenize an long integer value but not found. Report 'ERR'!\n"); \
+        sys_mem_free(tmp_buff); \
+        RETURN_RESPONSE_ERROR(resp); \
+    } \
+} while (0)
+
+/**
+ * @brief Get next token, validate and assign to a unsigned long integer. 
+ * If token is found and invalid, return 'ERR' response. 
+ * Continue if no token is found
+ * 
+ * @note Can only be used in parse and exec handler
+ * 
+ * @param dest the value to assign to. MUST NOT a pointer [out]
+ * @param min the minimum value must meet [in]
+ * @param max the maximum value must meet [in]
+ * @param input_str the string to tokenize [in,out]
+ * @param token token variable [in]
+ * @param tokenize_context tokenize context. That mean origial string must 
+ * be tokenized once [in,out]
+ * @param tmp_buff temporary buffer in usual parse and exec handler. When
+ * exit due to invalid value, temporary buffer must be free [in]
+ * @param resp pointer to AT response, in case fail to validate [out]
+ */
+#define TOKENIZE_AND_ASSIGN_OPTIONAL_UNSIGNED_LINT_PARAM(dest, min, max, \
+    input_str, token, tokenize_context, tmp_buff, resp)  do { \
+    token = sys_strtok(input_str, param_delim, &tokenize_context); \
+    if (token != NULL) \
+    { \
+        int is_cond_satisfy = !convert_and_validate(token, (long int*)&dest); \
+        if (!is_cond_satisfy) \
+        { \
+            DEEP_DEBUG("Converted lint stage for token '%s' wrong\n", token); \
+        } \
+        MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, tmp_buff, resp); \
+        is_cond_satisfy = ((dest >= min) && (dest <= max)); \
+        if (!is_cond_satisfy) \
+        { \
+            DEEP_DEBUG("converted lint %ld not within range (%ld,%ld)\n", \
+                dest, (long int)min, (long int)max); \
+        } \
+        MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, tmp_buff, resp); \
+    } \
+    else \
+    { \
+        DEEP_DEBUG("Not found optional integer token!\n"); \
+    } \
+} while (0)
+
+
+/**
+ * @brief Get next token, validate and assign to a character pointer from
+ * quoted string. If no token is found or not properly quoted, 
+ * return 'ERR' response
+ * 
+ * @note Can only be used in parse and exec handler
+ * 
+ * @param dest the pointer to token to assign to [out]
+ * @param input_str the string to tokenize [in,out]
+ * @param token token variable [in]
+ * @param tokenize_context tokenize context. That mean origial string must 
+ * be tokenized once [in,out]
+ * @param tmp_buff pointer to temporary buffer for free in case  
+ * @param resp pointer to AT response, in case fail to validate [out]
+ */
+#define TOKENIZE_AND_ASSIGN_REQUIRED_QUOTED_STRING(dest, input_str, \
+    token, token_ctx, tmp_buff, resp)  do { \
+    token = sys_strtok(NULL, param_delim, &token_ctx); \
+    if (token == NULL) \
+    { \
+        DEEP_DEBUG("Not found required quoted string token!\n"); \
+    } \
+    if ((token[0] != '"') || \
+        (token[strlen(token) - 1] != '"')) \
+    { \
+        DEEP_DEBUG("Found token not properly quoted!\n"); \
+    } \
+    MUST_BE_CORRECT_OR_RESPOND_ERROR((token != NULL) && \
+        (token[0] == '"') && (token[strlen(token) - 1] == '"') \
+        , tmp_buff, resp); \
+    dest = &token[1]; \
+    token[strlen(token) - 1] = '\0'; \
+} while (0)
+
+/**
+ * @brief Get next token, validate and assign to a character pointer from
+ * quoted string. If token is found but not properly quoted, return 'ERR' 
+ * response. Continue if no token is found
+ * 
+ * @note Can only be used in parse and exec handler
+ * 
+ * @param dest the pointer to token to assign to [out]
+ * @param input_str the string to tokenize [in,out]
+ * @param token token variable [in]
+ * @param tokenize_context tokenize context. That mean origial string must 
+ * be tokenized once [in,out]
+ * @param tmp_buff pointer to temporary buffer for free in case  
+ * @param resp pointer to AT response, in case fail to validate [out]
+ */
+#define TOKENIZE_AND_ASSIGN_OPTIONAL_QUOTED_STRING(dest, input_str, \
+    token, token_ctx, tmp_buff, resp)  do { \
+    token = sys_strtok(NULL, param_delim, &token_ctx); \
+    if (token != NULL) \
+    { \
+        if ((token[0] != '"') || \
+            (token[strlen(token) - 1] != '"')) \
+        { \
+            DEEP_DEBUG("Found token not properly quoted!\n"); \
+        } \
+        MUST_BE_CORRECT_OR_RESPOND_ERROR((token[0] == '"') && \
+            (token[strlen(token) - 1] != '"'), tmp_buff, resp); \
+        dest = &token[1]; \
+        token[strlen(token) - 1] = '\0'; \
+    } \
+    else \
+    { \
+        DEEP_DEBUG("Not found optional quoted string token!\n"); \
+    } \
+} while (0)
+
+/**
+ * @brief Write parse and exec handler usually have the same procedure:
+ * allocate temporary buffer and copy argument to this buffer, define token 
+ * and tokenize context, find client index. So this macro is used to shorten 
+ * these steps
+ * 
+ * @param arg pointer to argument [in]
+ * @param arg_len argument length [in]
+ * @param resp pointer to AT reponse [out]
+ * @param client_index name of client index variable [in]
+ * 
+ */
+#define INTIALIZE_WRITE_PARSE_EXEC_HANDLER(arg, arg_len, resp, client_index) \
+    char *tmp_buff = sys_mem_calloc(arg_len + 1, 1); \
+    memcpy(tmp_buff, arg+1, arg_len); \
+    char* tokenize_context; \
+    char* token; \
+    long int client_index; \
+    TOKENIZE_AND_ASSIGN_REQUIRED_LINT_PARAM(client_index, 0, \
+        MAX_NUM_OF_MQTT_CLIENT - 1, tmp_buff, token, tokenize_context, \
+        tmp_buff, resp);
 
 
 

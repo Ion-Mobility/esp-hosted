@@ -1,8 +1,8 @@
 set(CMD_HANDLERS_SRCS
-    "src/parse_and_exec/cmd_handlers/qmtcfg_parse_exec_handler.c"
-    "src/parse_and_exec/cmd_handlers/qmtopen_parse_exec_handler.c"
-    "src/parse_and_exec/cmd_handlers/qmtconn_parse_exec_handler.c"
-    "src/parse_and_exec/cmd_handlers/qmtdump_parse_exec_handler.c"
+"src/parse_and_exec/cmd_handlers/qmtcfg_parse_exec_handler.c"
+"src/parse_and_exec/cmd_handlers/qmtopen_parse_exec_handler.c"
+"src/parse_and_exec/cmd_handlers/qmtconn_parse_exec_handler.c"
+"src/parse_and_exec/cmd_handlers/qmtdump_parse_exec_handler.c"
 )
 
 set(APP_SRCS
@@ -14,6 +14,7 @@ set(PARSE_AND_EXEC_SRCS
     "src/parse_and_exec/parse_and_exec_constants.c"
     "src/parse_and_exec/parse_and_exec_core.c"
     "src/parse_and_exec/parse_and_exec_cmd_handlers_list.c"
+    "src/parse_and_exec/parse_and_exec_helpers.c"
     ${CMD_HANDLERS_SRCS}
 )
 

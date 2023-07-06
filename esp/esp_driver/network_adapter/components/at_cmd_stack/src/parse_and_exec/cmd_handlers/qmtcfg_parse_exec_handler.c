@@ -7,7 +7,7 @@
 
 // This constant value is assigned to any config fields that is not changed
 // since we don't know how to check unchange field in staging config
-static const int predefined_invalid_value = 0x3A3B3C3D;
+static const long int predefined_invalid_value = 0x3A3B3C3D;
 
 
 #define QMTCFG_WRITE_PARSE_HANLDER(param) \
@@ -17,52 +17,17 @@ static const int predefined_invalid_value = 0x3A3B3C3D;
     qmtcfg_write_parse_ ## param
 
 
-
-
-#define GET_AND_VALIDATE_REQUIRED_INTEGER_PARAM(val, min, max, token, tokenize_context, resp)  do { \
-    token = sys_strtok(NULL, param_delim, &tokenize_context); \
-    if (token != NULL) \
-    { \
-        MUST_BE_CORRECT_OR_RESPOND_ERROR(!validate_and_atoi(token, &val), resp); \
-        MUST_BE_CORRECT_OR_RESPOND_ERROR((val >= min) && (val <= max), resp); \
-    } \
-    else \
-    { \
-        RETURN_RESPONSE_ERROR(resp); \
-    } \
-} while (0)
-
-#define GET_AND_VALIDATE_OPTIONAL_INTEGER_PARAM(val, min, max, token, tokenize_context, resp)  do { \
-    token = sys_strtok(NULL, param_delim, &tokenize_context); \
-    if (token != NULL) \
-    { \
-        MUST_BE_CORRECT_OR_RESPOND_ERROR(!validate_and_atoi(token, &val), resp); \
-        MUST_BE_CORRECT_OR_RESPOND_ERROR((val >= min) && (val <= max), resp); \
-    } \
-    else \
-    { \
-        val = predefined_invalid_value; \
-    } \
-} while (0)
-
-
-#define VALIDATE_PARSED_VALUE_AND_ASSIGN(target, src)  do { \
-    if ((int)src != predefined_invalid_value) { \
-        target = src; \
-    } \
-} while (0)
-
-
-#define INTIALIZE_WRITE_PARSE_EXEC_HANDLER(arg, arg_len, resp) \
-    int parsed_value; \
+#define INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_len, resp) \
     char *tmp_buff = sys_mem_calloc(arg_length + 1, 1); \
     memcpy(tmp_buff, arg, arg_length); \
     char* tokenize_context; \
     char* token; \
     token = sys_strtok(tmp_buff, param_delim, &tokenize_context); \
-    int client_idx; \
-    GET_AND_VALIDATE_REQUIRED_INTEGER_PARAM(client_idx, 0, \
-        MAX_NUM_OF_MQTT_CLIENT - 1, token, tokenize_context, resp); \
+    long int client_idx; \
+    long int tmp_parsed_value; \
+    TOKENIZE_AND_ASSIGN_REQUIRED_LINT_PARAM(client_idx, 0, \
+        MAX_NUM_OF_MQTT_CLIENT-1, NULL, token, tokenize_context, \
+        tmp_buff, resp); \
     mqtt_service_client_cfg_t staging_mqtt_service_client_cfg = \
         mqtt_service_client_cfg_table[client_idx]
 
@@ -71,11 +36,16 @@ static const int predefined_invalid_value = 0x3A3B3C3D;
     free(tmp_buff); \
     RETURN_RESPONSE_OK(resp);
 
-#define GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(field, field_type, min, max, resp) \
-    GET_AND_VALIDATE_OPTIONAL_INTEGER_PARAM(parsed_value, min, max, token, \
-        tokenize_context, resp); \
-    VALIDATE_PARSED_VALUE_AND_ASSIGN(staging_mqtt_service_client_cfg.field, \
-        (field_type)parsed_value)
+#define GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(field, field_type, min, \
+    max, tmp_buff, resp) \
+    tmp_parsed_value = predefined_invalid_value; \
+    TOKENIZE_AND_ASSIGN_OPTIONAL_UNSIGNED_LINT_PARAM(tmp_parsed_value, min, \
+        max, NULL, token, tokenize_context, tmp_buff, resp); \
+    if (tmp_parsed_value != predefined_invalid_value) \
+    { \
+        staging_mqtt_service_client_cfg.field = (field_type)tmp_parsed_value; \
+    } \
+
 
 #define APPEND_START_OF_USAGE(target, param_key) \
     char *tmp_buff = sys_mem_calloc(MAX_AT_RESP_LENGTH, 1); \
@@ -198,7 +168,6 @@ static void extract_param_key_from_at_cmd(const char *arg,
     AT_BUFF_SIZE_T arg_length, char* extracted_param_key);
 static int find_qmtcfg_write_parse_exec_handler_for_param_key(
         char* param_key);
-static int validate_and_atoi(const char* str, int* converted_number);
 static bool is_num_of_param_value_valid(const char *arg, 
     AT_BUFF_SIZE_T arg_length,  int min_num_of_param_values, 
     int max_num_of_param_values);
@@ -264,10 +233,10 @@ AT_BUFF_SIZE_T qmtcfg_write_cmd_parse_exec_handler(const char *arg,
 QMTCFG_WRITE_PARSE_HANLDER(version)(const char *arg, 
     AT_BUFF_SIZE_T arg_length, char *at_resp)
 {
-    INTIALIZE_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
+    INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
 
     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(mqtt_version, mqtt_vsn_t,
-        MQTT_VERSION_V3_1, MQTT_VERSION_V3_1_1, at_resp);
+        MQTT_VERSION_V3_1, MQTT_VERSION_V3_1_1, tmp_buff, at_resp);
     
     FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
 
@@ -276,10 +245,10 @@ QMTCFG_WRITE_PARSE_HANLDER(version)(const char *arg,
 QMTCFG_WRITE_PARSE_HANLDER(pdpcid)(const char *arg, 
     AT_BUFF_SIZE_T arg_length, char *at_resp)
 {
-    INTIALIZE_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
+    INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
 
     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(pdp_cid, uint8_t,
-        MQTT_CID_MIN, MQTT_CID_MAX, at_resp);
+        MQTT_CID_MIN, MQTT_CID_MAX, tmp_buff, at_resp);
 
     FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
 }
@@ -287,10 +256,10 @@ QMTCFG_WRITE_PARSE_HANLDER(pdpcid)(const char *arg,
 QMTCFG_WRITE_PARSE_HANLDER(keepalive) (const char *arg, 
     AT_BUFF_SIZE_T arg_length, char *at_resp)
 {
-    INTIALIZE_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
+    INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
 
     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(keepalive_time_s, uint8_t,
-        MQTT_CID_MIN, MQTT_CID_MAX, at_resp);
+        MQTT_CID_MIN, MQTT_CID_MAX, tmp_buff, at_resp);
 
     FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
 }
@@ -298,10 +267,10 @@ QMTCFG_WRITE_PARSE_HANLDER(keepalive) (const char *arg,
 QMTCFG_WRITE_PARSE_HANLDER(session) (const char *arg,
     AT_BUFF_SIZE_T arg_length, char *at_resp)
 {
-    INTIALIZE_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
+    INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
 
     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(session_type, uint8_t,
-        MQTT_CID_MIN, MQTT_CID_MAX, at_resp);
+        MQTT_CID_MIN, MQTT_CID_MAX, tmp_buff, at_resp);
 
     FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
 }
@@ -309,14 +278,14 @@ QMTCFG_WRITE_PARSE_HANLDER(session) (const char *arg,
 QMTCFG_WRITE_PARSE_HANLDER(timeout)(const char *arg, 
     AT_BUFF_SIZE_T arg_length, char *at_resp)
 {
-    INTIALIZE_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
+    INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
 
     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(timeout_info.pkt_timeout_s, uint8_t,
-        MQTT_PACKET_MIN_TIMEOUT, MQTT_PACKET_MAX_TIMEOUT, at_resp);
+        MQTT_PACKET_MIN_TIMEOUT, MQTT_PACKET_MAX_TIMEOUT, tmp_buff, at_resp);
     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(timeout_info.max_num_of_retries,
-        uint8_t, 0, MQTT_MAX_POSSIBLE_RETRIES, at_resp);
+        uint8_t, 0, MQTT_MAX_POSSIBLE_RETRIES, tmp_buff, at_resp);
     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(timeout_info.is_report_timeout_msg,
-        bool, false, true, at_resp);
+        bool, false, true, tmp_buff, at_resp);
 
     FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
 }
@@ -324,14 +293,14 @@ QMTCFG_WRITE_PARSE_HANLDER(timeout)(const char *arg,
 QMTCFG_WRITE_PARSE_HANLDER(recv_mode) (const char *arg, 
     AT_BUFF_SIZE_T arg_length, char *at_resp)
 {
-    INTIALIZE_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
+    INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
 
     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(recv_config.recv_mode,
         mqtt_recv_mode_t, MQTT_RX_MESS_CONTAINED_IN_URC,
-        MQTT_RX_MESS_NOT_CONTAINED_IN_URC, at_resp);
+        MQTT_RX_MESS_NOT_CONTAINED_IN_URC, tmp_buff, at_resp);
     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(recv_config.recv_length_mode,
         mqtt_recv_length_mode_t, MQTT_RX_MESS_LENGTH_NOT_CONTAINED_IN_URC,
-        MQTT_RX_MESS_LENGTH_CONTAINED_IN_URC, at_resp);
+        MQTT_RX_MESS_LENGTH_CONTAINED_IN_URC, tmp_buff, at_resp);
 
     FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
 }
@@ -339,10 +308,10 @@ QMTCFG_WRITE_PARSE_HANLDER(recv_mode) (const char *arg,
 QMTCFG_WRITE_PARSE_HANLDER(send_mode) (const char *arg, 
     AT_BUFF_SIZE_T arg_length, char *at_resp)
 {
-    INTIALIZE_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
+    INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
 
     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(send_mode, mqtt_send_mode_t,
-        MQTT_SEND_MODE_STRING, MQTT_SEND_MODE_HEX, at_resp);
+        MQTT_SEND_MODE_STRING, MQTT_SEND_MODE_HEX, tmp_buff, at_resp);
 
     FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
 }
@@ -437,23 +406,6 @@ static int find_qmtcfg_write_parse_exec_handler_for_param_key(
             return entry_index;
     }
     return -1;
-}
-
-static int validate_and_atoi(const char* str, int* converted_number)
-{
-    *converted_number = atoi(str);
-    if (*converted_number != 0) return 0;
-
-    // This part validate the convert value '0'
-    for (int pos = 0; pos < strlen(str); pos++)
-    {
-        if (str[pos] != '0')
-        {
-            DEEP_DEBUG("original string is not properly \"0\"\n");
-            return 1;
-        }
-    }
-    return 0;
 }
 
 static bool is_num_of_param_value_valid(const char *arg, 

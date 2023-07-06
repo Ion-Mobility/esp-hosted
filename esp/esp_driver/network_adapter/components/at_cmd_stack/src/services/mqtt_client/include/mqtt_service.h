@@ -14,6 +14,25 @@ typedef enum {
 
 
 /**
+ * @brief shorten lengthy 
+ * 'for (index = 0; index < MAX_NUM_OF_MQTT_CLIENT, index++)'
+ * 
+ * @param index name of index variable [in,out]
+ */
+#define FOREACH_CLIENT_IN_MQTT_SERVICE(index) \
+    for (int index = 0; index < MAX_NUM_OF_MQTT_CLIENT; index++)
+
+/**
+ * @brief shorten lengthy 
+ * 'for (index = 0; index < MAX_NUM_OF_RECV_BUFFER, index++)'
+ * 
+ * @param index name of index variable [in,out]
+ */
+#define FOREACH_BUFFER_IN_RECV_BUFF_GROUP(index) \
+    for (int index = 0; index < MAX_NUM_OF_RECV_BUFFER; index++) \
+
+
+/**
  * @brief Initialize MQTT service
  * 
  * @return MQTT_SERVICE_STATUS_OK if initialize successfully 
