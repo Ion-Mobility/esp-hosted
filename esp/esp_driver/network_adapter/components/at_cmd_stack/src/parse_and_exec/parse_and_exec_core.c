@@ -5,10 +5,10 @@
 
 
 
-#define IS_TEST_COMMAND(arg, arg_size) (!memcmp(arg, "=?", arg_size)) && (arg_size == 2)
-#define IS_READ_COMMAND(arg, arg_size) (!memcmp(arg, "?", arg_size)) && (arg_size == 1)
-#define IS_WRITE_COMMAND(arg, arg_size) (!memcmp(arg, "=", 1)) && (arg_size >= 1)
-#define IS_EXECUTION_COMMAND(arg, arg_size) (arg_size == 0)
+#define IS_TEST_COMMAND(arg, arg_length) (!memcmp(arg, "=?", arg_length)) && (arg_length == 2)
+#define IS_READ_COMMAND(arg, arg_length) (!memcmp(arg, "?", arg_length)) && (arg_length == 1)
+#define IS_WRITE_COMMAND(arg, arg_length) (!memcmp(arg, "=", 1)) && (arg_length >= 1)
+#define IS_EXECUTION_COMMAND(arg, arg_length) (arg_length == 0)
 
 
 typedef enum {
