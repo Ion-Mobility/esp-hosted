@@ -8,12 +8,20 @@
 #include "freertos/event_groups.h"
 #include "sys_common_funcs.h"
 
+
+#define MQTT_CLIENT_LOCK(service_client_handle) \
+    xSemaphoreTake(service_client_handle->client_mutex, portMAX_DELAY)
+
+#define MQTT_CLIENT_UNLOCK(service_client_handle) \
+    xSemaphoreGive(service_client_handle->client_mutex)
+
 #define CLEAR_RECV_BUFF_GROUP(buff_group) do {\
     memset(buff_group.buff, 0, sizeof(recv_buffer_t) * MAX_NUM_OF_RECV_BUFFER); \
     buff_group.current_empty_buff_index = 0; \
 } while (0)
 
 typedef struct {
+    SemaphoreHandle_t client_mutex;
     esp_mqtt_client_handle_t esp_client_handle;
     EventGroupHandle_t connect_req_event_group;
     EventGroupHandle_t connect_status_event_group;
@@ -44,15 +52,16 @@ static const ip_addr_t default_dns_server[] =
 
 static mqtt_service_client_t mqtt_service_clients_table[MAX_NUM_OF_MQTT_CLIENT] = {0};
 
-//================================
-// Private functions declaration
-//================================
+//==============================
+// Events Handlers declaration
+//==============================
 
-/*
+/**
  * @brief Event handler registered to receive MQTT events
- *
- *  This function is called by the MQTT client event loop.
- *
+ * 
+ * @note This function is called by MQTT task. So REMEMBER TO use
+ * synchronization mechanism to protected shared resources of MQTT service
+ * 
  * @param handler_args user data registered to the event.
  * @param base Event base for the handler(always MQTT Base in this example).
  * @param event_id The id for the received event.
@@ -60,6 +69,10 @@ static mqtt_service_client_t mqtt_service_clients_table[MAX_NUM_OF_MQTT_CLIENT] 
  */
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
     int32_t event_id, void *event_data);
+
+//================================
+// Private functions declaration
+//================================
 
 static esp_err_t mqtt_client_restart(esp_mqtt_client_handle_t client, 
     const esp_mqtt_client_config_t *client_config);
@@ -121,6 +134,9 @@ mqtt_service_status_t mqtt_service_init()
         // must initialize connection status to not connected
         change_connection_status(index, MQTT_CONNECTION_STATUS_NOT_CONNECTED);
         CLEAR_RECV_BUFF_GROUP(service_client_handle->recv_buff_group);
+
+        // Create mutex
+        service_client_handle->client_mutex = xSemaphoreCreateMutex();
     }
 
     is_mqtt_service_initialized = true;
@@ -146,6 +162,9 @@ mqtt_service_pkt_status_t mqtt_service_connect(int client_index,
     const char *pass, uint16_t port,
     esp_mqtt_connect_return_code_t *connect_ret_code)
 {
+    mqtt_service_client_t *service_client_handle = 
+            &mqtt_service_clients_table[client_index];
+    MQTT_CLIENT_LOCK(service_client_handle);
     mqtt_service_pkt_status_t ret_status;
     esp_mqtt_client_config_t client_config = 
     {
@@ -157,9 +176,14 @@ mqtt_service_pkt_status_t mqtt_service_connect(int client_index,
     };
 
     esp_mqtt_client_handle_t client = 
-        mqtt_service_clients_table[client_index].esp_client_handle;
+        service_client_handle->esp_client_handle;
     
     mqtt_client_restart(client, &client_config);
+    MQTT_CLIENT_UNLOCK(service_client_handle);
+    
+    // It's safe to unlock client now, since below codes only deal with 
+    // event group, which by itself have mechanism to prevent race condition
+    // (assume ESP-IDF doing it right :v )
     change_connection_status(client_index, 
         MQTT_CONNECTION_STATUS_NOT_CONNECTED);
 
@@ -184,18 +208,23 @@ mqtt_service_pkt_status_t mqtt_service_connect(int client_index,
 mqtt_service_pkt_status_t mqtt_service_subscribe(int client_index,
     const char *topic, mqtt_qos_t qos)
 {
+    mqtt_service_client_t *service_client_handle = 
+            &mqtt_service_clients_table[client_index];
     uint32_t connect_status_bit = xEventGroupGetBits(
         mqtt_service_clients_table[client_index].connect_status_event_group);
     bool is_broker_connected = 
         (connect_status_bit == MQTT_CONNECT_STATUS_CONNECTED_BIT);
     MUST_BE_CORRECT_OR_EXIT(is_broker_connected, 
         MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND);
-
+    MQTT_CLIENT_LOCK(service_client_handle);
     esp_mqtt_client_handle_t client = 
         mqtt_service_clients_table[client_index].esp_client_handle;
     if (esp_mqtt_client_subscribe(client, topic, (int) qos) == -1)
+    {
+        MQTT_CLIENT_UNLOCK(service_client_handle);
         return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
-    
+    }
+    MQTT_CLIENT_UNLOCK(service_client_handle);
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
 
@@ -203,6 +232,8 @@ mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
     const char *topic, const char* msg, mqtt_qos_t qos,
     bool is_retain)
 {
+    mqtt_service_client_t *service_client_handle = 
+            &mqtt_service_clients_table[client_index];
     uint32_t connect_status_bit = xEventGroupGetBits(
         mqtt_service_clients_table[client_index].connect_status_event_group);
     bool is_broker_connected = 
@@ -210,18 +241,25 @@ mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
     MUST_BE_CORRECT_OR_EXIT(is_broker_connected, 
         MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND);
 
+    MQTT_CLIENT_LOCK(service_client_handle);
     esp_mqtt_client_handle_t client = 
         mqtt_service_clients_table[client_index].esp_client_handle;
     if (esp_mqtt_client_publish(client, topic, msg, strlen(msg), qos, 
         is_retain) == -1)
+    {
+        MQTT_CLIENT_UNLOCK(service_client_handle);
         return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
+    }
     
+    MQTT_CLIENT_UNLOCK(service_client_handle);
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
 
 mqtt_service_status_t mqtt_service_get_recv_buff_group_status(
     int client_index, recv_buffer_group_t *out_recv_buff_group)
 {
+    mqtt_service_client_t *service_client_handle = 
+            &mqtt_service_clients_table[client_index];
     MUST_BE_CORRECT_OR_EXIT(is_mqtt_service_initialized, 
         MQTT_SERVICE_STATUS_ERROR);
     mqtt_client_connection_status_t connection_status = 
@@ -231,6 +269,7 @@ mqtt_service_status_t mqtt_service_get_recv_buff_group_status(
     MUST_BE_CORRECT_OR_EXIT(is_client_connected, 
         MQTT_SERVICE_STATUS_ERROR);
 
+    MQTT_CLIENT_LOCK(service_client_handle);
     recv_buffer_group_t *recv_group_to_get_status = 
         &mqtt_service_clients_table[client_index].recv_buff_group;
     for (int buff_index = 0; buff_index < MAX_NUM_OF_RECV_BUFFER; buff_index++)
@@ -238,6 +277,7 @@ mqtt_service_status_t mqtt_service_get_recv_buff_group_status(
         out_recv_buff_group->buff[buff_index].is_unread = 
             recv_group_to_get_status->buff[buff_index].is_unread;
     }
+    MQTT_CLIENT_UNLOCK(service_client_handle);
 
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
@@ -245,6 +285,8 @@ mqtt_service_status_t mqtt_service_get_recv_buff_group_status(
 mqtt_service_status_t mqtt_service_get_recv_buff_group(
     int client_index, recv_buffer_group_t *out_recv_buff_group)
 {
+    mqtt_service_client_t *service_client_handle = 
+            &mqtt_service_clients_table[client_index];
     MUST_BE_CORRECT_OR_EXIT(is_mqtt_service_initialized, 
         MQTT_SERVICE_STATUS_ERROR);
     mqtt_client_connection_status_t connection_status = 
@@ -254,11 +296,13 @@ mqtt_service_status_t mqtt_service_get_recv_buff_group(
     MUST_BE_CORRECT_OR_EXIT(is_client_connected, 
         MQTT_SERVICE_STATUS_ERROR);
 
+    MQTT_CLIENT_LOCK(service_client_handle);
     // Simply copy local buffer group to output buffer group
     // NOTE: caller is responsible for free allocated buffer of topic and message
     memcpy(out_recv_buff_group, 
         &mqtt_service_clients_table[client_index].recv_buff_group,
         sizeof(recv_buffer_group_t));
+    MQTT_CLIENT_UNLOCK(service_client_handle);
 
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
@@ -266,6 +310,8 @@ mqtt_service_status_t mqtt_service_get_recv_buff_group(
 mqtt_service_status_t mqtt_service_clear_recv_buff_group(
     int client_index)
 {
+    mqtt_service_client_t *service_client_handle = 
+            &mqtt_service_clients_table[client_index];
     MUST_BE_CORRECT_OR_EXIT(is_mqtt_service_initialized, 
         MQTT_SERVICE_STATUS_ERROR);
     mqtt_client_connection_status_t connection_status = 
@@ -277,21 +323,26 @@ mqtt_service_status_t mqtt_service_clear_recv_buff_group(
 
     DEEP_DEBUG("Before clear buffer group\n");
     print_out_unread_buffer(client_index);
+    MQTT_CLIENT_LOCK(service_client_handle);
     CLEAR_RECV_BUFF_GROUP(mqtt_service_clients_table[client_index].recv_buff_group);
+    MQTT_CLIENT_UNLOCK(service_client_handle);
     DEEP_DEBUG("Before clear buffer group\n");
     print_out_unread_buffer(client_index);
 
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
 
-//===============================
-// Private functions definition
-//===============================
+//============================
+// Events Handler definition
+//============================
+
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     esp_mqtt_event_handle_t event = event_data;
     esp_mqtt_client_handle_t client = event->client;
     int client_idx = find_index_from_client_handle(client);
+    mqtt_service_client_t *service_client_handle = 
+            &mqtt_service_clients_table[client_idx];
     int result;
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
@@ -304,9 +355,11 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
     case MQTT_EVENT_DATA:
         DEEP_DEBUG("Client %d got a data\n", client_idx);
+        MQTT_CLIENT_LOCK(service_client_handle);
         result = copy_new_sub_data_to_local_recv_buff(client_idx, 
             event->topic, (uint16_t) event->topic_len, event->data, 
             (uint32_t)event->data_len);
+        MQTT_CLIENT_UNLOCK(service_client_handle);
         if (result)
         {
             DEEP_DEBUG("Recv buffer is full! Discard...\n");
@@ -330,6 +383,11 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         break;
     }
 }
+
+
+//===============================
+// Private functions definition
+//===============================
 
 static esp_err_t mqtt_client_restart(esp_mqtt_client_handle_t client, 
     const esp_mqtt_client_config_t *client_config)
