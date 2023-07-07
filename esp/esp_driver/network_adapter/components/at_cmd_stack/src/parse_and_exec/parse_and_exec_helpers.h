@@ -4,6 +4,7 @@
 #include "sys_common_funcs.h"
 #include "parse_and_exec_constants.h"
 #include "common_helpers.h"
+#include "parse_and_exec_tmp_buff.h"
 
 
 #define RETURN_RESPONSE_UNSUPPORTED(resp)  do { \
@@ -28,15 +29,16 @@
  * parse and exec handler and response 'ERR'
  * 
  * @param condition the condition to check [in]
- * @param tmp_buff temporary buffer in usual parse and exec handler. When
- * exit due to invalid value, temporary buffer must be free [out]
+ * @param handler_tmp_buff temporary buffer in usual parse and exec handler.
+ * When exit due to invalid value, temporary buffer must be free [out]
  * @param resp pointer to AT response, in case fail to validate [out]
  * 
  */
-#define MUST_BE_CORRECT_OR_RESPOND_ERROR(condition, tmp_buff, resp)  do { \
+#define MUST_BE_CORRECT_OR_RESPOND_ERROR(condition, \
+    handler_tmp_buff, resp)  do { \
     if (!(condition)) { \
         DEEP_DEBUG("Condition not satisfy. Return 'ERR' response!\n"); \
-        sys_mem_free(tmp_buff); \
+        free_handler_tmp_buff(handler_tmp_buff); \
         RETURN_RESPONSE_ERROR(resp); \
     } \
 } while (0)
@@ -70,12 +72,14 @@ extern int convert_and_validate(const char* str,
  * @param token token variable [in]
  * @param tokenize_context tokenize context. That mean origial string must 
  * be tokenized once [in,out]
- * @param tmp_buff temporary buffer in usual parse and exec handler. When
- * exit due to invalid value, temporary buffer must be free [in]
+ * @param handler_tmp_buff temporary buffer in usual parse and 
+ * exec handler. When exit due to invalid value, temporary buffer must be 
+ * free [in]
  * @param resp pointer to AT response, in case fail to validate [out]
  */
 #define TOKENIZE_AND_ASSIGN_REQUIRED_LINT_PARAM(dest, \
-    min, max, input_str, token, tokenize_context, tmp_buff, resp)  do { \
+    min, max, input_str, token, tokenize_context, handler_tmp_buff, \
+    resp)  do { \
     token = sys_strtok(input_str, param_delim, &tokenize_context); \
     if (token != NULL) \
     { \
@@ -84,19 +88,21 @@ extern int convert_and_validate(const char* str,
         { \
             DEEP_DEBUG("Converted lint stage for token '%s' wrong\n", token); \
         } \
-        MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, tmp_buff, resp); \
+        MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, \
+            handler_tmp_buff, resp); \
         is_cond_satisfy = ((dest >= min) && (dest <= max)); \
         if (!is_cond_satisfy) \
         { \
             DEEP_DEBUG("converted lint %ld not within range (%ld,%ld)\n", \
                 dest, (long int)min, (long int)max); \
         } \
-        MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, tmp_buff, resp); \
+        MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, \
+            handler_tmp_buff, resp); \
     } \
     else \
     { \
         DEEP_DEBUG("Need to tokenize an long integer value but not found. Report 'ERR'!\n"); \
-        sys_mem_free(tmp_buff); \
+        free_handler_tmp_buff(handler_tmp_buff); \
         RETURN_RESPONSE_ERROR(resp); \
     } \
 } while (0)
@@ -115,12 +121,12 @@ extern int convert_and_validate(const char* str,
  * @param token token variable [in]
  * @param tokenize_context tokenize context. That mean origial string must 
  * be tokenized once [in,out]
- * @param tmp_buff temporary buffer in usual parse and exec handler. When
+ * @param handler_tmp_buff temporary buffer in usual parse and exec handler. When
  * exit due to invalid value, temporary buffer must be free [in]
  * @param resp pointer to AT response, in case fail to validate [out]
  */
 #define TOKENIZE_AND_ASSIGN_OPTIONAL_UNSIGNED_LINT_PARAM(dest, min, max, \
-    input_str, token, tokenize_context, tmp_buff, resp)  do { \
+    input_str, token, tokenize_context, handler_tmp_buff, resp)  do { \
     token = sys_strtok(input_str, param_delim, &tokenize_context); \
     if (token != NULL) \
     { \
@@ -129,14 +135,16 @@ extern int convert_and_validate(const char* str,
         { \
             DEEP_DEBUG("Converted lint stage for token '%s' wrong\n", token); \
         } \
-        MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, tmp_buff, resp); \
+        MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, \
+            handler_tmp_buff, resp); \
         is_cond_satisfy = ((dest >= min) && (dest <= max)); \
         if (!is_cond_satisfy) \
         { \
             DEEP_DEBUG("converted lint %ld not within range (%ld,%ld)\n", \
                 dest, (long int)min, (long int)max); \
         } \
-        MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, tmp_buff, resp); \
+        MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, \
+            handler_tmp_buff, resp); \
     } \
     else \
     { \
@@ -157,11 +165,12 @@ extern int convert_and_validate(const char* str,
  * @param token token variable [in]
  * @param tokenize_context tokenize context. That mean origial string must 
  * be tokenized once [in,out]
- * @param tmp_buff pointer to temporary buffer for free in case  
+ * @param handler_tmp_buff pointer to temporary buffer for 
+ * free in case of invalid tokenize [out]
  * @param resp pointer to AT response, in case fail to validate [out]
  */
 #define TOKENIZE_AND_ASSIGN_REQUIRED_QUOTED_STRING(dest, input_str, \
-    token, token_ctx, tmp_buff, resp)  do { \
+    token, token_ctx, handler_tmp_buff, resp)  do { \
     token = sys_strtok(NULL, param_delim, &token_ctx); \
     if (token == NULL) \
     { \
@@ -174,7 +183,7 @@ extern int convert_and_validate(const char* str,
     } \
     MUST_BE_CORRECT_OR_RESPOND_ERROR((token != NULL) && \
         (token[0] == '"') && (token[strlen(token) - 1] == '"') \
-        , tmp_buff, resp); \
+        , handler_tmp_buff, resp); \
     dest = &token[1]; \
     token[strlen(token) - 1] = '\0'; \
 } while (0)
@@ -191,11 +200,11 @@ extern int convert_and_validate(const char* str,
  * @param token token variable [in]
  * @param tokenize_context tokenize context. That mean origial string must 
  * be tokenized once [in,out]
- * @param tmp_buff pointer to temporary buffer for free in case  
+ * @param handler_tmp_buff pointer to temporary buffer for free in case  
  * @param resp pointer to AT response, in case fail to validate [out]
  */
 #define TOKENIZE_AND_ASSIGN_OPTIONAL_QUOTED_STRING(dest, input_str, \
-    token, token_ctx, tmp_buff, resp)  do { \
+    token, token_ctx, handler_tmp_buff, resp)  do { \
     token = sys_strtok(NULL, param_delim, &token_ctx); \
     if (token != NULL) \
     { \
@@ -205,7 +214,7 @@ extern int convert_and_validate(const char* str,
             DEEP_DEBUG("Found token not properly quoted!\n"); \
         } \
         MUST_BE_CORRECT_OR_RESPOND_ERROR((token[0] == '"') && \
-            (token[strlen(token) - 1] != '"'), tmp_buff, resp); \
+            (token[strlen(token) - 1] != '"'), handler_tmp_buff, resp); \
         dest = &token[1]; \
         token[strlen(token) - 1] = '\0'; \
     } \
@@ -228,14 +237,14 @@ extern int convert_and_validate(const char* str,
  * 
  */
 #define INTIALIZE_WRITE_PARSE_EXEC_HANDLER(arg, arg_len, resp, client_index) \
-    char *tmp_buff = sys_mem_calloc(arg_len + 1, 1); \
-    memcpy(tmp_buff, arg+1, arg_len); \
+    handler_tmp_buff_t *handler_tmp_buff= alloc_handler_tmp_buff(arg_len); \
+    memcpy(handler_tmp_buff->cpy_of_arg, arg+1, arg_len); \
     char* tokenize_context; \
     char* token; \
     long int client_index; \
     TOKENIZE_AND_ASSIGN_REQUIRED_LINT_PARAM(client_index, 0, \
-        MAX_NUM_OF_MQTT_CLIENT - 1, tmp_buff, token, tokenize_context, \
-        tmp_buff, resp);
+        MAX_NUM_OF_MQTT_CLIENT - 1, handler_tmp_buff->cpy_of_arg, \
+        token, tokenize_context, handler_tmp_buff, resp);
 
 
 

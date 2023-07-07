@@ -17,38 +17,42 @@
 AT_BUFF_SIZE_T qmtconn_test_cmd_parse_exec_handler(const char *arg, 
     AT_BUFF_SIZE_T arg_length, char *at_resp)
 {
-    char *tmp_buff = sys_mem_calloc(MAX_AT_RESP_LENGTH + 1, 1);
+    handler_tmp_buff_t *handler_tmp_buff = 
+        sys_mem_calloc(MAX_AT_RESP_LENGTH + 1, 1);
     if (MAX_NUM_OF_MQTT_CLIENT > 1)
     {
-        sprintf(tmp_buff, "<0-%d>", MAX_NUM_OF_MQTT_CLIENT - 1);
+        sprintf(handler_tmp_buff->tmp_resp_buff, "<0-%d>", MAX_NUM_OF_MQTT_CLIENT - 1);
     }
     else
     {
-        sprintf(tmp_buff, "<0>");
+        sprintf(handler_tmp_buff->tmp_resp_buff, "<0>");
     }
     sprintf(at_resp, 
         "+QMTCONN %s,\"hostname\",\"port\",\"clientid\"[,\"username\",\"password\"]\r\n\r\nOK",
-        tmp_buff);
-    sys_mem_free(tmp_buff);
+        handler_tmp_buff->tmp_resp_buff);
+    free_handler_tmp_buff(handler_tmp_buff);
     return strlen(at_resp);
 }
 
 AT_BUFF_SIZE_T qmtconn_read_cmd_parse_exec_handler(const char *arg, 
     AT_BUFF_SIZE_T arg_length, char *at_resp)
 {
-    char *tmp_buff = sys_mem_calloc(MAX_AT_RESP_LENGTH + 1, 1);
-    sprintf(tmp_buff, "+QMTCONN:");
-    memcpy(at_resp, tmp_buff, strlen(tmp_buff) + 1);
+    handler_tmp_buff_t *handler_tmp_buff = alloc_handler_tmp_buff(arg_length);
+    sprintf(handler_tmp_buff->tmp_resp_buff, "+QMTCONN:");
+    memcpy(at_resp, handler_tmp_buff->tmp_resp_buff, 
+        strlen(handler_tmp_buff->tmp_resp_buff) + 1);
     FOREACH_CLIENT_IN_MQTT_SERVICE(index)
     {
         char prepend_char = (index == 0) ? ' ' : ',';
-        sprintf(tmp_buff, "%s%c%d", at_resp, prepend_char,
+        sprintf(handler_tmp_buff->tmp_resp_buff, "%s%c%d", at_resp, prepend_char,
             mqtt_service_get_connection_status(index));
-        memcpy(at_resp, tmp_buff, strlen(tmp_buff) + 1);
+        memcpy(at_resp, handler_tmp_buff->tmp_resp_buff, 
+            strlen(handler_tmp_buff->tmp_resp_buff) + 1);
     }
-    sprintf(tmp_buff, "%s\r\nOK", at_resp);
-    memcpy(at_resp, tmp_buff, strlen(tmp_buff) + 1);
-    sys_mem_free(tmp_buff);
+    sprintf(handler_tmp_buff->tmp_resp_buff, "%s\r\nOK", at_resp);
+    memcpy(at_resp, handler_tmp_buff->tmp_resp_buff, 
+        strlen(handler_tmp_buff->tmp_resp_buff) + 1);
+    free_handler_tmp_buff(handler_tmp_buff);
     return strlen(at_resp);
 }
 
@@ -63,24 +67,24 @@ AT_BUFF_SIZE_T qmtconn_write_cmd_parse_exec_handler(const char *arg,
     long int parsed_port_num;
 
     TOKENIZE_AND_ASSIGN_REQUIRED_QUOTED_STRING(parsed_hostname, NULL, 
-        token, tokenize_context, tmp_buff, at_resp);
+        token, tokenize_context, handler_tmp_buff, at_resp);
 
     TOKENIZE_AND_ASSIGN_REQUIRED_LINT_PARAM(parsed_port_num, 1, 65535, NULL,
-        token, tokenize_context, tmp_buff, at_resp);
+        token, tokenize_context, handler_tmp_buff, at_resp);
 
     TOKENIZE_AND_ASSIGN_REQUIRED_QUOTED_STRING(parsed_client_id, NULL,
-        token, tokenize_context, tmp_buff, at_resp);
+        token, tokenize_context, handler_tmp_buff, at_resp);
     
     char *possible_parsed_username = NULL;
     TOKENIZE_AND_ASSIGN_OPTIONAL_QUOTED_STRING(possible_parsed_username, 
-        NULL, token, tokenize_context, tmp_buff, at_resp);
+        NULL, token, tokenize_context, handler_tmp_buff, at_resp);
     if (possible_parsed_username != NULL)
     {
         parsed_username = possible_parsed_username;
         DEEP_DEBUG("+ qmtconn: have optional username and password\n"); 
         token = sys_strtok(NULL, param_delim, &tokenize_context);
         TOKENIZE_AND_ASSIGN_REQUIRED_QUOTED_STRING(parsed_password, NULL,
-            token, tokenize_context, tmp_buff, at_resp);
+            token, tokenize_context, handler_tmp_buff, at_resp);
 
     }
     else
@@ -97,7 +101,7 @@ AT_BUFF_SIZE_T qmtconn_write_cmd_parse_exec_handler(const char *arg,
     sprintf(at_resp, "OK\r\n\r\n+QMTCONN: %lu,%d,%d", client_index,
         connect_result, connect_ret_code);
 
-    sys_mem_free(tmp_buff);
+    free_handler_tmp_buff(handler_tmp_buff);
     return strlen(at_resp);
 }
 
