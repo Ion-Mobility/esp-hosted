@@ -87,7 +87,7 @@ AT_BUFF_SIZE_T qmtrecv_write_cmd_parse_exec_handler(const char *arg,
         DEEP_DEBUG("copy at resp to tmp_resp_buff. topic = %p, msg = %p\n",
             buff_to_resp->topic,
             buff_to_resp->msg);
-        sprintf(at_resp,"%s,%s,%s", handler_tmp_buff->tmp_resp_buff, 
+        sprintf(at_resp,"%s,\"%s\",\"%s\"", handler_tmp_buff->tmp_resp_buff, 
             buff_to_resp->topic,
             buff_to_resp->msg);
         DEEP_DEBUG("at resp appends! Response = '%s'\n", at_resp);
