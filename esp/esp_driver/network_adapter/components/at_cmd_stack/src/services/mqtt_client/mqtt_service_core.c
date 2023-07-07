@@ -228,6 +228,29 @@ mqtt_service_pkt_status_t mqtt_service_subscribe(int client_index,
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
 
+mqtt_service_pkt_status_t mqtt_service_unsubscribe(int client_index,
+    const char *topic)
+{
+    mqtt_service_client_t *service_client_handle = 
+            &mqtt_service_clients_table[client_index];
+    uint32_t connect_status_bit = xEventGroupGetBits(
+        mqtt_service_clients_table[client_index].connect_status_event_group);
+    bool is_broker_connected = 
+        (connect_status_bit == MQTT_CONNECT_STATUS_CONNECTED_BIT);
+    MUST_BE_CORRECT_OR_EXIT(is_broker_connected, 
+        MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND);
+
+    esp_mqtt_client_handle_t client = 
+        mqtt_service_clients_table[client_index].esp_client_handle;
+    if (esp_mqtt_client_unsubscribe(client, topic) == -1)
+    {
+        MQTT_CLIENT_UNLOCK(service_client_handle);
+        return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
+    }
+    MQTT_CLIENT_UNLOCK(service_client_handle);
+    return MQTT_SERVICE_PACKET_STATUS_OK;
+}
+
 mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
     const char *topic, const char* msg, mqtt_qos_t qos,
     bool is_retain)
@@ -321,13 +344,9 @@ mqtt_service_status_t mqtt_service_clear_recv_buff_group(
     MUST_BE_CORRECT_OR_EXIT(is_client_connected, 
         MQTT_SERVICE_STATUS_ERROR);
 
-    DEEP_DEBUG("Before clear buffer group\n");
-    print_out_unread_buffer(client_index);
     MQTT_CLIENT_LOCK(service_client_handle);
     CLEAR_RECV_BUFF_GROUP(mqtt_service_clients_table[client_index].recv_buff_group);
     MQTT_CLIENT_UNLOCK(service_client_handle);
-    DEEP_DEBUG("Before clear buffer group\n");
-    print_out_unread_buffer(client_index);
 
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }

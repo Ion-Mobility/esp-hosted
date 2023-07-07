@@ -107,6 +107,19 @@ extern mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
     bool is_retain);
 
 /**
+ * @brief Issue a MQTT client to unsubscribe to specified topic and QOS level
+ * 
+ * @param client_index index of MQTT client [in]
+ * @param topic NULL-terminated string of topic to unsubscribe [in]
+ * @retval MQTT_SERVICE_PACKET_STATUS_OK if unsubscribe topic is good
+ * @retval MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND if MQTT client failed to
+ * send subscribtion packet due to connectivity, not connect to broker or no
+ * ACK from server
+ */
+extern mqtt_service_pkt_status_t mqtt_service_unsubscribe(int client_index,
+    const char *topic);
+
+/**
  * @brief Only get the status of a MQTT client's receive buffer group status
  * 
  * @param client_index index of MQTT client [in]
