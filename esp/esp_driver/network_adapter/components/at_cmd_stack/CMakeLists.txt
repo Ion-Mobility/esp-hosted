@@ -1,12 +1,12 @@
 set(CMD_HANDLERS_SRCS
-"src/parse_and_exec/cmd_handlers/qmtcfg_parse_exec_handler.c"
-"src/parse_and_exec/cmd_handlers/qmtopen_parse_exec_handler.c"
-"src/parse_and_exec/cmd_handlers/qmtconn_parse_exec_handler.c"
-"src/parse_and_exec/cmd_handlers/qmtsub_parse_exec_handler.c"
-"src/parse_and_exec/cmd_handlers/qmtpubex_parse_exec_handler.c"
-"src/parse_and_exec/cmd_handlers/qmtuns_parse_exec_handler.c"
-"src/parse_and_exec/cmd_handlers/qmtrecv_parse_exec_handler.c"
-"src/parse_and_exec/cmd_handlers/qmtdump_parse_exec_handler.c"
+    "src/parse_and_exec/cmd_handlers/qmtcfg_parse_exec_handler.c"
+    "src/parse_and_exec/cmd_handlers/qmtopen_parse_exec_handler.c"
+    "src/parse_and_exec/cmd_handlers/qmtconn_parse_exec_handler.c"
+    "src/parse_and_exec/cmd_handlers/qmtsub_parse_exec_handler.c"
+    "src/parse_and_exec/cmd_handlers/qmtpubex_parse_exec_handler.c"
+    "src/parse_and_exec/cmd_handlers/qmtuns_parse_exec_handler.c"
+    "src/parse_and_exec/cmd_handlers/qmtrecv_parse_exec_handler.c"
+    "src/parse_and_exec/cmd_handlers/qmtdump_parse_exec_handler.c"
 )
 
 set(APP_SRCS
