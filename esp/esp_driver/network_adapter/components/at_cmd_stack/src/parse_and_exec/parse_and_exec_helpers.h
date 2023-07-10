@@ -214,7 +214,7 @@ extern int convert_and_validate(const char* str,
             DEEP_DEBUG("Found token not properly quoted!\n"); \
         } \
         MUST_BE_CORRECT_OR_RESPOND_ERROR((token[0] == '"') && \
-            (token[strlen(token) - 1] != '"'), handler_tmp_buff, resp); \
+            (token[strlen(token) - 1] == '"'), handler_tmp_buff, resp); \
         dest = &token[1]; \
         token[strlen(token) - 1] = '\0'; \
     } \

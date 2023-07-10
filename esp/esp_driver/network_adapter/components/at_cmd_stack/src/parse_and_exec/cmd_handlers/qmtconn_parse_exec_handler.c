@@ -18,7 +18,7 @@ AT_BUFF_SIZE_T qmtconn_test_cmd_parse_exec_handler(const char *arg,
     AT_BUFF_SIZE_T arg_length, char *at_resp)
 {
     handler_tmp_buff_t *handler_tmp_buff = 
-        sys_mem_calloc(MAX_AT_RESP_LENGTH + 1, 1);
+        alloc_handler_tmp_buff(arg_length);
     if (MAX_NUM_OF_MQTT_CLIENT > 1)
     {
         sprintf(handler_tmp_buff->tmp_resp_buff, "<0-%d>", MAX_NUM_OF_MQTT_CLIENT - 1);
@@ -82,7 +82,6 @@ AT_BUFF_SIZE_T qmtconn_write_cmd_parse_exec_handler(const char *arg,
     {
         parsed_username = possible_parsed_username;
         DEEP_DEBUG("+ qmtconn: have optional username and password\n"); 
-        token = sys_strtok(NULL, param_delim, &tokenize_context);
         TOKENIZE_AND_ASSIGN_REQUIRED_QUOTED_STRING(parsed_password, NULL,
             token, tokenize_context, handler_tmp_buff, at_resp);
 

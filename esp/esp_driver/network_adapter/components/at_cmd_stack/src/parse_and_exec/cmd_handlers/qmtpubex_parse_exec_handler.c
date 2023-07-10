@@ -20,13 +20,15 @@ AT_BUFF_SIZE_T qmtpubex_test_cmd_parse_exec_handler(const char *arg,
         sprintf(handler_tmp_buff->tmp_resp_buff, "<0>");
     }
     sprintf(at_resp, 
-        "+QMTSUB %s",
+        "+QMTPUBEX %s",
         handler_tmp_buff->tmp_resp_buff);
     //This is possible value of retain ('0' or '1')
-    sprintf(handler_tmp_buff->tmp_resp_buff, "%s,<0-1>",at_resp);
+    sprintf(handler_tmp_buff->tmp_resp_buff, "%s",at_resp);
     sprintf(at_resp, 
-        "%s,\"topic\",\"message\"\r\n\r\nOK",
-        handler_tmp_buff->tmp_resp_buff);
+        "%s,<%d-%d>,<%d-%d>,\"topic\",\"message\"\r\n\r\nOK",
+        handler_tmp_buff->tmp_resp_buff,
+        MQTT_QOS_AT_MOST_ONCE, MQTT_QOS_EXACTLY_ONCE,
+        false, true);
     free_handler_tmp_buff(handler_tmp_buff);
     return strlen(at_resp);
 }
