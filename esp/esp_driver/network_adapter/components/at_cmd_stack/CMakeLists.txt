@@ -45,6 +45,9 @@ set(COMPONENT_ADD_PRIVATE_INCLUDEDIRS
     "src/common/include"
     "../../../../../common/include")
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__FILENAME__='\"$(subst
+    ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"'")
+    
 idf_component_register(SRCS "${COMPONENT_SRCS}"
                     INCLUDE_DIRS "${COMPONENT_ADD_INCLUDEDIRS}"
                     PRIV_INCLUDE_DIRS "${COMPONENT_ADD_PRIVATE_INCLUDEDIRS}"

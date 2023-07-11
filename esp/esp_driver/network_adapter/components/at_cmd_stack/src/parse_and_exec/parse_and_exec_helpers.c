@@ -10,7 +10,7 @@ int convert_and_validate(const char* str,
     {
         if (str[pos] != '0')
         {
-            DEEP_DEBUG("original string '%s' is not properly \"0\"\n", str);
+            AT_STACK_LOGE("original string '%s' is not properly \"0\"", str);
             return 1;
         }
     }

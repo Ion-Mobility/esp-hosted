@@ -2,7 +2,6 @@
 #include "mqtt_client.h"
 #include "lwip/dns.h"
 #include "lwip/ip_addr.h"
-#include "esp_log.h"
 #include "common_helpers.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -365,22 +364,22 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     int result;
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
-        DEEP_DEBUG("Client %d connected to broker!\n", client_idx);
+        AT_STACK_LOGI("Client %d connected to broker!", client_idx);
         announce_connect_request_success(client_idx);
         break;
 
     case MQTT_EVENT_DISCONNECTED:
-        DEEP_DEBUG("Client %d disconnected to broker!\n", client_idx);
+        AT_STACK_LOGI("Client %d disconnected to broker!", client_idx);
         change_connection_status(client_idx, 
             MQTT_CONNECTION_STATUS_NOT_CONNECTED);
         break;
 
     case MQTT_EVENT_PUBLISHED:
-        DEEP_DEBUG("Client %d published a data\n", client_idx);
+        AT_STACK_LOGI("Client %d published a data", client_idx);
         break;
 
     case MQTT_EVENT_DATA:
-        DEEP_DEBUG("Client %d got a data\n", client_idx);
+        AT_STACK_LOGI("Client %d got a data", client_idx);
         MQTT_CLIENT_LOCK(service_client_handle);
         result = copy_new_sub_data_to_local_recv_buff(client_idx, 
             event->topic, (uint16_t) event->topic_len, event->data, 
@@ -388,24 +387,24 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         MQTT_CLIENT_UNLOCK(service_client_handle);
         if (result)
         {
-            DEEP_DEBUG("Recv buffer is full! Discard...\n");
+            AT_STACK_LOGI("Recv buffer is full! Discard...");
         }
         break;
 
     case MQTT_EVENT_ERROR:
-        DEEP_DEBUG("Client %d have error!\n", client_idx);
+        AT_STACK_LOGI("Client %d have error!", client_idx);
         if (event->error_handle->error_type == 
             MQTT_ERROR_TYPE_CONNECTION_REFUSED)
         {
             announce_connect_request_fail(client_idx, 
                 event->error_handle->connect_return_code);
-            DEEP_DEBUG("MQTT connection refuse, ret code = %d! \n",
+            AT_STACK_LOGI("MQTT connection refuse, ret code = %d!",
                 event->error_handle->connect_return_code);
         }
         break;
 
     default:
-        DEEP_DEBUG("Other event id:%d\n", event->event_id);
+        AT_STACK_LOGI("Other event id:%d", event->event_id);
         break;
     }
 }
@@ -570,7 +569,7 @@ static int copy_new_sub_data_to_local_recv_buff(int client_idx,
         &service_client_handle->recv_buff_group.current_empty_buff_index;
     if (*client_current_empty_recv_buff_index >= MAX_NUM_OF_RECV_BUFFER)
     {
-        DEEP_DEBUG("client %d's current empty index = %d, mean recv buffer is full!\n", 
+        AT_STACK_LOGW("client %d's current empty index = %d, mean recv buffer is full!", 
             client_idx, *client_current_empty_recv_buff_index);
         return -1;
     }
@@ -603,7 +602,7 @@ static void print_out_unread_buffer(int client_idx)
             printing_recv_buff_group->buff[buff_index];
         if (printing_recv_buff.is_unread)
         {
-            DEEP_DEBUG("print_unread: client %d, buff index %d, topic is '%s', data is '%s'\n",
+            AT_STACK_LOGD("print_unread: client %d, buff index %d, topic is '%s', data is '%s'",
                 client_idx, buff_index, 
                 printing_recv_buff.topic, 
                 printing_recv_buff.msg);
@@ -613,5 +612,5 @@ static void print_out_unread_buffer(int client_idx)
             break;
         }
     }
-    DEEP_DEBUG("print_unread: Done!\n");
+    AT_STACK_LOGI("print_unread: Done!");
 }

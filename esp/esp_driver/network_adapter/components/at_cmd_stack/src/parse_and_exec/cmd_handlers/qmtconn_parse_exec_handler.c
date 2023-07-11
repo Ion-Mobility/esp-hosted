@@ -1,7 +1,6 @@
 #include "qmtconn_parse_exec_handler.h"
 #include "common_helpers.h"
 #include "../parse_and_exec_helpers.h"
-#include "esp_log.h"
 #include "mqtt_service.h"
 #include <string.h>
 
@@ -81,14 +80,14 @@ AT_BUFF_SIZE_T qmtconn_write_cmd_parse_exec_handler(const char *arg,
     if (possible_parsed_username != NULL)
     {
         parsed_username = possible_parsed_username;
-        DEEP_DEBUG("+ qmtconn: have optional username and password\n"); 
+        AT_STACK_LOGI("+ qmtconn: have optional username and password"); 
         TOKENIZE_AND_ASSIGN_REQUIRED_QUOTED_STRING(parsed_password, NULL,
             token, tokenize_context, handler_tmp_buff, at_resp);
 
     }
     else
     {
-        DEEP_DEBUG("+ qmtconn: don't have optional username and password\n");
+        AT_STACK_LOGI("+ qmtconn: don't have optional username and password");
         parsed_username = NULL;
         parsed_password = NULL;
     }

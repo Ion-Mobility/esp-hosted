@@ -75,7 +75,6 @@ AT_BUFF_SIZE_T qmtrecv_write_cmd_parse_exec_handler(const char *arg,
     }
     service_status = mqtt_service_clear_recv_buff_group(client_index);
     sprintf(at_resp,"+QMTRECV:\r\n%ld", client_index);
-    DEEP_DEBUG("init at_resp\n");
     FOREACH_BUFFER_IN_RECV_BUFF_GROUP(buff_idx)
     {
         recv_buffer_t *buff_to_resp = 
@@ -84,16 +83,16 @@ AT_BUFF_SIZE_T qmtrecv_write_cmd_parse_exec_handler(const char *arg,
             break;
 
         sprintf(handler_tmp_buff->tmp_resp_buff,"%s", at_resp);
-        DEEP_DEBUG("copy at resp to tmp_resp_buff. topic = %p, msg = %p\n",
+        AT_STACK_LOGD("copy at resp to tmp_resp_buff. topic = %p, msg = %p",
             buff_to_resp->topic,
             buff_to_resp->msg);
         sprintf(at_resp,"%s,\"%s\",\"%s\"", handler_tmp_buff->tmp_resp_buff, 
             buff_to_resp->topic,
             buff_to_resp->msg);
-        DEEP_DEBUG("at resp appends! Response = '%s'\n", at_resp);
+        AT_STACK_LOGD("at resp appends! Response = '%s'", at_resp);
         sys_mem_free(buff_to_resp->topic);
         sys_mem_free(buff_to_resp->msg);
-        DEEP_DEBUG("done free topic and msg buffer\n");
+        AT_STACK_LOGD("done free topic and msg buffer");
     }
     free_handler_tmp_buff(handler_tmp_buff);
     return strlen(at_resp);

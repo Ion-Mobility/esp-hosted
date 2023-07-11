@@ -5,7 +5,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
-#include "esp_log.h"
 
 #include <string.h>
 #include <stdbool.h>
@@ -25,7 +24,6 @@ typedef struct {
 
 static QueueHandle_t at_cmd_queue = NULL;
 static char at_response[MAX_AT_RESP_LENGTH];
-static const char *TAG = "at_cmd_app";
 static bool is_at_app_initialized = false;
 
 //================================
@@ -54,10 +52,10 @@ void init_at_cmd_app()
 
 	if (mqtt_service_init() != MQTT_SERVICE_STATUS_OK)
 	{
-		DEEP_DEBUG("Something wrong when initialize MQTT service\n");
+		AT_STACK_LOGE("Something wrong when initialize MQTT service");
 		return;
 	}
-
+	AT_STACK_LOGI("Done init command app");
 	is_at_app_initialized = true;
 }
 
@@ -67,7 +65,7 @@ int forward_to_at_cmd_task(uint8_t *at_cmd_buff, uint32_t cmd_buff_size)
 {
     if (!is_at_app_initialized) 
 	{
-		DEEP_DEBUG("AT command app is not initialized yet!\n");
+		AT_STACK_LOGE("AT command app is not initialized yet!");
 		return 1;
 	}
 	at_command_t at_command_to_forward;
@@ -75,7 +73,8 @@ int forward_to_at_cmd_task(uint8_t *at_cmd_buff, uint32_t cmd_buff_size)
 	at_command_to_forward.cmd_length = AT_QuecTelString_To_NormalString(
 		(char*)at_cmd_buff, cmd_buff_size, at_command_to_forward.cmd);
 	
-	ESP_LOGI(TAG, "Receiving new AT command '%s'\n", at_command_to_forward.cmd);
+	AT_STACK_LOGI("Receiving new AT command '%s' len %d\n",
+		at_command_to_forward.cmd, cmd_buff_size);
 
 	xQueueSend(at_cmd_queue, &at_command_to_forward, portMAX_DELAY);
     return 0;
@@ -94,13 +93,14 @@ static void at_handling_task(void* pvParameters)
 	while (1) {
 		if (xQueueReceive(at_cmd_queue, &recv_at_cmd_to_handle, portMAX_DELAY))
 		{
-			ESP_LOGI(TAG," Get a command '%s'!\n",recv_at_cmd_to_handle.cmd);
+			AT_STACK_LOGI(" Get a command '%s'!\n",recv_at_cmd_to_handle.cmd);
 			memset(at_response, 0, MAX_AT_RESP_LENGTH);
 			at_response_length = parse_and_exec_at_cmd(recv_at_cmd_to_handle.cmd, strlen(recv_at_cmd_to_handle.cmd), at_response);
 			sys_mem_free(recv_at_cmd_to_handle.cmd);
 			if (!at_response_length)
 			{
-				DEEP_DEBUG("Invalid arguments when parse! Do not produce reponse!\n");
+				AT_STACK_LOGE(
+					"Invalid arguments when parse! Do not produce reponse!");
 				continue;
 			}
 			sending_at_response = sys_mem_malloc(MAX_AT_RESP_LENGTH);
@@ -108,7 +108,8 @@ static void at_handling_task(void* pvParameters)
 				at_response, at_response_length, sending_at_response);
 			if (!sending_at_response_length)
 			{
-				DEEP_DEBUG("Something wrong to args when convert normal to Quectel\n");
+				AT_STACK_LOGE(
+					"Something wrong to args when convert normal to Quectel");
 				sys_mem_free(sending_at_response);
 				continue;
 			}
@@ -122,7 +123,7 @@ static void at_handling_task(void* pvParameters)
 			}
 			else
 			{
-				ESP_LOGI(TAG," Send response to host successfully!\n");
+				AT_STACK_LOGI(" Send response to host successfully!\n");
 			}
 		}
 		sys_task_sleep_us(AT_TASK_SLEEP_ms*1000);

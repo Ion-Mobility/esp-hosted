@@ -9,13 +9,13 @@
 
 #define RETURN_RESPONSE_UNSUPPORTED(resp)  do { \
     memcpy(resp, unsupported_string, strlen(unsupported_string)); \
-    DEEP_DEBUG("Return 'ERR' because of unsupported AT commands!\n"); \
+    AT_STACK_LOGE("Return 'ERR' because of unsupported AT commands!"); \
     return strlen(unsupported_string); \
 } while (0)
 
 #define RETURN_RESPONSE_ERROR(resp)  do { \
     memcpy(resp, error_string, strlen(error_string)); \
-    DEEP_DEBUG("Return 'ERR' because of AT command is invalid!\n"); \
+    AT_STACK_LOGE("Return 'ERR' because of AT command is invalid!"); \
     return strlen(error_string); \
 } while (0)
 
@@ -37,7 +37,7 @@
 #define MUST_BE_CORRECT_OR_RESPOND_ERROR(condition, \
     handler_tmp_buff, resp)  do { \
     if (!(condition)) { \
-        DEEP_DEBUG("Condition not satisfy. Return 'ERR' response!\n"); \
+        AT_STACK_LOGE("Condition not satisfy. Return 'ERR' response!"); \
         free_handler_tmp_buff(handler_tmp_buff); \
         RETURN_RESPONSE_ERROR(resp); \
     } \
@@ -86,14 +86,14 @@ extern int convert_and_validate(const char* str,
         int is_cond_satisfy = !convert_and_validate(token, (long int*)&dest); \
         if (!is_cond_satisfy) \
         { \
-            DEEP_DEBUG("Converted lint stage for token '%s' wrong\n", token); \
+            AT_STACK_LOGE("Converted lint stage for token '%s' wrong", token); \
         } \
         MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, \
             handler_tmp_buff, resp); \
         is_cond_satisfy = ((dest >= min) && (dest <= max)); \
         if (!is_cond_satisfy) \
         { \
-            DEEP_DEBUG("converted lint %ld not within range (%ld,%ld)\n", \
+            AT_STACK_LOGE("converted lint %ld not within range (%ld,%ld)", \
                 dest, (long int)min, (long int)max); \
         } \
         MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, \
@@ -101,7 +101,7 @@ extern int convert_and_validate(const char* str,
     } \
     else \
     { \
-        DEEP_DEBUG("Need to tokenize an long integer value but not found. Report 'ERR'!\n"); \
+        AT_STACK_LOGE("Need to tokenize an long integer value but not found. Report 'ERR'!"); \
         free_handler_tmp_buff(handler_tmp_buff); \
         RETURN_RESPONSE_ERROR(resp); \
     } \
@@ -133,14 +133,14 @@ extern int convert_and_validate(const char* str,
         int is_cond_satisfy = !convert_and_validate(token, (long int*)&dest); \
         if (!is_cond_satisfy) \
         { \
-            DEEP_DEBUG("Converted lint stage for token '%s' wrong\n", token); \
+            AT_STACK_LOGE("Converted lint stage for token '%s' wrong", token); \
         } \
         MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, \
             handler_tmp_buff, resp); \
         is_cond_satisfy = ((dest >= min) && (dest <= max)); \
         if (!is_cond_satisfy) \
         { \
-            DEEP_DEBUG("converted lint %ld not within range (%ld,%ld)\n", \
+            AT_STACK_LOGE("converted lint %ld not within range (%ld,%ld)", \
                 dest, (long int)min, (long int)max); \
         } \
         MUST_BE_CORRECT_OR_RESPOND_ERROR(is_cond_satisfy, \
@@ -148,7 +148,7 @@ extern int convert_and_validate(const char* str,
     } \
     else \
     { \
-        DEEP_DEBUG("Not found optional integer token!\n"); \
+        AT_STACK_LOGD("Not found optional integer token!"); \
     } \
 } while (0)
 
@@ -174,12 +174,12 @@ extern int convert_and_validate(const char* str,
     token = sys_strtok(NULL, param_delim, &token_ctx); \
     if (token == NULL) \
     { \
-        DEEP_DEBUG("Not found required quoted string token!\n"); \
+        AT_STACK_LOGE("Not found required quoted string token!"); \
     } \
     else if ((token != NULL) && ((token[0] != '"') || \
         (token[strlen(token) - 1] != '"'))) \
     { \
-        DEEP_DEBUG("Found token not properly quoted!\n"); \
+        AT_STACK_LOGE("Found token not properly quoted!"); \
     } \
     MUST_BE_CORRECT_OR_RESPOND_ERROR((token != NULL) && \
         (token[0] == '"') && (token[strlen(token) - 1] == '"') \
@@ -211,7 +211,7 @@ extern int convert_and_validate(const char* str,
         if ((token[0] != '"') || \
             (token[strlen(token) - 1] != '"')) \
         { \
-            DEEP_DEBUG("Found token not properly quoted!\n"); \
+            AT_STACK_LOGE("Found token not properly quoted!"); \
         } \
         MUST_BE_CORRECT_OR_RESPOND_ERROR((token[0] == '"') && \
             (token[strlen(token) - 1] == '"'), handler_tmp_buff, resp); \
@@ -220,7 +220,7 @@ extern int convert_and_validate(const char* str,
     } \
     else \
     { \
-        DEEP_DEBUG("Not found optional quoted string token!\n"); \
+        AT_STACK_LOGD("Not found optional quoted string token!"); \
     } \
 } while (0)
 
