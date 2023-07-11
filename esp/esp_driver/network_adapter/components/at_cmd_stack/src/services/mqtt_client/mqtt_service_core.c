@@ -368,6 +368,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         DEEP_DEBUG("Client %d connected to broker!\n", client_idx);
         announce_connect_request_success(client_idx);
         break;
+
+    case MQTT_EVENT_DISCONNECTED:
+        DEEP_DEBUG("Client %d disconnected to broker!\n", client_idx);
+        change_connection_status(client_idx, 
+            MQTT_CONNECTION_STATUS_NOT_CONNECTED);
+        break;
+
     case MQTT_EVENT_PUBLISHED:
         DEEP_DEBUG("Client %d published a data\n", client_idx);
         break;
