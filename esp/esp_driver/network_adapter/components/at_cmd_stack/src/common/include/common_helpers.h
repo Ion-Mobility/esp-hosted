@@ -3,7 +3,7 @@
 
 #include "sys_common_funcs.h"
 #include "esp_log.h"
-#define AT_LOG_FORMAT(format)   "(%s) at_cmd_stack: %s:%d: " format "\n"
+#define AT_LOG_FORMAT(format)   "(AT-%s) %s:%d: %s() " format "\n"
 
 
 #define MUST_BE_CORRECT_OR_EXIT(cond, ret_val)  do { \
@@ -26,7 +26,8 @@
 #define AT_STACK_LOGE(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_INFO) \
     { \
-        sys_printf(AT_LOG_FORMAT(format), "ERROR", __FILENAME__,__LINE__, ##__VA_ARGS__); \
+        sys_printf(AT_LOG_FORMAT(format), "ERROR", __FILENAME__,__LINE__, \
+        __func__, ##__VA_ARGS__); \
     } \
 } while(0)
 #else
@@ -37,7 +38,8 @@
 #define AT_STACK_LOGW(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_WARN) \
     { \
-        sys_printf(AT_LOG_FORMAT(format), "WARN", __FILENAME__,__LINE__, ##__VA_ARGS__); \
+        sys_printf(AT_LOG_FORMAT(format), "WARN", __FILENAME__,__LINE__, \
+        __func__, ##__VA_ARGS__); \
     } \
 } while(0)
 #else
@@ -48,7 +50,8 @@
 #define AT_STACK_LOGI(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_INFO) \
     { \
-        sys_printf(AT_LOG_FORMAT(format), "INFO", __FILENAME__,__LINE__, ##__VA_ARGS__); \
+        sys_printf(AT_LOG_FORMAT(format), "INFO", __FILENAME__,__LINE__, \
+        __func__, ##__VA_ARGS__); \
     } \
 } while(0)
 #else
@@ -59,7 +62,8 @@
 #define AT_STACK_LOGD(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_DEBUG) \
     { \
-        sys_printf(AT_LOG_FORMAT(format), "DEBUG", __FILENAME__,__LINE__, ##__VA_ARGS__); \
+        sys_printf(AT_LOG_FORMAT(format), "DEBUG", __FILENAME__,__LINE__, \
+        __func__, ##__VA_ARGS__); \
     } \
 } while(0)
 #else
@@ -70,7 +74,8 @@
 #define AT_STACK_LOGV(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_VERBOSE) \
     { \
-        sys_printf(AT_LOG_FORMAT(format), "VERBOSE", __FILENAME__,__LINE__, ##__VA_ARGS__); \
+        sys_printf(AT_LOG_FORMAT(format), "VERBOSE", __FILENAME__,__LINE__, \
+        __func__, ##__VA_ARGS__); \
     } \
 } while(0)
 #else
