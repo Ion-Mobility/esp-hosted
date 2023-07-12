@@ -3,8 +3,28 @@
 
 #include "sys_common_funcs.h"
 #include "esp_log.h"
+#include "sdkconfig.h"
 #define AT_LOG_FORMAT(format)   "(AT-%s) %s:%d: %s() " format "\n"
 
+#ifndef AT_STACK_LOGE(format,...)
+#define AT_STACK_LOGE(format,...)
+#endif 
+
+#ifndef AT_STACK_LOGW(format,...)
+#define AT_STACK_LOGW(format,...)
+#endif
+
+#ifndef AT_STACK_LOGI(format,...)
+#define AT_STACK_LOGI(format,...)
+#endif
+
+#ifndef AT_STACK_LOGD(format,...)
+#define AT_STACK_LOGD(format,...)
+#endif
+
+#ifndef AT_STACK_LOGV(format,...)
+#define AT_STACK_LOGV(format,...)
+#endif
 
 #define MUST_BE_CORRECT_OR_EXIT(cond, ret_val)  do { \
     if (!(cond)) { \
@@ -23,6 +43,7 @@
 
 #if CONFIG_TURN_ON_DEEP_DEBUG
 #if CONFIG_LOG_DEFAULT_LEVEL >= 1
+#undef AT_STACK_LOGE(format,...)
 #define AT_STACK_LOGE(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_INFO) \
     { \
@@ -30,11 +51,10 @@
         __func__, ##__VA_ARGS__); \
     } \
 } while(0)
-#else
-#define AT_STACK_LOGE(format,...)
 #endif
 
 #if CONFIG_LOG_DEFAULT_LEVEL >= 2
+#undef AT_STACK_LOGW(format,...)
 #define AT_STACK_LOGW(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_WARN) \
     { \
@@ -42,11 +62,10 @@
         __func__, ##__VA_ARGS__); \
     } \
 } while(0)
-#else
-#define AT_STACK_LOGW(format,...)
 #endif
 
 #if CONFIG_LOG_DEFAULT_LEVEL >= 3
+#undef AT_STACK_LOGI(format,...)
 #define AT_STACK_LOGI(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_INFO) \
     { \
@@ -54,11 +73,10 @@
         __func__, ##__VA_ARGS__); \
     } \
 } while(0)
-#else
-#define AT_STACK_LOGI(format,...)
 #endif
 
 #if CONFIG_LOG_DEFAULT_LEVEL >= 4
+#undef AT_STACK_LOGD(format,...)
 #define AT_STACK_LOGD(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_DEBUG) \
     { \
@@ -66,11 +84,10 @@
         __func__, ##__VA_ARGS__); \
     } \
 } while(0)
-#else
-#define AT_STACK_LOGD(format,...)
 #endif
 
 #if CONFIG_LOG_DEFAULT_LEVEL >= 5
+#undef AT_STACK_LOGV(format,...)
 #define AT_STACK_LOGV(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_VERBOSE) \
     { \
@@ -78,8 +95,6 @@
         __func__, ##__VA_ARGS__); \
     } \
 } while(0)
-#else
-#define AT_STACK_LOGV(format,...)
 #endif
 #endif
 

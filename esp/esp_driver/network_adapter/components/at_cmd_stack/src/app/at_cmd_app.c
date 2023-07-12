@@ -13,7 +13,6 @@
 #include "at_cmd_parse_and_exec.h"
 #include "common_helpers.h"
 #include "mqtt_service.h"
-#include "at_cmd_stack_event.h"
 
 #define AT_TASK_SLEEP_ms				 100
 

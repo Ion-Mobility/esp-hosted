@@ -24,7 +24,7 @@ typedef enum {
 static int find_parse_exec_handler_entry_for_at_cmd(const char *at_cmd, 
     AT_BUFF_SIZE_T cmd_total_length);
 
-static at_cmd_type_t determine_type_of_at_cmd_and_parse_exec(int entry_index,
+static AT_BUFF_SIZE_T determine_type_of_at_cmd_then_parse_exec(int entry_index,
     const char *at_cmd, AT_BUFF_SIZE_T cmd_total_length, char* at_resp);
 
 static AT_BUFF_SIZE_T find_argument_part_of_at_cmd(int entry_index,
@@ -65,14 +65,14 @@ AT_BUFF_SIZE_T parse_and_exec_at_cmd(const char *at_cmd, const AT_BUFF_SIZE_T
     if (!is_handler_found)
         RETURN_RESPONSE_UNSUPPORTED(at_resp);
 
-    return determine_type_of_at_cmd_and_parse_exec(parse_exec_hanlder_index,
+    return determine_type_of_at_cmd_then_parse_exec(parse_exec_hanlder_index,
         at_cmd, cmd_total_length, at_resp);
 }
 
 //===============================
 // Private functions definition
 //===============================
-static AT_BUFF_SIZE_T determine_type_of_at_cmd_and_parse_exec(int entry_index,
+static AT_BUFF_SIZE_T determine_type_of_at_cmd_then_parse_exec(int entry_index,
     const char *at_cmd, AT_BUFF_SIZE_T cmd_total_length, char* at_resp)
 {
     const char* arg;
