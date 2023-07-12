@@ -189,24 +189,30 @@ static AT_BUFF_SIZE_T parse_and_exec_exec_at_cmd(int entry_index,
 static int find_parse_exec_handler_entry_for_at_cmd(const char *at_cmd, 
     AT_BUFF_SIZE_T cmd_total_length)
 {
-    char *cpy_of_cmd = sys_mem_calloc(cmd_total_length + 1, 1);
-    memcpy(cpy_of_cmd, at_cmd, cmd_total_length);
-    char *token_ctx;
-    char *get_cmd_family = sys_strtok(cpy_of_cmd, "=", &token_ctx);
+    AT_BUFF_SIZE_T src_cmd_family_len, pos;
+    for (pos = 0; pos < cmd_total_length; pos++)
+    {
+        if ((at_cmd[pos] == '?') || (at_cmd[pos] == '='))
+            break;
+    }
+
+    // last position terminate the AT command family part is (pos - 1)
+    // but the length of AT command family part is (pos - 1 ) + 1, so 
+    // the the length of AT command family part is simply equal to (pos)
+    src_cmd_family_len = pos;
+
     for (int index = 0; index < MAX_NUMBER_OF_SUPPORTED_AT_COMMANDS; index++)
     {
         const char *target_cmd_family_to_compare = 
             parse_exec_handlers_table[index].at_command_family;
         AT_BUFF_SIZE_T target_cmd_family_len = strlen(target_cmd_family_to_compare);
-        if ((strlen(get_cmd_family) == target_cmd_family_len) &&
+        if ((src_cmd_family_len == target_cmd_family_len) &&
             (!strncmp(at_cmd, target_cmd_family_to_compare, 
             target_cmd_family_len)))
         {
-            sys_mem_free(cpy_of_cmd);
             return index;
         }
     }
-    sys_mem_free(cpy_of_cmd);
     return -1;
 }
 
