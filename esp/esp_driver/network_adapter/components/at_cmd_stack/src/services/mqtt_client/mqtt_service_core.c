@@ -171,7 +171,8 @@ mqtt_service_pkt_status_t mqtt_service_connect(int client_index,
         .client_id = client_id,
         .port = port,
         .username = username,
-        .password = pass
+        .password = pass,
+        .disable_auto_reconnect = true
     };
 
     esp_mqtt_client_handle_t client = 
@@ -275,6 +276,27 @@ mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
     
     MQTT_CLIENT_UNLOCK(service_client_handle);
     return MQTT_SERVICE_PACKET_STATUS_OK;
+}
+
+mqtt_service_status_t mqtt_service_disconnect(int client_index)
+{
+    mqtt_service_client_t *service_client_handle = 
+            &mqtt_service_clients_table[client_index];
+    MUST_BE_CORRECT_OR_EXIT(is_mqtt_service_initialized, 
+        MQTT_SERVICE_STATUS_ERROR);
+
+    mqtt_client_connection_status_t connection_status = 
+        mqtt_service_get_connection_status(client_index);
+    bool is_client_connected = 
+        (connection_status == MQTT_CONNECTION_STATUS_CONNECTED);
+    if (!is_client_connected)
+        return MQTT_SERVICE_STATUS_OK;
+
+    esp_mqtt_client_handle_t client = service_client_handle->esp_client_handle;
+    if (esp_mqtt_client_disconnect(client))
+        return MQTT_SERVICE_STATUS_ERROR;
+
+    return MQTT_SERVICE_STATUS_OK;
 }
 
 mqtt_service_status_t mqtt_service_get_recv_buff_group_status(

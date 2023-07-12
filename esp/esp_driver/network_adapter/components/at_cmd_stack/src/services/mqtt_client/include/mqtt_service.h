@@ -120,6 +120,17 @@ extern mqtt_service_pkt_status_t mqtt_service_unsubscribe(int client_index,
     const char *topic);
 
 /**
+ * @brief Issue a MQTT client to disconnect
+ * 
+ * @param client_index index of MQTT client [in]
+ * @retval MQTT_SERVICE_PACKET_STATUS_OK if MQTT client disconnects sucessfully
+ * or it has already disconnected
+ * @retval MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND if MQTT client is still 
+ * connected to MQTT broker but for some reason, fails to disconnect
+ */
+extern mqtt_service_status_t mqtt_service_disconnect(int client_index);
+
+/**
  * @brief Only get the status of a MQTT client's receive buffer group status
  * 
  * @param client_index index of MQTT client [in]
