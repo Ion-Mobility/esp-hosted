@@ -4,14 +4,14 @@
 #include "parse_and_exec_types.h"
 #include "at_cmd_stack_types.h"
 
-#define MAX_NUMBER_OF_SUPPORTED_AT_COMMANDS 9
+#define MAX_NUMBER_OF_SUPPORTED_AT_COMMANDS 10
 
 typedef struct {
-    char *at_command_family;
-    command_handler_t test_cmd_parse_exec_handler;
-    command_handler_t read_cmd_parse_exec_handler;
-    command_handler_t write_cmd_parse_exec_handler;
-    command_handler_t exec_cmd_parse_exec_handler;
+    const char *at_command_family;
+    const command_handler_t test_cmd_parse_exec_handler;
+    const command_handler_t read_cmd_parse_exec_handler;
+    const command_handler_t write_cmd_parse_exec_handler;
+    const command_handler_t exec_cmd_parse_exec_handler;
 } parse_exec_handler_entry_t;
 
 extern const parse_exec_handler_entry_t parse_exec_handlers_table

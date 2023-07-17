@@ -8,6 +8,7 @@ set(CMD_HANDLERS_SRCS
     "src/parse_and_exec/cmd_handlers/qmtdisc_parse_exec_handler.c"
     "src/parse_and_exec/cmd_handlers/qmtrecv_parse_exec_handler.c"
     "src/parse_and_exec/cmd_handlers/qmtdump_parse_exec_handler.c"
+    "src/parse_and_exec/cmd_handlers/parsetest_parse_exec_handler.c"
 )
 
 set(APP_SRCS

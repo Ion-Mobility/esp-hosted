@@ -8,6 +8,7 @@
 #include "cmd_handlers/qmtpubex_parse_exec_handler.h"
 #include "cmd_handlers/qmtrecv_parse_exec_handler.h"
 #include "cmd_handlers/qmtdump_parse_exec_handler.h"
+#include "cmd_handlers/parsetest_parse_exec_handler.h"
 
 const parse_exec_handler_entry_t parse_exec_handlers_table
     [MAX_NUMBER_OF_SUPPORTED_AT_COMMANDS] =
@@ -56,6 +57,13 @@ const parse_exec_handler_entry_t parse_exec_handlers_table
     {
         .at_command_family = "AT+QMTDUMP",
         .read_cmd_parse_exec_handler = qmtdump_read_cmd_parse_exec_handler,
+    },
+    {
+        .at_command_family = "AT+PARSETEST",
+        .test_cmd_parse_exec_handler = parsetest_test_cmd_parse_exec_handler,
+        .read_cmd_parse_exec_handler = parsetest_read_cmd_parse_exec_handler,
+        .write_cmd_parse_exec_handler = parsetest_write_cmd_parse_exec_handler,
+        .exec_cmd_parse_exec_handler = parsetest_exec_cmd_parse_exec_handler,
     },
 };
 
