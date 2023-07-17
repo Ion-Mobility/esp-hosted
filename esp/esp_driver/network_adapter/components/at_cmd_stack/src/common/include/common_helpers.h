@@ -6,23 +6,23 @@
 #include "sdkconfig.h"
 #define AT_LOG_FORMAT(format)   "(AT-%s) %s:%d: %s() " format "\n"
 
-#ifndef AT_STACK_LOGE(format,...)
+#ifndef AT_STACK_LOGE
 #define AT_STACK_LOGE(format,...)
 #endif 
 
-#ifndef AT_STACK_LOGW(format,...)
+#ifndef AT_STACK_LOGW
 #define AT_STACK_LOGW(format,...)
 #endif
 
-#ifndef AT_STACK_LOGI(format,...)
+#ifndef AT_STACK_LOGI
 #define AT_STACK_LOGI(format,...)
 #endif
 
-#ifndef AT_STACK_LOGD(format,...)
+#ifndef AT_STACK_LOGD
 #define AT_STACK_LOGD(format,...)
 #endif
 
-#ifndef AT_STACK_LOGV(format,...)
+#ifndef AT_STACK_LOGV
 #define AT_STACK_LOGV(format,...)
 #endif
 
@@ -43,7 +43,7 @@
 
 #if CONFIG_TURN_ON_DEEP_DEBUG
 #if CONFIG_LOG_DEFAULT_LEVEL >= 1
-#undef AT_STACK_LOGE(format,...)
+#undef AT_STACK_LOGE
 #define AT_STACK_LOGE(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_INFO) \
     { \
@@ -54,7 +54,7 @@
 #endif
 
 #if CONFIG_LOG_DEFAULT_LEVEL >= 2
-#undef AT_STACK_LOGW(format,...)
+#undef AT_STACK_LOGW
 #define AT_STACK_LOGW(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_WARN) \
     { \
@@ -65,7 +65,7 @@
 #endif
 
 #if CONFIG_LOG_DEFAULT_LEVEL >= 3
-#undef AT_STACK_LOGI(format,...)
+#undef AT_STACK_LOGI
 #define AT_STACK_LOGI(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_INFO) \
     { \
@@ -76,7 +76,7 @@
 #endif
 
 #if CONFIG_LOG_DEFAULT_LEVEL >= 4
-#undef AT_STACK_LOGD(format,...)
+#undef AT_STACK_LOGD
 #define AT_STACK_LOGD(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_DEBUG) \
     { \
@@ -87,7 +87,7 @@
 #endif
 
 #if CONFIG_LOG_DEFAULT_LEVEL >= 5
-#undef AT_STACK_LOGV(format,...)
+#undef AT_STACK_LOGV
 #define AT_STACK_LOGV(format,...) do { \
     if (CONFIG_LOG_DEFAULT_LEVEL >= ESP_LOG_VERBOSE) \
     { \

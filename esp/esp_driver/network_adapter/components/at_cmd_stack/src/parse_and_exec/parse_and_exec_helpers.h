@@ -9,13 +9,13 @@
 
 #define RETURN_RESPONSE_UNSUPPORTED(resp)  do { \
     memcpy(resp, unsupported_string, strlen(unsupported_string)); \
-    AT_STACK_LOGE("Return 'ERR' because of unsupported AT commands!"); \
+    AT_STACK_LOGE("Return 'ERROR' because of unsupported AT commands!"); \
     return strlen(unsupported_string); \
 } while (0)
 
 #define RETURN_RESPONSE_ERROR(resp)  do { \
     memcpy(resp, error_string, strlen(error_string)); \
-    AT_STACK_LOGE("Return 'ERR' because of AT command is invalid!"); \
+    AT_STACK_LOGE("Return 'ERROR' because of AT command is invalid!"); \
     return strlen(error_string); \
 } while (0)
 
@@ -26,7 +26,7 @@
 
 /**
  * @brief Check if condition is satisfy. If not, free temporary buffer of
- * parse and exec handler and response 'ERR'
+ * parse and exec handler and response 'ERROR'
  * 
  * @param condition the condition to check [in]
  * @param handler_tmp_buff temporary buffer in usual parse and exec handler.
@@ -37,7 +37,7 @@
 #define MUST_BE_CORRECT_OR_RESPOND_ERROR(condition, \
     handler_tmp_buff, resp)  do { \
     if (!(condition)) { \
-        AT_STACK_LOGE("Condition not satisfy. Return 'ERR' response!"); \
+        AT_STACK_LOGE("Condition not satisfy. Return 'ERROR' response!"); \
         free_handler_tmp_buff(handler_tmp_buff); \
         RETURN_RESPONSE_ERROR(resp); \
     } \
@@ -61,7 +61,7 @@ extern int convert_and_validate(const char* str,
 
 /**
  * @brief Get next token, validate and assign to a unsigned long integer. 
- * If no token is found or valus is out of range, return 'ERR' response.
+ * If no token is found or valus is out of range, return 'ERROR' response.
  * 
  * @note Can only be used in parse and exec handler
  * 
@@ -101,7 +101,7 @@ extern int convert_and_validate(const char* str,
     } \
     else \
     { \
-        AT_STACK_LOGE("Need to tokenize an long integer value but not found. Report 'ERR'!"); \
+        AT_STACK_LOGE("Need to tokenize an long integer value but not found. Report 'ERROR'!"); \
         free_handler_tmp_buff(handler_tmp_buff); \
         RETURN_RESPONSE_ERROR(resp); \
     } \
@@ -109,7 +109,7 @@ extern int convert_and_validate(const char* str,
 
 /**
  * @brief Get next token, validate and assign to a unsigned long integer. 
- * If token is found and invalid, return 'ERR' response. 
+ * If token is found and invalid, return 'ERROR' response. 
  * Continue if no token is found
  * 
  * @note Can only be used in parse and exec handler
@@ -156,7 +156,7 @@ extern int convert_and_validate(const char* str,
 /**
  * @brief Get next token, validate and assign to a character pointer from
  * quoted string. If no token is found or not properly quoted, 
- * return 'ERR' response
+ * return 'ERROR' response
  * 
  * @note Can only be used in parse and exec handler
  * 
@@ -190,7 +190,7 @@ extern int convert_and_validate(const char* str,
 
 /**
  * @brief Get next token, validate and assign to a character pointer from
- * quoted string. If token is found but not properly quoted, return 'ERR' 
+ * quoted string. If token is found but not properly quoted, return 'ERROR' 
  * response. Continue if no token is found
  * 
  * @note Can only be used in parse and exec handler

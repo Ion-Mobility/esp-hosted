@@ -4,6 +4,14 @@ int convert_and_validate(const char* str,
     long int* converted_number)
 {
     *converted_number = strtol(str, NULL, 10);
+    for (int pos = 0; pos < strlen(str); pos++)
+    {
+        if ((str[pos] < '0') || (str[pos] > '9'))
+        {
+            AT_STACK_LOGE("original string '%s' has wrong integer format", str);
+            return 1;
+        }
+    }
     if (*converted_number != 0) return 0;
 
     for (int pos = 0; pos < strlen(str); pos++)
