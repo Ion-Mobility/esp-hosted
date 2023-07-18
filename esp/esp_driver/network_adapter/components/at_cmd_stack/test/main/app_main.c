@@ -1,16 +1,21 @@
 #include "parse_test.h"
+#include "mqtt_test.h"
 #include "unity.h"
 #include <string.h>
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #define INPUT_BUFFER_LENGTH 5
+#define WAIT_TO_RESULT_BEFORE_RESET_ms 3000
 
 
 static const char *test_description_table[] =
 {
     "Restart board",
-    "Test parsing"
+    "Test parsing",
+    "Test MQTT connect/disconnect",
+    "Test MQTT basic actions",
+    "Test MQTT stress test"
 };
 
 
@@ -96,6 +101,39 @@ static void parse_and_exec_option(char *option)
         RUN_TEST(TestCase_Parse);
         UNITY_END();
         return;
+    }
+    else if ((!strcmp(option, "2")) && (strlen(option) == 1))
+    {
+        UNITY_BEGIN();
+        RUN_TEST(TestCase_MQTT_Connect_Disconnect);
+        UNITY_END();
+        printf("Restart ESP32 after %d seconds...\n", 
+            WAIT_TO_RESULT_BEFORE_RESET_ms / 1000);
+        uint32_t ticks_to_wait = pdMS_TO_TICKS(2000);
+        vTaskDelay(ticks_to_wait);
+        esp_restart();
+    }
+    else if ((!strcmp(option, "3")) && (strlen(option) == 1))
+    {
+        UNITY_BEGIN();
+        RUN_TEST(TestCase_MQTT_Basic_Actions);
+        UNITY_END();
+        printf("Restart ESP32 after %d seconds...\n", 
+            WAIT_TO_RESULT_BEFORE_RESET_ms / 1000);
+        uint32_t ticks_to_wait = pdMS_TO_TICKS(WAIT_TO_RESULT_BEFORE_RESET_ms);
+        vTaskDelay(ticks_to_wait);
+        esp_restart();
+    }
+    else if ((!strcmp(option, "4")) && (strlen(option) == 1))
+    {
+        UNITY_BEGIN();
+        RUN_TEST(TestCase_MQTT_StressTest);
+        UNITY_END();
+        printf("Restart ESP32 after %d seconds...\n",
+            WAIT_TO_RESULT_BEFORE_RESET_ms / 1000);
+        uint32_t ticks_to_wait = pdMS_TO_TICKS(WAIT_TO_RESULT_BEFORE_RESET_ms);
+        vTaskDelay(ticks_to_wait);
+        esp_restart();
     }
     printf("Not found such option. Please try again\n");
 }
