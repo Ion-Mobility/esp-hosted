@@ -17,4 +17,6 @@
 
 #define sys_task_sleep_us(sleep_us) usleep(sleep_us)
 
+#define SYS_GET_TIMESTAMP esp_log_timestamp()
+
 #endif
