@@ -49,6 +49,11 @@ static void generate_random_string(char *ret_random_string, size_t target_len);
 
 static void basic_action_test(int num_of_trials, bool unsub_after_trial);
 
+void TestCase_Connect_to_WiFi()
+{
+    connect_to_wifi();
+}
+
 void TestCase_MQTT_Connect_Disconnect()
 {
     connect_to_wifi();
@@ -75,11 +80,15 @@ void TestCase_MQTT_StressTest()
 
 static void connect_to_wifi()
 {
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    ESP_ERROR_CHECK(example_connect());
-
+    static bool is_connected_to_wifi = false;
+    if (!is_connected_to_wifi)
+    {
+        ESP_ERROR_CHECK(nvs_flash_init());
+        ESP_ERROR_CHECK(esp_netif_init());
+        ESP_ERROR_CHECK(esp_event_loop_create_default());
+        ESP_ERROR_CHECK(example_connect());
+    }
+    is_connected_to_wifi = true;
 }
 
 static void init_and_assert()

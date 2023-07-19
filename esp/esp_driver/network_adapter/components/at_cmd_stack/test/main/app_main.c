@@ -12,6 +12,7 @@
 static const char *test_description_table[] =
 {
     "Restart board",
+    "Connect to WiFi",
     "Test parsing",
     "Test MQTT connect/disconnect",
     "Test MQTT basic actions",
@@ -98,11 +99,19 @@ static void parse_and_exec_option(char *option)
     else if ((!strcmp(option, "1")) && (strlen(option) == 1))
     {
         UNITY_BEGIN();
-        RUN_TEST(TestCase_Parse);
+        RUN_TEST(TestCase_Connect_to_WiFi);
         UNITY_END();
         return;
     }
     else if ((!strcmp(option, "2")) && (strlen(option) == 1))
+    {
+        UNITY_BEGIN();
+        RUN_TEST(TestCase_Parse);
+        UNITY_END();
+        return;
+    }
+
+    else if ((!strcmp(option, "3")) && (strlen(option) == 1))
     {
         UNITY_BEGIN();
         RUN_TEST(TestCase_MQTT_Connect_Disconnect);
@@ -113,7 +122,7 @@ static void parse_and_exec_option(char *option)
         vTaskDelay(ticks_to_wait);
         esp_restart();
     }
-    else if ((!strcmp(option, "3")) && (strlen(option) == 1))
+    else if ((!strcmp(option, "4")) && (strlen(option) == 1))
     {
         UNITY_BEGIN();
         RUN_TEST(TestCase_MQTT_Basic_Actions);
@@ -124,7 +133,7 @@ static void parse_and_exec_option(char *option)
         vTaskDelay(ticks_to_wait);
         esp_restart();
     }
-    else if ((!strcmp(option, "4")) && (strlen(option) == 1))
+    else if ((!strcmp(option, "5")) && (strlen(option) == 1))
     {
         UNITY_BEGIN();
         RUN_TEST(TestCase_MQTT_StressTest);
