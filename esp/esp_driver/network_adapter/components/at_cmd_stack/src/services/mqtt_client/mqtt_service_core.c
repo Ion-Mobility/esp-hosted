@@ -259,8 +259,8 @@ mqtt_service_pkt_status_t mqtt_service_connect(int client_index,
 
     *connect_ret_code = 
         map_event_bit_to_connect_ret_code(get_event_bit);
-    AT_STACK_LOGI("Client #%d connect to '%s', port %u. Connect return code: %u",
-        client_index, hostname, port, *connect_ret_code);
+    AT_STACK_LOGI("Client #%d try to connect to '%s', port %u. Connect return code %u, packet status %u",
+        client_index, hostname, port, *connect_ret_code, ret_status);
     
     return ret_status;
 }
