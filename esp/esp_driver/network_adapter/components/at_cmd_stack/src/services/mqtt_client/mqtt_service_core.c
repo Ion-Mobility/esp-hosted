@@ -130,6 +130,7 @@ mqtt_service_status_t mqtt_service_init()
         if (service_client_handle->esp_client_handle == NULL)
         {
             AT_STACK_LOGE("ESP client handle is NULL!!");
+            goto init_err;
         }
         AT_STACK_LOGD("Successfully got an ESP client handle for client!");
         esp_err_t event_register_status =  esp_mqtt_client_register_event(
@@ -139,9 +140,11 @@ mqtt_service_status_t mqtt_service_init()
         {
         case ESP_ERR_INVALID_ARG:
             AT_STACK_LOGE("Wrong initialization of ESP client");
+            goto init_err;
             break;
         case ESP_ERR_NO_MEM:
             AT_STACK_LOGE("No more memory for register client event");
+            goto init_err;
             break;
         default:
             AT_STACK_LOGD("Register event for client successfully!");
@@ -150,12 +153,14 @@ mqtt_service_status_t mqtt_service_init()
         if (service_client_handle->connect_req_event_group == NULL)
         {
             AT_STACK_LOGE("No more memory for creating connect request event group");
+            goto init_err;
         }
         AT_STACK_LOGD("Create event group for connect request successfully");
         service_client_handle->connect_status_event_group = xEventGroupCreate();
         if (service_client_handle->connect_status_event_group == NULL)
         {
             AT_STACK_LOGE("No more memory for creating connect status event group");
+            goto init_err;
         }
         AT_STACK_LOGD("Create event group for connect status successfully");
         // must initialize connection status to not connected
@@ -167,12 +172,30 @@ mqtt_service_status_t mqtt_service_init()
         if (service_client_handle->client_mutex == NULL)
         {
             AT_STACK_LOGE("No more memory for creating client mutex lock");
+            goto init_err;
         }
         AT_STACK_LOGD("Create client mutex lock successfully");
     }
     AT_STACK_LOGI("MQTT service initializes successfully");
     is_mqtt_service_initialized = true;
     return MQTT_SERVICE_STATUS_OK;
+
+init_err:
+    for (int index = 0; index < MAX_NUM_OF_MQTT_CLIENT; index++)
+    {
+        AT_STACK_LOGI("Deinit client #%d due to failing MQTT service init", index);
+        mqtt_service_client_t *service_client_handle = 
+            &mqtt_service_clients_table[index];
+        if (service_client_handle->esp_client_handle)
+            esp_mqtt_client_destroy(service_client_handle->esp_client_handle);
+        if (service_client_handle->connect_req_event_group)
+            vEventGroupDelete(service_client_handle->connect_req_event_group);
+        if (service_client_handle->connect_status_event_group)
+            vEventGroupDelete(service_client_handle->connect_status_event_group);
+        if (service_client_handle->client_mutex)
+            vSemaphoreDelete(service_client_handle->client_mutex);
+    }
+    return MQTT_SERVICE_STATUS_ERROR;
 }
 
 mqtt_client_connection_status_t mqtt_service_get_connection_status(
