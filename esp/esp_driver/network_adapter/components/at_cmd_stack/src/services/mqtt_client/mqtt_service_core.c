@@ -108,6 +108,7 @@ static int find_index_from_client_handle(esp_mqtt_client_handle_t client);
 //===============================
 mqtt_service_status_t mqtt_service_init()
 {
+    AT_STACK_LOGI("Init MQTT service");
     for (int index = 0; 
         index < sizeof(default_dns_server) / sizeof(default_dns_server[0]);
         index++)
@@ -117,6 +118,7 @@ mqtt_service_status_t mqtt_service_init()
 
     for (int index = 0; index < MAX_NUM_OF_MQTT_CLIENT; index++)
     {
+        AT_STACK_LOGI("Init client #%d", index);
         // Dummy config only for initialization. Later on MQTT client will
         // be configured again when perform connecting, publishing,
         // subscribing
@@ -125,19 +127,50 @@ mqtt_service_status_t mqtt_service_init()
             &mqtt_service_clients_table[index];
         service_client_handle->esp_client_handle = 
             esp_mqtt_client_init(&dummy_config);
-        esp_mqtt_client_register_event(service_client_handle->esp_client_handle,
+        if (service_client_handle->esp_client_handle == NULL)
+        {
+            AT_STACK_LOGE("ESP client handle is NULL!!");
+        }
+        AT_STACK_LOGD("Successfully got an ESP client handle for client!");
+        esp_err_t event_register_status =  esp_mqtt_client_register_event(
+            service_client_handle->esp_client_handle,
             ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
+        switch (event_register_status)
+        {
+        case ESP_ERR_INVALID_ARG:
+            AT_STACK_LOGE("Wrong initialization of ESP client");
+            break;
+        case ESP_ERR_NO_MEM:
+            AT_STACK_LOGE("No more memory for register client event");
+            break;
+        default:
+            AT_STACK_LOGD("Register event for client successfully!");
+        }
         service_client_handle->connect_req_event_group = xEventGroupCreate();
+        if (service_client_handle->connect_req_event_group == NULL)
+        {
+            AT_STACK_LOGE("No more memory for creating connect request event group");
+        }
+        AT_STACK_LOGD("Create event group for connect request successfully");
         service_client_handle->connect_status_event_group = xEventGroupCreate();
-        
+        if (service_client_handle->connect_status_event_group == NULL)
+        {
+            AT_STACK_LOGE("No more memory for creating connect status event group");
+        }
+        AT_STACK_LOGD("Create event group for connect status successfully");
         // must initialize connection status to not connected
         change_connection_status(index, MQTT_CONNECTION_STATUS_NOT_CONNECTED);
         CLEAR_RECV_BUFF_GROUP(service_client_handle->recv_buff_group);
 
         // Create mutex
         service_client_handle->client_mutex = xSemaphoreCreateMutex();
+        if (service_client_handle->client_mutex == NULL)
+        {
+            AT_STACK_LOGE("No more memory for creating client mutex lock");
+        }
+        AT_STACK_LOGD("Create client mutex lock successfully");
     }
-
+    AT_STACK_LOGI("MQTT service initializes successfully");
     is_mqtt_service_initialized = true;
     return MQTT_SERVICE_STATUS_OK;
 }
@@ -150,8 +183,10 @@ mqtt_client_connection_status_t mqtt_service_get_connection_status(
     );
     if (connect_status_bit == MQTT_CONNECT_STATUS_CONNECTED_BIT)
     {
+        AT_STACK_LOGI("Get MQTT service: client #%d is connected", client_index);
         return MQTT_CONNECTION_STATUS_CONNECTED;
     }
+    AT_STACK_LOGI("Get MQTT service: client #%d is not connected", client_index);
     return MQTT_CONNECTION_STATUS_NOT_CONNECTED;
 
 }
@@ -201,6 +236,8 @@ mqtt_service_pkt_status_t mqtt_service_connect(int client_index,
 
     *connect_ret_code = 
         map_event_bit_to_connect_ret_code(get_event_bit);
+    AT_STACK_LOGI("Client #%d connect to '%s', port %u. Connect return code: %u",
+        client_index, hostname, port, *connect_ret_code);
     
     return ret_status;
 }
@@ -221,10 +258,14 @@ mqtt_service_pkt_status_t mqtt_service_subscribe(int client_index,
         mqtt_service_clients_table[client_index].esp_client_handle;
     if (esp_mqtt_client_subscribe(client, topic, (int) qos) == -1)
     {
+        AT_STACK_LOGE("Client #%d subscribe to topic '%s', qos %u FAILED!",
+            client_index, topic, qos);
         MQTT_CLIENT_UNLOCK(service_client_handle);
         return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
     }
     MQTT_CLIENT_UNLOCK(service_client_handle);
+    AT_STACK_LOGI("Client #%d subscribe to topic '%s', qos %u SUCCESS",
+        client_index, topic, qos);
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
 
@@ -239,15 +280,17 @@ mqtt_service_pkt_status_t mqtt_service_unsubscribe(int client_index,
         (connect_status_bit == MQTT_CONNECT_STATUS_CONNECTED_BIT);
     MUST_BE_CORRECT_OR_EXIT(is_broker_connected, 
         MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND);
-
     esp_mqtt_client_handle_t client = 
         mqtt_service_clients_table[client_index].esp_client_handle;
     if (esp_mqtt_client_unsubscribe(client, topic) == -1)
     {
         MQTT_CLIENT_UNLOCK(service_client_handle);
+        AT_STACK_LOGE("Client #%d unsubscribe to topic '%s' FAILED", client_index, topic);
         return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
     }
     MQTT_CLIENT_UNLOCK(service_client_handle);
+    AT_STACK_LOGI("Client #%d unsubscribe to topic '%s' SUCCESS", 
+        client_index, topic);
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
 
@@ -271,10 +314,16 @@ mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
         is_retain) == -1)
     {
         MQTT_CLIENT_UNLOCK(service_client_handle);
+        AT_STACK_LOGE("Client #%d publish to topic '%s', msg '%s', qos %u, retain '%d' FAILED", 
+            client_index, topic, msg, qos, 
+            is_retain);
         return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
     }
     
     MQTT_CLIENT_UNLOCK(service_client_handle);
+    AT_STACK_LOGI("Client #%d publish to topic '%s', msg '%s', qos %u, retain '%d' SUCCESS", 
+        client_index, topic, msg, qos, 
+        is_retain);
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
 
@@ -294,8 +343,11 @@ mqtt_service_status_t mqtt_service_disconnect(int client_index)
 
     esp_mqtt_client_handle_t client = service_client_handle->esp_client_handle;
     if (esp_mqtt_client_disconnect(client))
+    {
+        AT_STACK_LOGE("Client #%d disconnect FAILED", client_index);
         return MQTT_SERVICE_STATUS_ERROR;
-
+    }
+    AT_STACK_LOGI("Client #%d disconnect SUCCESS", client_index);
     return MQTT_SERVICE_STATUS_OK;
 }
 
@@ -313,6 +365,7 @@ mqtt_service_status_t mqtt_service_get_recv_buff_group_status(
     MUST_BE_CORRECT_OR_EXIT(is_client_connected, 
         MQTT_SERVICE_STATUS_ERROR);
 
+    AT_STACK_LOGI("Get recv buff group status of client #%d", client_index);
     MQTT_CLIENT_LOCK(service_client_handle);
     recv_buffer_group_t *recv_group_to_get_status = 
         &mqtt_service_clients_table[client_index].recv_buff_group;
@@ -347,6 +400,8 @@ mqtt_service_status_t mqtt_service_get_recv_buff_group(
         &mqtt_service_clients_table[client_index].recv_buff_group,
         sizeof(recv_buffer_group_t));
     MQTT_CLIENT_UNLOCK(service_client_handle);
+    AT_STACK_LOGI("Get recv buff group of client #%d, num_of_filled_buffer=%d", 
+        client_index, out_recv_buff_group->current_empty_buff_index);
 
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
@@ -368,6 +423,9 @@ mqtt_service_status_t mqtt_service_clear_recv_buff_group(
     MQTT_CLIENT_LOCK(service_client_handle);
     CLEAR_RECV_BUFF_GROUP(mqtt_service_clients_table[client_index].recv_buff_group);
     MQTT_CLIENT_UNLOCK(service_client_handle);
+    AT_STACK_LOGI("Clear recv buff group of client #%d, num_of_filled_buffer=%d", 
+        client_index, 
+        service_client_handle->recv_buff_group.current_empty_buff_index);
 
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
