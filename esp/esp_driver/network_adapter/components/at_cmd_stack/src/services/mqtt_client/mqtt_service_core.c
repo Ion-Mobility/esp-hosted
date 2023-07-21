@@ -6,7 +6,20 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "sys_common_funcs.h"
+#include "esp_crt_bundle.h"
+#include "nvs_flash.h"
 
+
+#define MUST_GET_STRING_IN_NVS_OR_RETURN_ERR(str, str_size, handle, key, err_msg) \
+    do { \
+        str = nvs_load_value_if_exist(handle, key, &str_size); \
+        if (str == NULL) \
+        { \
+            AT_STACK_LOGE(err_msg); \
+            nvs_close(handle); \
+            return -1; \
+        } \
+    } while (0)
 
 #define MQTT_CLIENT_LOCK(service_client_handle) \
     xSemaphoreTake(service_client_handle->client_mutex, portMAX_DELAY)
@@ -29,7 +42,7 @@ typedef struct {
 
 static bool is_mqtt_service_initialized = false;
 
-#define DEFAULT_PACKET_TIMEOUT_s 10
+#define DEFAULT_PACKET_TIMEOUT_s 15
 
 #define FROM_SEC_TO_MSEC(sec_value) sec_value * 1000
 #define MQTT_CONNECT_REQUEST_SUCCESS_BIT BIT0
@@ -73,9 +86,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
 // Private functions declaration
 //================================
 
-static esp_err_t mqtt_client_restart(esp_mqtt_client_handle_t client, 
-    const esp_mqtt_client_config_t *client_config);
-
 static uint32_t wait_for_connect_req_status(int client_index, uint32_t wait_ms);
 
 static uint32_t map_connect_ret_code_to_event_bits(
@@ -92,6 +102,25 @@ static int copy_new_sub_data_to_local_recv_buff(int client_idx,
     const char *topic, uint16_t topic_len, const char *msg, uint32_t msg_len);
 
 static void print_out_unread_buffer(int client_idx);
+
+static bool is_ion_broker(const char *hostname);
+
+static void mqtt_client_setup_before_connect(int client_index);
+
+static int mqtt_client_configure_and_request_connect(int client_index,
+    const char *client_id, const char *hostname, const char *username,
+    const char *pass, uint16_t port, const char* ca_cert, 
+    const char* client_cert, const char* client_priv_key);
+
+static mqtt_service_pkt_status_t mqtt_client_get_connect_req_status_timeout(
+    int client_index, uint32_t timeout_ms,
+    esp_mqtt_connect_return_code_t *connect_ret_code);
+
+static int get_crts_from_nvs(char** get_cacert, char** get_client_cert,
+    char** get_client_key);
+
+static char * nvs_load_value_if_exist(nvs_handle_t handle, const char* key,
+    size_t *value_size);
 
 /**
  * @brief Find the client index of givent MQTT client handle
@@ -176,6 +205,32 @@ mqtt_service_status_t mqtt_service_init()
         }
         AT_STACK_LOGD("Create client mutex lock successfully");
     }
+    /* Initialize NVS */
+	esp_err_t ret = nvs_flash_init();
+
+	switch (ret)
+    {
+    case ESP_ERR_NVS_NO_FREE_PAGES:
+        AT_STACK_LOGE("Init Non-volatile Storage FAILED due to no free pages!");
+		nvs_flash_erase();
+        if (nvs_flash_init() != ESP_OK)
+        {
+            AT_STACK_LOGE("Re-init Non-volatile Storage FAILED!");
+            goto init_err;
+        }
+        break;
+    case ESP_ERR_NVS_NEW_VERSION_FOUND:
+        AT_STACK_LOGE("Init Non-volatile Storage FAILED due to no new version!");
+		nvs_flash_erase();
+        if (nvs_flash_init() != ESP_OK)
+        {
+            AT_STACK_LOGE("Re-init Non-volatile Storage FAILED!");
+            goto init_err;
+        }
+        break;
+    }
+
+    AT_STACK_LOGD("Initialize Non-volatile Storage SUCCESS");
     AT_STACK_LOGI("MQTT service initializes successfully");
     is_mqtt_service_initialized = true;
     return MQTT_SERVICE_STATUS_OK;
@@ -219,49 +274,33 @@ mqtt_service_pkt_status_t mqtt_service_connect(int client_index,
     const char *pass, uint16_t port,
     esp_mqtt_connect_return_code_t *connect_ret_code)
 {
-    mqtt_service_client_t *service_client_handle = 
-            &mqtt_service_clients_table[client_index];
-    MQTT_CLIENT_LOCK(service_client_handle);
     mqtt_service_pkt_status_t ret_status;
-    esp_mqtt_client_config_t client_config = 
+    char *get_ca_crt = NULL, *get_client_crt = NULL, 
+        *get_client_priv_key = NULL;
+    if (is_ion_broker(hostname))
     {
-        .uri = hostname,
-        .client_id = client_id,
-        .port = port,
-        .username = username,
-        .password = pass,
-        .disable_auto_reconnect = true
-    };
-
-    esp_mqtt_client_handle_t client = 
-        service_client_handle->esp_client_handle;
-    
-    mqtt_client_restart(client, &client_config);
-    MQTT_CLIENT_UNLOCK(service_client_handle);
-    
-    // It's safe to unlock client now, since below codes only deal with 
-    // event group, which by itself have mechanism to prevent race condition
-    // (assume ESP-IDF doing it right :v )
-    change_connection_status(client_index, 
-        MQTT_CONNECTION_STATUS_NOT_CONNECTED);
-
-    uint32_t get_event_bit = wait_for_connect_req_status(client_index, 
-        DEFAULT_PACKET_TIMEOUT_s * 1000);
-
-    switch (get_event_bit)
-    {
-        case MQTT_CONNECT_REQUEST_SUCCESS_BIT:
-            ret_status = MQTT_SERVICE_PACKET_STATUS_OK;
-            break;
-        default:
-            ret_status = MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
+        AT_STACK_LOGD("Hostname is an ION broker");
+        get_crts_from_nvs(&get_ca_crt, &get_client_crt, &get_client_priv_key);
     }
-
-    *connect_ret_code = 
-        map_event_bit_to_connect_ret_code(get_event_bit);
+    mqtt_client_setup_before_connect(client_index);
+    if (mqtt_client_configure_and_request_connect(client_index, client_id, 
+        hostname, username, pass, port, 
+        get_ca_crt, get_client_crt, get_client_priv_key))
+    {
+        AT_STACK_LOGE("Something wrong with MQTT configuration and connect");
+        ret_status = MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
+        *connect_ret_code = MQTT_CONNECTION_REFUSE_PROTOCOL;
+        goto connect_done;
+    }
+    ret_status = mqtt_client_get_connect_req_status_timeout(
+        client_index, DEFAULT_PACKET_TIMEOUT_s, connect_ret_code);
     AT_STACK_LOGI("Client #%d try to connect to '%s', port %u. Connect return code %u, packet status %u",
         client_index, hostname, port, *connect_ret_code, ret_status);
-    
+
+connect_done:
+    sys_mem_free(get_ca_crt);
+    sys_mem_free(get_client_crt);
+    sys_mem_free(get_client_priv_key);
     return ret_status;
 }
 
@@ -517,17 +556,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 // Private functions definition
 //===============================
 
-static esp_err_t mqtt_client_restart(esp_mqtt_client_handle_t client, 
-    const esp_mqtt_client_config_t *client_config)
+static void mqtt_client_setup_before_connect(int client_index)
 {
-    esp_err_t ret_status;
-    esp_mqtt_client_stop(client);
-
-    ret_status = esp_mqtt_set_config(client, client_config);
-    if (ret_status != ESP_OK) return ret_status;
-    
-    ret_status = esp_mqtt_client_start(client);
-    return ret_status;
+    esp_mqtt_client_handle_t client_handle = 
+        mqtt_service_clients_table[client_index].esp_client_handle;
+    esp_mqtt_client_stop(client_handle);
+    change_connection_status(client_index, 
+        MQTT_CONNECT_STATUS_NOT_CONNECTED_BIT);
 }
 
 static uint32_t wait_for_connect_req_status(int client_index, uint32_t wait_ms)
@@ -716,4 +751,138 @@ static void print_out_unread_buffer(int client_idx)
         }
     }
     AT_STACK_LOGI("print_unread: Done!");
+}
+
+static int  mqtt_client_configure_and_request_connect(int client_index,
+    const char *client_id, const char *hostname, const char *username,
+    const char *pass, uint16_t port, const char* ca_cert, 
+    const char* client_cert, const char* client_priv_key)
+{
+    mqtt_service_client_t *service_client_handle = 
+            &mqtt_service_clients_table[client_index];
+    MQTT_CLIENT_LOCK(service_client_handle);
+    esp_mqtt_client_config_t client_config = 
+    {
+        .uri = hostname,
+        .client_id = client_id,
+        .port = port,
+        .username = username,
+        .password = pass,
+        .disable_auto_reconnect = true
+    };
+
+    if ((ca_cert == NULL) && (client_cert == NULL) && (client_priv_key == NULL))
+    {
+        AT_STACK_LOGD("Used bundled crts due to all input certs are NULL");
+        client_config.crt_bundle_attach = esp_crt_bundle_attach;
+    }
+    else
+    {
+        AT_STACK_LOGD("Used input crts");
+        client_config.cert_pem = ca_cert;
+        client_config.client_cert_pem = client_cert;
+        client_config.client_key_pem = client_priv_key;
+    }
+
+    esp_mqtt_client_handle_t client = 
+        service_client_handle->esp_client_handle;
+    esp_err_t err_from_esp_mqtt;
+    err_from_esp_mqtt = esp_mqtt_set_config(client, &client_config);
+    if (err_from_esp_mqtt != ESP_OK) 
+    {
+        AT_STACK_LOGE("Cannot set configuration for MQTT client before connecting");
+        MQTT_CLIENT_UNLOCK(service_client_handle);      
+        return -1;
+    }
+    
+    err_from_esp_mqtt = esp_mqtt_client_start(client);
+    if (err_from_esp_mqtt != ESP_OK) 
+    {
+        AT_STACK_LOGE("Cannot start MQTT");
+        MQTT_CLIENT_UNLOCK(service_client_handle);   
+        return -1;
+    }
+    MQTT_CLIENT_UNLOCK(service_client_handle);
+    AT_STACK_LOGD("Configure and connect done!");
+    return 0;
+}
+
+static mqtt_service_pkt_status_t mqtt_client_get_connect_req_status_timeout(
+    int client_index, uint32_t timeout_ms,
+    esp_mqtt_connect_return_code_t *connect_ret_code)
+{
+    // It's safe to not lock client, since below codes only deal with 
+    // event group, which by itself have mechanism to prevent race condition
+    // (assume ESP-IDF doing it right :v )
+    mqtt_service_pkt_status_t ret_status;
+
+    uint32_t get_event_bit = wait_for_connect_req_status(client_index, 
+        timeout_ms * 1000);
+
+    switch (get_event_bit)
+    {
+        case MQTT_CONNECT_REQUEST_SUCCESS_BIT:
+            ret_status = MQTT_SERVICE_PACKET_STATUS_OK;
+            break;
+        default:
+            ret_status = MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
+    }
+
+    *connect_ret_code = 
+        map_event_bit_to_connect_ret_code(get_event_bit);
+    
+    return ret_status;
+}
+
+static bool is_ion_broker(const char *hostname)
+{
+    if (memcmp("mqtts", hostname, strlen("mqtts")))
+        return false;
+
+    if (strstr(hostname, "ionmobility.net") == NULL)
+        return false;
+
+    return true;
+}
+
+
+static int get_crts_from_nvs(char** get_cacert, char** get_client_cert,
+    char** get_client_key)
+    
+{
+    size_t get_cacert_size, get_client_key_size, get_client_cert_size;
+    nvs_handle_t handle;
+    AT_STACK_LOGD("Get crts in namespace 'ssl_crts' in NVS");
+    if (nvs_open("ssl_crts", NVS_READONLY, &handle) != ESP_OK)
+    {
+        AT_STACK_LOGE("Failed to open name space 'ssl_crts' in NVS");
+        return -1;
+    }
+    MUST_GET_STRING_IN_NVS_OR_RETURN_ERR(*get_cacert, get_cacert_size, 
+        handle, "root_ca_cert", "Failed to get ION CA certificate in NVS");
+    MUST_GET_STRING_IN_NVS_OR_RETURN_ERR(*get_client_key, get_client_key_size, 
+        handle, "esp_priv_key", "Failed to get client key in NVS");
+    MUST_GET_STRING_IN_NVS_OR_RETURN_ERR(*get_client_cert, get_client_cert_size, 
+        handle, "esp_cert", "Failed to get client certificate in NVS");
+
+    nvs_close(handle);
+    return 0;
+}
+
+static char * nvs_load_value_if_exist(nvs_handle_t handle, const char* key,
+    size_t *value_size)
+{
+    // Try to get the size of the item
+    if(nvs_get_str(handle, key, NULL, value_size) != ESP_OK){
+        AT_STACK_LOGE("Failed to get size of NVS key '%s'", key);
+        return NULL;
+    }
+
+    char* value = sys_mem_malloc(*value_size);
+    if(nvs_get_str(handle, key, value, value_size) != ESP_OK){
+        AT_STACK_LOGE("Failed to load value of NVS key '%s'", key);
+        return NULL;
+    }
+
+    return value;
 }

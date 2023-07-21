@@ -53,5 +53,5 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__FILENAME__='\"$(subst
 idf_component_register(SRCS "${COMPONENT_SRCS}"
                     INCLUDE_DIRS "${COMPONENT_ADD_INCLUDEDIRS}"
                     PRIV_INCLUDE_DIRS "${COMPONENT_ADD_PRIVATE_INCLUDEDIRS}"
-                    REQUIRES mqtt
+                    REQUIRES mqtt nvs_flash
                     )
