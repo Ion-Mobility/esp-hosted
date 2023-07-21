@@ -27,7 +27,7 @@ AT_BUFF_SIZE_T qmtdisc_test_cmd_parse_exec_handler(const char *arg,
         sprintf(handler_tmp_buff->tmp_resp_buff, "<0>");
     }
     sprintf(at_resp, 
-        "+QMTCONN %s\r\nOK",
+        "+QMTDISC %s\r\nOK",
         handler_tmp_buff->tmp_resp_buff);
     free_handler_tmp_buff(handler_tmp_buff);
     return strlen(at_resp);
@@ -47,7 +47,7 @@ AT_BUFF_SIZE_T qmtdisc_write_cmd_parse_exec_handler(const char *arg,
     mqtt_service_status_t disconnect_result = 
         mqtt_service_disconnect(client_index);
 
-    sprintf(at_resp, "OK\r\n+QMTCONN: %lu,%d", client_index,
+    sprintf(at_resp, "OK\r\n+QMTDISC: %lu,%d", client_index,
         disconnect_result);
 
     free_handler_tmp_buff(handler_tmp_buff);
