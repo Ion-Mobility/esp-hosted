@@ -12,6 +12,10 @@
 
 #define RECV_BUFF_GROUP_TIMEOUT_ms 2000
 
+static const char *ion_broker_username = "9b5766d8-8766-492c-ace8-a80f191e47e6";
+static const char *ion_broker_password = "0caabff1-dd1e-49da-a3a3-9a00d4ff2cb6";
+static const char *ion_allowed_topic = "channels/ccb53e96-8628-4ac0-9e3f-95185f38733a/messages";
+
 typedef struct {
     const char *test_name;
     const char *at_cmd;
@@ -47,7 +51,12 @@ static void disconnect_and_assert(int client_index);
 
 static void generate_random_string(char *ret_random_string, size_t target_len);
 
-static void basic_action_test(int num_of_trials, bool unsub_after_trial);
+static void basic_action_test(const char* hostname, uint16_t port,
+    const char* username, const char* password, int num_of_trials, 
+    bool unsub_after_trial);
+
+static void basic_action_test_for_ion_broker(int num_of_trials, 
+    bool unsub_after_trial);
 
 void TestCase_Connect_to_WiFi()
 {
@@ -70,12 +79,56 @@ void TestCase_MQTT_Connect_Disconnect()
 
 void TestCase_MQTT_Basic_Actions()
 {
-    basic_action_test(1, true);
+    basic_action_test("mqtt://broker.hivemq.com", 1883, NULL, NULL, 1, true);
 }
 
 void TestCase_MQTT_StressTest()
 {
-    basic_action_test(50, false);
+    basic_action_test("mqtt://broker.hivemq.com", 1883, NULL, NULL, 50, false);
+}
+
+void TestCase_MQTT_TLS_Connect_Disconnect()
+{
+    connect_to_wifi();
+    init_and_assert();
+    TEST_LOG("Test connect and disconnect TLS from broker.hivemq.com\n");
+    connect_and_assert(0, "esp32-wifi-test", "mqtts://broker.hivemq.com", 
+        NULL, NULL, 8883);
+    disconnect_and_assert(0);
+    TEST_LOG("Test connect and disconnect TLS from mqtt.eclipseprojects.io\n");
+    connect_and_assert(0, "esp32-wifi-test", "mqtts://mqtt.eclipseprojects.io",
+        NULL, NULL, 8883);
+    disconnect_and_assert(0);
+}
+
+void TestCase_MQTT_TLS_Basic_Actions()
+{
+    basic_action_test("mqtts://broker.hivemq.com", 8883, NULL, NULL, 1, true);
+}
+
+void TestCase_MQTT_TLS_StressTest()
+{
+    basic_action_test("mqtts://broker.hivemq.com", 8883, NULL, NULL, 50, false);
+}
+
+void TestCase_MQTT_ION_Broker_Connect_Disconnect()
+{
+    connect_to_wifi();
+    init_and_assert();
+    TEST_LOG("Test connect and disconnect ION broker\n");
+    connect_and_assert(0, "esp32-wifi-test", "mqtts://ion-broker-s.ionmobility.net", 
+        ion_broker_username, ion_broker_password, 8883);
+    disconnect_and_assert(0);
+}
+
+void TestCase_MQTT_ION_Broker_Basic_Actions()
+{
+    basic_action_test_for_ion_broker(1, true);
+}
+
+void TestCase_MQTT_ION_Broker_StressTest()
+{
+    basic_action_test_for_ion_broker(50, false);
 }
 
 static void connect_to_wifi()
@@ -185,13 +238,15 @@ static void generate_random_string(char *ret_random_string, size_t target_len)
     }
 }
 
-static void basic_action_test(int num_of_trials, bool unsub_after_trial)
+static void basic_action_test(const char* hostname, uint16_t port,
+    const char* username, const char* password, int num_of_trials, 
+    bool unsub_after_trial)
 {
     recv_buffer_group_t test_recv_buff_group;
     connect_to_wifi();
     init_and_assert();
-    connect_and_assert(0, "esp32-wifi-test", "mqtt://broker.hivemq.com", 
-        NULL, NULL, 1883);
+    connect_and_assert(0, "esp32-wifi-test", hostname, 
+        username, password, port);
     
     char random_topic[11];
     char random_msg[11];
@@ -218,6 +273,44 @@ static void basic_action_test(int num_of_trials, bool unsub_after_trial)
             recv_topic, recv_msg);
         TEST_ASSERT_EQUAL_UINT(strlen(random_topic), strlen(recv_topic));
         TEST_ASSERT_EQUAL_STRING(random_topic, recv_topic);
+        TEST_ASSERT_EQUAL_UINT(strlen(random_msg), strlen(recv_msg));
+        TEST_ASSERT_EQUAL_STRING(random_msg, recv_msg);
+        clear_recv_buff_group(0);
+    }
+    disconnect_and_assert(0);
+}
+
+static void basic_action_test_for_ion_broker(int num_of_trials, 
+    bool unsub_after_trial)
+{
+    recv_buffer_group_t test_recv_buff_group;
+    connect_to_wifi();
+    init_and_assert();
+    connect_and_assert(0, "esp32-wifi-test", "mqtts://ion-broker-s.ionmobility.net", 
+        ion_broker_username, ion_broker_password, 8883);
+    
+    char random_msg[11];
+    for (int count = 0; count < num_of_trials; count++)
+    {
+        TEST_LOG("Publish & subscribe trial #%d\n", count);
+        memset(random_msg, 0, 11);
+        generate_random_string(random_msg, 10);
+        TEST_LOG("Publish topic '%s' and msg '%s'. Subscribe to the same topic to see if publishing is good\n",
+            ion_allowed_topic, random_msg);
+
+        clear_recv_buff_group(0); 
+        subscribe_and_assert(0, ion_allowed_topic, MQTT_QOS_EXACTLY_ONCE);
+        publish_and_assert(0, ion_allowed_topic, random_msg, MQTT_QOS_EXACTLY_ONCE);
+        get_recv_buff_group_with_timeout_and_assert(0, 
+            RECV_BUFF_GROUP_TIMEOUT_ms, &test_recv_buff_group);
+        if (unsub_after_trial)
+            unsubscribe_and_assert(0, ion_allowed_topic);
+        char *recv_topic = test_recv_buff_group.buff[0].topic;
+        char *recv_msg = test_recv_buff_group.buff[0].msg;
+        TEST_LOG("Receive data: topic '%s' and msg '%s'.\n",
+            recv_topic, recv_msg);
+        TEST_ASSERT_EQUAL_UINT(strlen(ion_allowed_topic), strlen(recv_topic));
+        TEST_ASSERT_EQUAL_STRING(ion_allowed_topic, recv_topic);
         TEST_ASSERT_EQUAL_UINT(strlen(random_msg), strlen(recv_msg));
         TEST_ASSERT_EQUAL_STRING(random_msg, recv_msg);
         clear_recv_buff_group(0);

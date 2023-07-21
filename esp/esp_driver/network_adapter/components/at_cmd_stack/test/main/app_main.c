@@ -8,15 +8,35 @@
 #define INPUT_BUFFER_LENGTH 5
 #define WAIT_TO_RESULT_BEFORE_RESET_ms 3000
 
+#define CHECK_MQTT_TEST_OPTION_AND_RUN(target_option, option_len, test_func) do \
+{ \
+    if ((!strcmp(option, target_option)) && (strlen(option) == option_len)) \
+    { \
+        UNITY_BEGIN(); \
+        RUN_TEST(test_func); \
+        UNITY_END(); \
+        printf("Restart ESP32 after %d seconds...\n", \
+            WAIT_TO_RESULT_BEFORE_RESET_ms / 1000); \
+        uint32_t ticks_to_wait = pdMS_TO_TICKS(2000); \
+        vTaskDelay(ticks_to_wait); \
+        esp_restart(); \
+    } \
+} while (0)
 
 static const char *test_description_table[] =
 {
     "Restart board",
     "Connect to WiFi",
     "Test parsing",
-    "Test MQTT connect/disconnect",
-    "Test MQTT basic actions",
-    "Test MQTT stress test"
+    "Test TCP-MQTT connect/disconnect with public broker",
+    "Test TCP-MQTT basic actions with public broker",
+    "Test TCP-MQTT stress test with public broker",
+    "Test TLS-MQTT connect/disconnect with public broker",
+    "Test TLS-MQTT basic actions with public broker",
+    "Test TLS-MQTT stress test with public broker",
+    "Test TLS-MQTT connect/disconnect with ION broker",
+    "Test TLS-MQTT basic actions with ION broker",
+    "Test TLS-MQTT stress test with ION broker",
 };
 
 
@@ -110,39 +130,14 @@ static void parse_and_exec_option(char *option)
         UNITY_END();
         return;
     }
-
-    else if ((!strcmp(option, "3")) && (strlen(option) == 1))
-    {
-        UNITY_BEGIN();
-        RUN_TEST(TestCase_MQTT_Connect_Disconnect);
-        UNITY_END();
-        printf("Restart ESP32 after %d seconds...\n", 
-            WAIT_TO_RESULT_BEFORE_RESET_ms / 1000);
-        uint32_t ticks_to_wait = pdMS_TO_TICKS(2000);
-        vTaskDelay(ticks_to_wait);
-        esp_restart();
-    }
-    else if ((!strcmp(option, "4")) && (strlen(option) == 1))
-    {
-        UNITY_BEGIN();
-        RUN_TEST(TestCase_MQTT_Basic_Actions);
-        UNITY_END();
-        printf("Restart ESP32 after %d seconds...\n", 
-            WAIT_TO_RESULT_BEFORE_RESET_ms / 1000);
-        uint32_t ticks_to_wait = pdMS_TO_TICKS(WAIT_TO_RESULT_BEFORE_RESET_ms);
-        vTaskDelay(ticks_to_wait);
-        esp_restart();
-    }
-    else if ((!strcmp(option, "5")) && (strlen(option) == 1))
-    {
-        UNITY_BEGIN();
-        RUN_TEST(TestCase_MQTT_StressTest);
-        UNITY_END();
-        printf("Restart ESP32 after %d seconds...\n",
-            WAIT_TO_RESULT_BEFORE_RESET_ms / 1000);
-        uint32_t ticks_to_wait = pdMS_TO_TICKS(WAIT_TO_RESULT_BEFORE_RESET_ms);
-        vTaskDelay(ticks_to_wait);
-        esp_restart();
-    }
+    CHECK_MQTT_TEST_OPTION_AND_RUN("3", 1, TestCase_MQTT_Connect_Disconnect);
+    CHECK_MQTT_TEST_OPTION_AND_RUN("4", 1, TestCase_MQTT_Basic_Actions);
+    CHECK_MQTT_TEST_OPTION_AND_RUN("5", 1, TestCase_MQTT_StressTest);
+    CHECK_MQTT_TEST_OPTION_AND_RUN("6", 1, TestCase_MQTT_TLS_Connect_Disconnect);
+    CHECK_MQTT_TEST_OPTION_AND_RUN("7", 1, TestCase_MQTT_TLS_Basic_Actions);
+    CHECK_MQTT_TEST_OPTION_AND_RUN("8", 1, TestCase_MQTT_TLS_StressTest);
+    CHECK_MQTT_TEST_OPTION_AND_RUN("9", 1, TestCase_MQTT_ION_Broker_Connect_Disconnect);
+    CHECK_MQTT_TEST_OPTION_AND_RUN("10", 2, TestCase_MQTT_ION_Broker_Basic_Actions);
+    CHECK_MQTT_TEST_OPTION_AND_RUN("11", 2, TestCase_MQTT_ION_Broker_StressTest);
     printf("Not found such option. Please try again\n");
 }
