@@ -131,6 +131,9 @@ static char * nvs_load_value_if_exist(nvs_handle_t handle, const char* key,
  */
 static int find_index_from_client_handle(esp_mqtt_client_handle_t client);
 
+static esp_mqtt_protocol_ver_t get_protocol_vsn_from_mqtt_service_config(int client_index);
+static int get_keepalive_from_mqtt_service_config(int client_index);
+static bool get_disable_clean_session_from_mqtt_service_config(int client_index);
 
 //===============================
 // Public functions definition
@@ -768,6 +771,10 @@ static int  mqtt_client_configure_and_request_connect(int client_index,
         .port = port,
         .username = username,
         .password = pass,
+        .protocol_ver = get_protocol_vsn_from_mqtt_service_config(client_index),
+        .keepalive = get_keepalive_from_mqtt_service_config(client_index),
+        .disable_clean_session = 
+            get_disable_clean_session_from_mqtt_service_config(client_index),
         .disable_auto_reconnect = true
     };
 
@@ -885,4 +892,29 @@ static char * nvs_load_value_if_exist(nvs_handle_t handle, const char* key,
     }
 
     return value;
+}
+
+static esp_mqtt_protocol_ver_t get_protocol_vsn_from_mqtt_service_config(int client_index)
+{
+    mqtt_service_client_cfg_t target_mqtt_cfg = 
+        mqtt_service_client_cfg_table[client_index];
+    if (target_mqtt_cfg.mqtt_version == MQTT_VERSION_V3_1)
+        return MQTT_PROTOCOL_V_3_1;
+
+    return MQTT_PROTOCOL_V_3_1_1;
+}
+
+static int get_keepalive_from_mqtt_service_config(int client_index)
+{
+    return (int) mqtt_service_client_cfg_table[client_index].keepalive_time_s;
+}
+
+static bool get_disable_clean_session_from_mqtt_service_config(int client_index)
+{
+    mqtt_service_client_cfg_t target_mqtt_cfg = 
+        mqtt_service_client_cfg_table[client_index];
+    if (target_mqtt_cfg.session_type == SESSION_TYPE_STORE_AFTER_DISCONNECT)
+        return true;
+
+    return false;
 }

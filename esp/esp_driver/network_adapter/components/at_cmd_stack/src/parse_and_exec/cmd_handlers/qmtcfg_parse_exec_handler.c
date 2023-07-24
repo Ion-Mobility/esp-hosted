@@ -87,18 +87,18 @@ typedef struct {
 
 QMTCFG_WRITE_PARSE_HANLDER(version) (const char *arg,
     AT_BUFF_SIZE_T arg_length, char *at_resp);
-QMTCFG_WRITE_PARSE_HANLDER(pdpcid) (const char *arg,
-    AT_BUFF_SIZE_T arg_length, char *at_resp);
+// QMTCFG_WRITE_PARSE_HANLDER(pdpcid) (const char *arg,
+//     AT_BUFF_SIZE_T arg_length, char *at_resp);
 QMTCFG_WRITE_PARSE_HANLDER(keepalive) (const char *arg,
     AT_BUFF_SIZE_T arg_length, char *at_resp);
 QMTCFG_WRITE_PARSE_HANLDER(session) (const char *arg,
     AT_BUFF_SIZE_T arg_length, char *at_resp);
-QMTCFG_WRITE_PARSE_HANLDER(timeout) (const char *arg,
-    AT_BUFF_SIZE_T arg_length, char *at_resp);
-QMTCFG_WRITE_PARSE_HANLDER(recv_mode) (const char *arg,
-    AT_BUFF_SIZE_T arg_length, char *at_resp);
-QMTCFG_WRITE_PARSE_HANLDER(send_mode) (const char *arg,
-    AT_BUFF_SIZE_T arg_length, char *at_resp);
+// QMTCFG_WRITE_PARSE_HANLDER(timeout) (const char *arg,
+//     AT_BUFF_SIZE_T arg_length, char *at_resp);
+// QMTCFG_WRITE_PARSE_HANLDER(recv_mode) (const char *arg,
+//     AT_BUFF_SIZE_T arg_length, char *at_resp);
+// QMTCFG_WRITE_PARSE_HANLDER(send_mode) (const char *arg,
+//     AT_BUFF_SIZE_T arg_length, char *at_resp);
 
 
 const param_key_based_params_parser_table_entry_t 
@@ -111,13 +111,13 @@ const param_key_based_params_parser_table_entry_t
         .qmtcfg_write_parse_exec_handler = 
             QMTCFG_WRITE_PARSE_HANLDER_FUNC_NAME(version),
     },
-    {
-        .param_key = "\"pdpcid\"",
-        .min_num_of_param_values = 1,
-        .max_num_of_param_values = 2,
-        .qmtcfg_write_parse_exec_handler = 
-            QMTCFG_WRITE_PARSE_HANLDER_FUNC_NAME(pdpcid),
-    },
+    // {
+    //     .param_key = "\"pdpcid\"",
+    //     .min_num_of_param_values = 1,
+    //     .max_num_of_param_values = 2,
+    //     .qmtcfg_write_parse_exec_handler = 
+    //         QMTCFG_WRITE_PARSE_HANLDER_FUNC_NAME(pdpcid),
+    // },
     {
         .param_key = "\"keepalive\"",
         .min_num_of_param_values = 1,
@@ -132,39 +132,39 @@ const param_key_based_params_parser_table_entry_t
         .qmtcfg_write_parse_exec_handler = 
             QMTCFG_WRITE_PARSE_HANLDER_FUNC_NAME(session),
     },
-    {
-        .param_key = "\"timeout\"",
-        .min_num_of_param_values = 1,
-        .max_num_of_param_values = 4,
-        .qmtcfg_write_parse_exec_handler = 
-            QMTCFG_WRITE_PARSE_HANLDER_FUNC_NAME(timeout),
-    },
-    {
-        .param_key = "\"recv/mode\"",
-        .min_num_of_param_values = 1,
-        .max_num_of_param_values = 3,
-        .qmtcfg_write_parse_exec_handler = 
-            QMTCFG_WRITE_PARSE_HANLDER_FUNC_NAME(recv_mode),
-    },
-    {
-        .param_key = "\"send/mode\"",
-        .min_num_of_param_values = 1,
-        .max_num_of_param_values = 2,
-        .qmtcfg_write_parse_exec_handler = 
-            QMTCFG_WRITE_PARSE_HANLDER_FUNC_NAME(send_mode),
-    },
+    // {
+    //     .param_key = "\"timeout\"",
+    //     .min_num_of_param_values = 1,
+    //     .max_num_of_param_values = 4,
+    //     .qmtcfg_write_parse_exec_handler = 
+    //         QMTCFG_WRITE_PARSE_HANLDER_FUNC_NAME(timeout),
+    // },
+    // {
+    //     .param_key = "\"recv/mode\"",
+    //     .min_num_of_param_values = 1,
+    //     .max_num_of_param_values = 3,
+    //     .qmtcfg_write_parse_exec_handler = 
+    //         QMTCFG_WRITE_PARSE_HANLDER_FUNC_NAME(recv_mode),
+    // },
+    // {
+    //     .param_key = "\"send/mode\"",
+    //     .min_num_of_param_values = 1,
+    //     .max_num_of_param_values = 2,
+    //     .qmtcfg_write_parse_exec_handler = 
+    //         QMTCFG_WRITE_PARSE_HANLDER_FUNC_NAME(send_mode),
+    // },
 };
 
 //=================================
 // Private functions declaration
 //=================================
 static void append_qmtcfg_version_usage(char *at_resp);
-static void append_qmtcfg_pdpcid_usage(char *at_resp);
+// static void append_qmtcfg_pdpcid_usage(char *at_resp);
 static void append_qmtcfg_keepalive_usage(char *at_resp);
 static void append_qmtcfg_session_usage(char *at_resp);
-static void append_qmtcfg_timeout_usage(char *at_resp);
-static void append_qmtcfg_recv_mode_usage(char *at_resp);
-static void append_qmtcfg_send_mode_usage(char *at_resp);
+// static void append_qmtcfg_timeout_usage(char *at_resp);
+// static void append_qmtcfg_recv_mode_usage(char *at_resp);
+// static void append_qmtcfg_send_mode_usage(char *at_resp);
 static void extract_param_key_from_at_cmd(const char *arg, 
     AT_BUFF_SIZE_T arg_length, char* extracted_param_key);
 static int find_qmtcfg_write_parse_exec_handler_for_param_key(
@@ -183,12 +183,12 @@ AT_BUFF_SIZE_T qmtcfg_test_cmd_parse_exec_handler(const char *arg,
     char *tmp_buff = sys_mem_calloc(MAX_AT_RESP_LENGTH, 1);
     sprintf(at_resp, "%s", tmp_buff);
     append_qmtcfg_version_usage(at_resp);
-    append_qmtcfg_pdpcid_usage(at_resp);
+    // append_qmtcfg_pdpcid_usage(at_resp);
     append_qmtcfg_keepalive_usage(at_resp);
     append_qmtcfg_session_usage(at_resp);
-    append_qmtcfg_timeout_usage(at_resp);
-    append_qmtcfg_recv_mode_usage(at_resp);
-    append_qmtcfg_send_mode_usage(at_resp);
+    // append_qmtcfg_timeout_usage(at_resp);
+    // append_qmtcfg_recv_mode_usage(at_resp);
+    // append_qmtcfg_send_mode_usage(at_resp);
     memset(tmp_buff, 0, MAX_AT_RESP_LENGTH);
     sprintf(tmp_buff, "%sOK", at_resp);
     memcpy(at_resp, tmp_buff, strlen(tmp_buff) + 1);
@@ -243,16 +243,16 @@ QMTCFG_WRITE_PARSE_HANLDER(version)(const char *arg,
 
 }
 
-QMTCFG_WRITE_PARSE_HANLDER(pdpcid)(const char *arg, 
-    AT_BUFF_SIZE_T arg_length, char *at_resp)
-{
-    INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
+// QMTCFG_WRITE_PARSE_HANLDER(pdpcid)(const char *arg, 
+//     AT_BUFF_SIZE_T arg_length, char *at_resp)
+// {
+//     INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
 
-    GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(pdp_cid, uint8_t,
-        MQTT_CID_MIN, MQTT_CID_MAX, handler_tmp_buff, at_resp);
+//     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(pdp_cid, uint8_t,
+//         MQTT_CID_MIN, MQTT_CID_MAX, handler_tmp_buff, at_resp);
 
-    FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
-}
+//     FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
+// }
 
 QMTCFG_WRITE_PARSE_HANLDER(keepalive) (const char *arg, 
     AT_BUFF_SIZE_T arg_length, char *at_resp)
@@ -277,48 +277,48 @@ QMTCFG_WRITE_PARSE_HANLDER(session) (const char *arg,
     FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
 }
 
-QMTCFG_WRITE_PARSE_HANLDER(timeout)(const char *arg, 
-    AT_BUFF_SIZE_T arg_length, char *at_resp)
-{
-    INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
+// QMTCFG_WRITE_PARSE_HANLDER(timeout)(const char *arg, 
+//     AT_BUFF_SIZE_T arg_length, char *at_resp)
+// {
+//     INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
 
-    GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(timeout_info.pkt_timeout_s, uint8_t,
-        MQTT_PACKET_MIN_TIMEOUT, MQTT_PACKET_MAX_TIMEOUT, handler_tmp_buff, at_resp);
-    GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(timeout_info.max_num_of_retries,
-        uint8_t, 0, MQTT_MAX_POSSIBLE_RETRIES, handler_tmp_buff, at_resp);
-    GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(timeout_info.is_report_timeout_msg,
-        bool, false, true, handler_tmp_buff, at_resp);
+//     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(timeout_info.pkt_timeout_s, uint8_t,
+//         MQTT_PACKET_MIN_TIMEOUT, MQTT_PACKET_MAX_TIMEOUT, handler_tmp_buff, at_resp);
+//     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(timeout_info.max_num_of_retries,
+//         uint8_t, 0, MQTT_MAX_POSSIBLE_RETRIES, handler_tmp_buff, at_resp);
+//     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(timeout_info.is_report_timeout_msg,
+//         bool, false, true, handler_tmp_buff, at_resp);
 
-    FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
-}
+//     FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
+// }
 
-QMTCFG_WRITE_PARSE_HANLDER(recv_mode) (const char *arg, 
-    AT_BUFF_SIZE_T arg_length, char *at_resp)
-{
-    INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
+// QMTCFG_WRITE_PARSE_HANLDER(recv_mode) (const char *arg, 
+//     AT_BUFF_SIZE_T arg_length, char *at_resp)
+// {
+//     INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
 
-    GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(recv_config.recv_mode,
-        mqtt_recv_mode_t, MQTT_RX_MESS_CONTAINED_IN_URC,
-        MQTT_RX_MESS_NOT_CONTAINED_IN_URC, 
-        handler_tmp_buff, at_resp);
-    GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(recv_config.recv_length_mode,
-        mqtt_recv_length_mode_t, MQTT_RX_MESS_LENGTH_NOT_CONTAINED_IN_URC,
-        MQTT_RX_MESS_LENGTH_CONTAINED_IN_URC, 
-        handler_tmp_buff, at_resp);
+//     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(recv_config.recv_mode,
+//         mqtt_recv_mode_t, MQTT_RX_MESS_CONTAINED_IN_URC,
+//         MQTT_RX_MESS_NOT_CONTAINED_IN_URC, 
+//         handler_tmp_buff, at_resp);
+//     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(recv_config.recv_length_mode,
+//         mqtt_recv_length_mode_t, MQTT_RX_MESS_LENGTH_NOT_CONTAINED_IN_URC,
+//         MQTT_RX_MESS_LENGTH_CONTAINED_IN_URC, 
+//         handler_tmp_buff, at_resp);
 
-    FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
-}
+//     FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
+// }
 
-QMTCFG_WRITE_PARSE_HANLDER(send_mode) (const char *arg, 
-    AT_BUFF_SIZE_T arg_length, char *at_resp)
-{
-    INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
+// QMTCFG_WRITE_PARSE_HANLDER(send_mode) (const char *arg, 
+//     AT_BUFF_SIZE_T arg_length, char *at_resp)
+// {
+//     INTIALIZE_QMTCFG_WRITE_PARSE_EXEC_HANDLER(arg, arg_length, at_resp);
 
-    GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(send_mode, mqtt_send_mode_t,
-        MQTT_SEND_MODE_STRING, MQTT_SEND_MODE_HEX, handler_tmp_buff, at_resp);
+//     GET_OPTIONAL_PARAM_AND_ASSIGN_TO_CONFIG_FIELD(send_mode, mqtt_send_mode_t,
+//         MQTT_SEND_MODE_STRING, MQTT_SEND_MODE_HEX, handler_tmp_buff, at_resp);
 
-    FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
-}
+//     FINALIZE_WRITE_PARSE_EXEC_HANDLE(at_resp);
+// }
 
 //===============================
 // Private functions definition
@@ -330,12 +330,12 @@ static void append_qmtcfg_version_usage(char *at_resp)
     APPEND_END_OF_USAGE(at_resp);
 }
 
-static void append_qmtcfg_pdpcid_usage(char *at_resp)
-{
-    APPEND_START_OF_USAGE(at_resp, "pdpcid");
-    APPEND_RANGE_STRING(at_resp, MQTT_CID_MIN, MQTT_CID_MAX);
-    APPEND_END_OF_USAGE(at_resp);
-}
+// static void append_qmtcfg_pdpcid_usage(char *at_resp)
+// {
+//     APPEND_START_OF_USAGE(at_resp, "pdpcid");
+//     APPEND_RANGE_STRING(at_resp, MQTT_CID_MIN, MQTT_CID_MAX);
+//     APPEND_END_OF_USAGE(at_resp);
+// }
 
 static void append_qmtcfg_keepalive_usage(char *at_resp)
 {
@@ -352,33 +352,33 @@ static void append_qmtcfg_session_usage(char *at_resp)
     APPEND_END_OF_USAGE(at_resp);
 }
 
-static void append_qmtcfg_timeout_usage(char *at_resp)
-{
-    APPEND_START_OF_USAGE(at_resp, "timeout");
-    APPEND_RANGE_STRING(at_resp, MQTT_PACKET_MIN_TIMEOUT, 
-        MQTT_PACKET_MAX_TIMEOUT);
-    APPEND_RANGE_STRING(at_resp, 0, 
-        MQTT_MAX_POSSIBLE_RETRIES);
-    APPEND_RANGE_STRING(at_resp, false, 
-        true);
-    APPEND_END_OF_USAGE(at_resp);
-}
-static void append_qmtcfg_recv_mode_usage(char *at_resp)
-{
-    APPEND_START_OF_USAGE(at_resp, "recv/mode");
-    APPEND_RANGE_STRING(at_resp, MQTT_RX_MESS_CONTAINED_IN_URC, 
-        MQTT_RX_MESS_NOT_CONTAINED_IN_URC);
-    APPEND_RANGE_STRING(at_resp, MQTT_RX_MESS_LENGTH_NOT_CONTAINED_IN_URC, 
-        MQTT_RX_MESS_LENGTH_CONTAINED_IN_URC);
-    APPEND_END_OF_USAGE(at_resp);
-}
-static void append_qmtcfg_send_mode_usage(char *at_resp)
-{
-    APPEND_START_OF_USAGE(at_resp, "send/mode");
-    APPEND_RANGE_STRING(at_resp, MQTT_SEND_MODE_STRING, 
-        MQTT_SEND_MODE_HEX);
-    APPEND_END_OF_USAGE(at_resp);
-}
+// static void append_qmtcfg_timeout_usage(char *at_resp)
+// {
+//     APPEND_START_OF_USAGE(at_resp, "timeout");
+//     APPEND_RANGE_STRING(at_resp, MQTT_PACKET_MIN_TIMEOUT, 
+//         MQTT_PACKET_MAX_TIMEOUT);
+//     APPEND_RANGE_STRING(at_resp, 0, 
+//         MQTT_MAX_POSSIBLE_RETRIES);
+//     APPEND_RANGE_STRING(at_resp, false, 
+//         true);
+//     APPEND_END_OF_USAGE(at_resp);
+// }
+// static void append_qmtcfg_recv_mode_usage(char *at_resp)
+// {
+//     APPEND_START_OF_USAGE(at_resp, "recv/mode");
+//     APPEND_RANGE_STRING(at_resp, MQTT_RX_MESS_CONTAINED_IN_URC, 
+//         MQTT_RX_MESS_NOT_CONTAINED_IN_URC);
+//     APPEND_RANGE_STRING(at_resp, MQTT_RX_MESS_LENGTH_NOT_CONTAINED_IN_URC, 
+//         MQTT_RX_MESS_LENGTH_CONTAINED_IN_URC);
+//     APPEND_END_OF_USAGE(at_resp);
+// }
+// static void append_qmtcfg_send_mode_usage(char *at_resp)
+// {
+//     APPEND_START_OF_USAGE(at_resp, "send/mode");
+//     APPEND_RANGE_STRING(at_resp, MQTT_SEND_MODE_STRING, 
+//         MQTT_SEND_MODE_HEX);
+//     APPEND_END_OF_USAGE(at_resp);
+// }
 
 static void extract_param_key_from_at_cmd(const char *arg, 
     AT_BUFF_SIZE_T arg_length, char* extracted_param_key)
