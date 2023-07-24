@@ -52,7 +52,7 @@
 #include "tm_ble.h"
 #include "tm_atcmd.h"
 
-#define GPIO_APP_SELECT_PIN	(20)
+#define GPIO_APP_SELECT_PIN	(36)	//148 GPIO_CS
 #define GPIO_INPUT_PIN_SEL  (1ULL<<GPIO_APP_SELECT_PIN)
 
 static const char TAG[] = "ION_BLE";
@@ -465,9 +465,10 @@ int check_app_pin_config(void) {
     io_conf.pull_up_en = 0;
     //configure GPIO with the given settings
     gpio_config(&io_conf);
-
 	vTaskDelay(pdMS_TO_TICKS(1000*2));
-	return gpio_get_level(GPIO_APP_SELECT_PIN);
+	int ret = gpio_get_level(GPIO_APP_SELECT_PIN);
+	ESP_LOGI(TAG, "gpio: %d: state: %d", GPIO_APP_SELECT_PIN, ret);
+	return ret;
 }
 
 void app_main()

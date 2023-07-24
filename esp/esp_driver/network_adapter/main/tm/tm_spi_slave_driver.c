@@ -13,15 +13,16 @@
 #include "tm_spi_slave_driver.h"
 
 #define GPIO_HANDSHAKE  21
-// #define GPIO_MOSI       33
-// #define GPIO_MISO       34
-// #define GPIO_SCLK       35
-// #define GPIO_CS         36
-// #define GPIO_HANDSHAKE 2
-#define GPIO_MOSI 12
-#define GPIO_MISO 13
-#define GPIO_SCLK 15
-#define GPIO_CS 14
+#define GPIO_MOSI       33
+#define GPIO_MISO       34
+#define GPIO_SCLK       35
+#define GPIO_CS         36
+
+//todo: use for dev kit, remove this later
+// #define GPIO_MOSI 12
+// #define GPIO_MISO 13
+// #define GPIO_SCLK 15
+// #define GPIO_CS 14
 
 void spi_slave_pull_interupt_high(void) {
     gpio_set_level(GPIO_HANDSHAKE, 1);

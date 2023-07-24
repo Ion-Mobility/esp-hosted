@@ -32,14 +32,6 @@ int tm_atcmd_recv_parser(char* cmd, int len) {
 
     // command below is parse with alphabet order, when adding new command, make sure it's in right order
     switch (cmd[CMD_START_CHAR_INDEX]) {
-        case '?':
-            //AT+?
-            if (terminate_check(&cmd[CMD_START_CHAR_INDEX+1]))
-                ret = EVENT_START;
-            else
-                ret = -1;
-        break;
-
         case 'L':
             //AT+LOGIN,...
             if (strncmp("LOGIN",&cmd[CMD_START_CHAR_INDEX], sizeof("LOGIN")-1) == 0) {

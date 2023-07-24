@@ -12,8 +12,7 @@
 // esp32-ble will request system info (battery, user button press, last trip, last charge...) and handle data transfering to phone
 
 typedef enum {
-    EVENT_START         =0,         //AT+?  (query handshake reasons)
-    DATA_LOGIN          =1,         //AT+LOGIN,battery(%),                                  (1 byte)
+    DATA_LOGIN          =0,         //AT+LOGIN,battery(%),                                  (1 byte)
                                     //        estimate range(km),                           (2 bytes)
                                     //        odo(km),                                      (4 bytes)
                                     //        last trip distance(km),                       (2 bytes)
@@ -22,36 +21,38 @@ typedef enum {
                                     //        last charge level (%),                        (1 bytes)
                                     //        distance since last charge (km)               (2 bytes)
 
-    DATA_CHARGE         =2,         //AT+CHARGE,state(on/off),                              (1 byte)
+    DATA_CHARGE         =1,         //AT+CHARGE,state(on/off),                              (1 byte)
                                     // below info available if charge state = on
                                     //          charge voltage,                             (1 byte)
                                     //          charge current,                             (1 byte)
                                     //          charge cycle,                               (2 bytes)
                                     //          time to full(mins)                          (2 bytes)
 
-    DATA_BATTERY        =3,         //AT+BATTERY,battery (%),                               (1 byte)
+    DATA_BATTERY        =2,         //AT+BATTERY,battery (%),                               (1 byte)
                                     //           estimate range(km)                         (2 bytes)
 
-    DATA_TRIP           =4,         //AT+TRIP,distance(km)                                  (2 bytes)
+    DATA_TRIP           =3,         //AT+TRIP,distance(km)                                  (2 bytes)
                                     //        ride time(mins)                               (2 bytes)
                                     //        electric used(kWh)                            (2 bytes)
 
-    EVENT_LOCK          =5,         //AT+LOCK,x
-    EVENT_UNLOCK        =6,         //AT+UNLOCK,x
+    EVENT_LOCK          =4,         //AT+LOCK,x
+    EVENT_UNLOCK        =5,         //AT+UNLOCK,x
                                     //user press (o) button event
-    EVENT_BUTTON        =7,         //AT+BUTTON                                             (1 byte)
-    MAX_CMD_SUPPORTED   =8
+    EVENT_BUTTON        =6,         //AT+BUTTON                                             (1 byte)
+    MAX_CMD_SUPPORTED   =7
 } at_cmd_recv_t;
 
 
 typedef enum {
-    LOGIN               =0,          //OK+LOGIN
-    CHARGE              =1,          //OK+CHARGE
-    BATTERY             =2,          //OK+BATTERY
-    LAST_TRIP           =3,          //OK+TRIP
-    LOCK                =4,          //OK+LOCK,keystring
-    UNLOCK              =5,          //OK+UNLOCK,keystring
-    UNKNOWN             =6
+    BLE_OK              =0,         //BLE+OK
+    BLE_ERR             =1,         //BLE+ERR
+    LOGIN               =2,         //BLE+LOGIN
+    CHARGE              =3,         //BLE+CHARGE
+    BATTERY             =4,         //BLE+BATTERY
+    LAST_TRIP           =5,         //BLE+TRIP
+    LOCK                =6,         //BLE+LOCK,keystring
+    UNLOCK              =7,         //BLE+UNLOCK,keystring
+    UNKNOWN             =8
 } at_cmd_resp_t;
 
 // parse command
