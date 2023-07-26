@@ -8,6 +8,7 @@
 #include "sys_common_funcs.h"
 #include "esp_crt_bundle.h"
 #include "nvs_flash.h"
+#include "sdkconfig.h"
 
 
 #define MUST_GET_STRING_IN_NVS_OR_RETURN_ERR(str, str_size, handle, key, err_msg) \
@@ -777,8 +778,14 @@ static int  mqtt_client_configure_and_request_connect(int client_index,
             get_disable_clean_session_from_mqtt_service_config(client_index),
         .disable_auto_reconnect = true
     };
-
-    if ((ca_cert == NULL) && (client_cert == NULL) && (client_priv_key == NULL))
+#if CONFIG_SKIP_VERIFYING_BROKER
+    AT_STACK_LOGD("This variant of firmware WILL ALLOW UNVERIFIED BROKER");
+    client_config.cert_pem = NULL;
+    client_config.crt_bundle_attach = NULL;
+    client_config.psk_hint_key = NULL;
+    client_config.use_global_ca_store = false;
+#else
+    if ((ca_cert == NULL))
     {
         AT_STACK_LOGD("Used bundled crts due to all input certs are NULL");
         client_config.crt_bundle_attach = esp_crt_bundle_attach;
@@ -787,9 +794,10 @@ static int  mqtt_client_configure_and_request_connect(int client_index,
     {
         AT_STACK_LOGD("Used input crts");
         client_config.cert_pem = ca_cert;
-        client_config.client_cert_pem = client_cert;
-        client_config.client_key_pem = client_priv_key;
     }
+#endif
+    client_config.client_cert_pem = client_cert;
+    client_config.client_key_pem = client_priv_key;
 
     esp_mqtt_client_handle_t client = 
         service_client_handle->esp_client_handle;

@@ -7,4 +7,10 @@ menu "AT command stack configuration"
             Configure to print deep debug in format "[<Filename>, <Line>] <debug_message>"
             in AT command stack
 
+    config SKIP_VERIFYING_BROKER
+        bool "Skip verifying broker"
+        default n
+        help
+            Allow the MQTT service to skip verifying certificate of MQTT brokers
+
 endmenu
