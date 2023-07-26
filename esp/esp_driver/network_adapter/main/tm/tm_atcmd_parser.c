@@ -7,7 +7,7 @@
 #include "esp_log.h"
 
 #define ATCMD_PARSER_TAG        "TM_ATCMD_PARSER"
-#define CMD_PREFIX              "AT+"
+#define CMD_PREFIX              "TM+"
 #define CMD_MIN_LEN             strlen(CMD_PREFIX)
 #define CMD_MAX_LEN             255
 #define CMD_START_CHAR_INDEX    CMD_MIN_LEN
@@ -33,7 +33,7 @@ int tm_atcmd_recv_parser(char* cmd, int len) {
     // command below is parse with alphabet order, when adding new command, make sure it's in right order
     switch (cmd[CMD_START_CHAR_INDEX]) {
         case 'L':
-            //AT+LOGIN,...
+            //TM+LOGIN,...
             if (strncmp("LOGIN",&cmd[CMD_START_CHAR_INDEX], sizeof("LOGIN")-1) == 0) {
                 ret = DATA_LOGIN;
                 break;
@@ -46,7 +46,7 @@ int tm_atcmd_recv_parser(char* cmd, int len) {
         break;
 
         case 'C':
-            //AT+CHARGE,...
+            //TM+CHARGE,...
             if (strncmp("CHARGE",&cmd[CMD_START_CHAR_INDEX], sizeof("CHARGE")-1) == 0) {
                 ret = DATA_CHARGE;
                 break;
@@ -55,12 +55,12 @@ int tm_atcmd_recv_parser(char* cmd, int len) {
         break;
 
         case 'B':
-            //AT+BATTERY,...
+            //TM+BATTERY,...
             if (strncmp("BATTERY",&cmd[CMD_START_CHAR_INDEX], sizeof("BATTERY")-1) == 0) {
                 ret = DATA_BATTERY;
                 break;
             }
-            //AT+BUTTON,...
+            //TM+BUTTON,...
             if (strncmp("BUTTON",&cmd[CMD_START_CHAR_INDEX], sizeof("BUTTON")-1) == 0) {
                 ret = EVENT_BUTTON;
                 break;
@@ -69,7 +69,7 @@ int tm_atcmd_recv_parser(char* cmd, int len) {
         break;
 
         case 'T':
-            //AT+TRIP,...
+            //TM+TRIP,...
             if (strncmp("TRIP",&cmd[CMD_START_CHAR_INDEX], sizeof("TRIP")-1) == 0) {
                 ret = DATA_TRIP;
                 break;
@@ -78,7 +78,7 @@ int tm_atcmd_recv_parser(char* cmd, int len) {
         break;
 
         case 'U':
-            //AT+UNLOCK,x
+            //TM+UNLOCK,x
             if (strncmp("UNLOCK",&cmd[CMD_START_CHAR_INDEX], sizeof("UNLOCK")-1) != 0) {
                 ret = EVENT_UNLOCK;
                 break;
