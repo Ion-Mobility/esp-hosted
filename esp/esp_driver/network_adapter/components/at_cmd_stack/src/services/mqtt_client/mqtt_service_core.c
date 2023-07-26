@@ -209,28 +209,21 @@ mqtt_service_status_t mqtt_service_init()
         }
         AT_STACK_LOGD("Create client mutex lock successfully");
     }
-    /* Initialize NVS */
+    /*  Initialize NVS. This is necessary because we don't know if NVS flash
+        is initialized before by caller of this fuction. Moreover, if NVS flash
+        is initialized before, subsequent call nvs_flash_init simply 
+        returns ESP_OK */
 	esp_err_t ret = nvs_flash_init();
 
 	switch (ret)
     {
     case ESP_ERR_NVS_NO_FREE_PAGES:
         AT_STACK_LOGE("Init Non-volatile Storage FAILED due to no free pages!");
-		nvs_flash_erase();
-        if (nvs_flash_init() != ESP_OK)
-        {
-            AT_STACK_LOGE("Re-init Non-volatile Storage FAILED!");
-            goto init_err;
-        }
+        goto init_err;
         break;
     case ESP_ERR_NVS_NEW_VERSION_FOUND:
         AT_STACK_LOGE("Init Non-volatile Storage FAILED due to no new version!");
-		nvs_flash_erase();
-        if (nvs_flash_init() != ESP_OK)
-        {
-            AT_STACK_LOGE("Re-init Non-volatile Storage FAILED!");
-            goto init_err;
-        }
+        goto init_err;
         break;
     }
 
