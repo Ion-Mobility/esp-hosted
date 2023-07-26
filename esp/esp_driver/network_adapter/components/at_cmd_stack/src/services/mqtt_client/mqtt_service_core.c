@@ -136,6 +136,9 @@ static esp_mqtt_protocol_ver_t get_protocol_vsn_from_mqtt_service_config(int cli
 static int get_keepalive_from_mqtt_service_config(int client_index);
 static bool get_disable_clean_session_from_mqtt_service_config(int client_index);
 
+static void mqtt_service_deinit_internal();
+
+
 //===============================
 // Public functions definition
 //===============================
@@ -233,21 +236,22 @@ mqtt_service_status_t mqtt_service_init()
     return MQTT_SERVICE_STATUS_OK;
 
 init_err:
-    for (int index = 0; index < MAX_NUM_OF_MQTT_CLIENT; index++)
-    {
-        AT_STACK_LOGI("Deinit client #%d due to failing MQTT service init", index);
-        mqtt_service_client_t *service_client_handle = 
-            &mqtt_service_clients_table[index];
-        if (service_client_handle->esp_client_handle)
-            esp_mqtt_client_destroy(service_client_handle->esp_client_handle);
-        if (service_client_handle->connect_req_event_group)
-            vEventGroupDelete(service_client_handle->connect_req_event_group);
-        if (service_client_handle->connect_status_event_group)
-            vEventGroupDelete(service_client_handle->connect_status_event_group);
-        if (service_client_handle->client_mutex)
-            vSemaphoreDelete(service_client_handle->client_mutex);
-    }
+    AT_STACK_LOGI("Deinit MQTT service due to failing MQTT service init");
+    mqtt_service_deinit_internal();
     return MQTT_SERVICE_STATUS_ERROR;
+}
+
+mqtt_service_status_t mqtt_service_deinit()
+{
+    if (!is_mqtt_service_initialized)
+    {
+        AT_STACK_LOGE("MQTT service is not initialized yet");
+        return MQTT_SERVICE_STATUS_ERROR;
+    }
+
+    mqtt_service_deinit_internal();
+    AT_STACK_LOGI("MQTT service is deinitialized SUCCESS");
+    return MQTT_SERVICE_STATUS_OK;
 }
 
 mqtt_client_connection_status_t mqtt_service_get_connection_status(
@@ -918,4 +922,21 @@ static bool get_disable_clean_session_from_mqtt_service_config(int client_index)
         return true;
 
     return false;
+}
+
+static void mqtt_service_deinit_internal()
+{
+    for (int index = 0; index < MAX_NUM_OF_MQTT_CLIENT; index++)
+    {
+        mqtt_service_client_t *service_client_handle = 
+            &mqtt_service_clients_table[index];
+        if (service_client_handle->esp_client_handle)
+            esp_mqtt_client_destroy(service_client_handle->esp_client_handle);
+        if (service_client_handle->connect_req_event_group)
+            vEventGroupDelete(service_client_handle->connect_req_event_group);
+        if (service_client_handle->connect_status_event_group)
+            vEventGroupDelete(service_client_handle->connect_status_event_group);
+        if (service_client_handle->client_mutex)
+            vSemaphoreDelete(service_client_handle->client_mutex);
+    }
 }

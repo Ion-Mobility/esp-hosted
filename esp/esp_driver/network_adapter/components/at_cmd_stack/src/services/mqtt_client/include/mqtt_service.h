@@ -40,6 +40,14 @@ typedef enum {
 extern mqtt_service_status_t mqtt_service_init();
 
 /**
+ * @brief Deinitialize MQTT service
+ * 
+ * @return MQTT_SERVICE_STATUS_OK if initialize successfully 
+ * @return MQTT_SERVICE_STATUS_ERROR if deinitialize already 
+ */
+extern mqtt_service_status_t mqtt_service_deinit();
+
+/**
  * @brief Get connection status of particular client
  * 
  * @param client_index index of MQTT client
