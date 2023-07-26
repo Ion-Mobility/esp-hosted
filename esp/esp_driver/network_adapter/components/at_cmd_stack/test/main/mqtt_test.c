@@ -15,6 +15,8 @@
 static const char *ion_broker_username = "9b5766d8-8766-492c-ace8-a80f191e47e6";
 static const char *ion_broker_password = "0caabff1-dd1e-49da-a3a3-9a00d4ff2cb6";
 static const char *ion_allowed_topic = "channels/ccb53e96-8628-4ac0-9e3f-95185f38733a/messages";
+static bool is_connected_to_wifi = false;
+
 
 typedef struct {
     const char *test_name;
@@ -58,6 +60,8 @@ static void basic_action_test(const char* hostname, uint16_t port,
 static void basic_action_test_for_ion_broker(int num_of_trials, 
     bool unsub_after_trial);
 
+static void test_done_deinit();
+
 void TestCase_Connect_to_WiFi()
 {
     connect_to_wifi();
@@ -75,6 +79,8 @@ void TestCase_MQTT_Connect_Disconnect()
     connect_and_assert(0, "esp32-wifi-test", "mqtt://mqtt.eclipseprojects.io",
         NULL, NULL, 1883);
     disconnect_and_assert(0);
+    mqtt_service_deinit();
+    test_done_deinit();
 }
 
 void TestCase_MQTT_Basic_Actions()
@@ -99,6 +105,8 @@ void TestCase_MQTT_TLS_Connect_Disconnect()
     connect_and_assert(0, "esp32-wifi-test", "mqtts://mqtt.eclipseprojects.io",
         NULL, NULL, 8883);
     disconnect_and_assert(0);
+    mqtt_service_deinit();
+    test_done_deinit();
 }
 
 void TestCase_MQTT_TLS_Basic_Actions()
@@ -119,6 +127,8 @@ void TestCase_MQTT_ION_Broker_Connect_Disconnect()
     connect_and_assert(0, "esp32-wifi-test", "mqtts://ion-broker-s.ionmobility.net", 
         ion_broker_username, ion_broker_password, 8883);
     disconnect_and_assert(0);
+    mqtt_service_deinit();
+    test_done_deinit();
 }
 
 void TestCase_MQTT_ION_Broker_Basic_Actions()
@@ -133,15 +143,25 @@ void TestCase_MQTT_ION_Broker_StressTest()
 
 static void connect_to_wifi()
 {
-    static bool is_connected_to_wifi = false;
-    if (!is_connected_to_wifi)
-    {
-        ESP_ERROR_CHECK(nvs_flash_init());
-        ESP_ERROR_CHECK(esp_netif_init());
-        ESP_ERROR_CHECK(esp_event_loop_create_default());
-        ESP_ERROR_CHECK(example_connect());
-    }
+    if (is_connected_to_wifi)
+        return;
+
+    ESP_ERROR_CHECK(nvs_flash_init());
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    ESP_ERROR_CHECK(example_connect());
     is_connected_to_wifi = true;
+}
+
+static void test_done_deinit()
+{
+    if (!is_connected_to_wifi)
+        return;
+
+    ESP_ERROR_CHECK(example_disconnect());
+    ESP_ERROR_CHECK(esp_event_loop_delete_default());
+    ESP_ERROR_CHECK(nvs_flash_deinit());
+    is_connected_to_wifi = false;
 }
 
 static void init_and_assert()
@@ -278,6 +298,8 @@ static void basic_action_test(const char* hostname, uint16_t port,
         clear_recv_buff_group(0);
     }
     disconnect_and_assert(0);
+    mqtt_service_deinit();
+    test_done_deinit();
 }
 
 static void basic_action_test_for_ion_broker(int num_of_trials, 
@@ -316,4 +338,6 @@ static void basic_action_test_for_ion_broker(int num_of_trials,
         clear_recv_buff_group(0);
     }
     disconnect_and_assert(0);
+    mqtt_service_deinit();
+    test_done_deinit();
 }
