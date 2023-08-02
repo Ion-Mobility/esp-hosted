@@ -1,4 +1,4 @@
-#include "at_cmd_app_helper.h"
+#include "at_cmd_quectel_helpers.h"
 #include "common_helpers.h"
 #include <string.h>
 

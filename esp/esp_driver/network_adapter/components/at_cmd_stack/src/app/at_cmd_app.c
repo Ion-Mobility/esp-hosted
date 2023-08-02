@@ -9,7 +9,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "sys_common_funcs.h"
-#include "at_cmd_app_helper.h"
+#include "at_cmd_quectel_helpers.h"
 #include "at_cmd_parse_and_exec.h"
 #include "common_helpers.h"
 #include "mqtt_service.h"

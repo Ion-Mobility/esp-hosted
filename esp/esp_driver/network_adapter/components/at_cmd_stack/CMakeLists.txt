@@ -13,7 +13,6 @@ set(CMD_HANDLERS_SRCS
 
 set(APP_SRCS
     "src/app/at_cmd_app.c"
-    "src/app/at_cmd_app_helper.c"
 )
 
 set(PARSE_AND_EXEC_SRCS
@@ -31,10 +30,15 @@ set(SERVICES_SRCS
     "src/services/mqtt_client/mqtt_service_core.c"
 )
 
+set(QUECTEL_HELPERS_SRCS
+    "src/quectel_helpers/at_cmd_quectel_helpers.c"
+)
+
 set(COMPONENT_SRCS 
     ${APP_SRCS}
     ${PARSE_AND_EXEC_SRCS}
     ${SERVICES_SRCS}
+    ${QUECTEL_HELPERS_SRCS}
 )
 set(COMPONENT_ADD_INCLUDEDIRS 
     "include"
