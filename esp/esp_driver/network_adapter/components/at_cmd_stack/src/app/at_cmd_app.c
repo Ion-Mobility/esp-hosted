@@ -19,10 +19,10 @@
 typedef struct {
 	char* cmd;
 	AT_BUFF_SIZE_T cmd_length;
-} at_command_t;
+	resp_send_callback_t resp_send_cb;
+} at_cmd_handling_req_t;
 
 static QueueHandle_t at_cmd_queue = NULL;
-static char at_response[MAX_AT_RESP_LENGTH];
 static bool is_at_app_initialized = false;
 
 //================================
@@ -35,17 +35,13 @@ static bool is_at_app_initialized = false;
  */
 static void at_handling_task(void* pvParameters);
 
-static void prepare_at_resp_buff_handle(char* at_resp, 
-    AT_BUFF_SIZE_T at_resp_length, interface_buffer_handle_t *buff_handle);
-
-
 
 //==============================
 // Public functions definition
 //==============================
 void init_at_cmd_app()
 {
-    at_cmd_queue = xQueueCreate(3, sizeof(at_command_t));
+    at_cmd_queue = xQueueCreate(3, sizeof(at_cmd_handling_req_t));
     assert(xTaskCreate(at_handling_task , "at_handling_task" , 4096 , NULL , 22 , NULL) == pdTRUE);
 	
 
@@ -59,82 +55,76 @@ void init_at_cmd_app()
 }
 
 
-
-int forward_to_at_cmd_task(uint8_t *at_cmd_buff, uint32_t cmd_buff_size)
+int make_request_to_handle_at_cmd(const char *at_cmd, 
+    resp_send_callback_t resp_send_cb)
 {
     if (!is_at_app_initialized) 
 	{
 		AT_STACK_LOGE("AT command app is not initialized yet!");
 		return 1;
 	}
-	at_command_t at_command_to_forward;
-	at_command_to_forward.cmd = sys_mem_malloc(MAX_AT_CMD_LENGTH);
-	at_command_to_forward.cmd_length = AT_QuecTelString_To_NormalString(
-		(char*)at_cmd_buff, cmd_buff_size, at_command_to_forward.cmd);
+	if (resp_send_cb == NULL)
+	{
+		AT_STACK_LOGE("There is no callback for sending AT response! Cannot handle this AT command!");
+		return 1;
+	}
+	AT_STACK_LOGI("New request to handle AT command '%s'",
+		at_cmd);
 	
-	AT_STACK_LOGI("Receiving new AT command '%s' len %d\n",
-		at_command_to_forward.cmd, cmd_buff_size);
+	at_cmd_handling_req_t new_at_cmd_handling_req;
+	new_at_cmd_handling_req.cmd = sys_mem_calloc(1, MAX_AT_CMD_LENGTH);
+	memcpy(new_at_cmd_handling_req.cmd, at_cmd, strlen(at_cmd));
+	new_at_cmd_handling_req.cmd_length = strlen(at_cmd);
+	new_at_cmd_handling_req.resp_send_cb = resp_send_cb;
 
-	xQueueSend(at_cmd_queue, &at_command_to_forward, portMAX_DELAY);
+	xQueueSend(at_cmd_queue, &new_at_cmd_handling_req, portMAX_DELAY);
     return 0;
 }
-
 
 //===============================
 // Private functions definition
 //===============================
 static void at_handling_task(void* pvParameters)
 {
-	at_command_t recv_at_cmd_to_handle;
-	interface_buffer_handle_t to_host_buff_handle;
-	char *sending_at_response = NULL;
-	AT_BUFF_SIZE_T at_response_length, sending_at_response_length;
 	while (1) {
-		if (xQueueReceive(at_cmd_queue, &recv_at_cmd_to_handle, portMAX_DELAY))
+		at_cmd_handling_req_t recv_at_cmd_handling_req;
+		if (xQueueReceive(at_cmd_queue, &recv_at_cmd_handling_req, portMAX_DELAY))
 		{
-			AT_STACK_LOGI(" Get a command '%s'!\n",recv_at_cmd_to_handle.cmd);
-			memset(at_response, 0, MAX_AT_RESP_LENGTH);
-			at_response_length = parse_and_exec_at_cmd(recv_at_cmd_to_handle.cmd, strlen(recv_at_cmd_to_handle.cmd), at_response);
-			sys_mem_free(recv_at_cmd_to_handle.cmd);
-			if (!at_response_length)
+			AT_BUFF_SIZE_T sending_at_response_length;
+			AT_STACK_LOGI(" Get a command '%s'!\n",recv_at_cmd_handling_req.cmd);
+			if (recv_at_cmd_handling_req.resp_send_cb == NULL)
 			{
 				AT_STACK_LOGE(
-					"Invalid arguments when parse! Do not produce reponse!");
-				continue;
+					"No response send handler. AT command stack don't know how to send response!");
+				goto done_handling_req;
 			}
-			sending_at_response = sys_mem_malloc(MAX_AT_RESP_LENGTH);
-			sending_at_response_length = AT_NormalString_To_QuecTelString(
-				at_response, at_response_length, sending_at_response);
+			char *sending_at_response = sys_mem_calloc(1, MAX_AT_RESP_LENGTH);
+			sending_at_response_length = parse_and_exec_at_cmd(
+				recv_at_cmd_handling_req.cmd, 
+				strlen(recv_at_cmd_handling_req.cmd), sending_at_response);
 			if (!sending_at_response_length)
 			{
 				AT_STACK_LOGE(
-					"Something wrong to args when convert normal to Quectel");
-				sys_mem_free(sending_at_response);
-				continue;
+					"Invalid arguments when parse! Do not produce reponse!");
+				goto discard_send_resp;
 			}
-			prepare_at_resp_buff_handle(sending_at_response, 
-				sending_at_response_length, &to_host_buff_handle);
-			if (send_to_host_queue(&to_host_buff_handle, PRIO_Q_OTHERS) != ESP_OK) 
+			
+			// If callback return 0, which means send SUCCESS, jumps to 
+			// 'done_handling_req' immediately to avoid double-freeing 
+			// response buffer because freeing response buffer is 
+			// caller's responsibility now
+			if (!recv_at_cmd_handling_req.resp_send_cb(
+				sending_at_response, sending_at_response_length))
 			{
-				// Send to host task will not free this buffer by SPI TX task,
-				// so we must free ourselves
-				sys_mem_free(sending_at_response);
+				goto done_handling_req;
 			}
-			else
-			{
-				AT_STACK_LOGI(" Send response to host successfully!\n");
-			}
+discard_send_resp:
+			AT_STACK_LOGI("Caller cannot free response, so AT command app free itself");
+			sys_mem_free(sending_at_response);
+done_handling_req:
+			AT_STACK_LOGI("Done handling AT command!");
+			sys_mem_free(recv_at_cmd_handling_req.cmd);
 		}
 		sys_task_sleep_us(AT_TASK_SLEEP_ms*1000);
 	}
-}
-
-static void prepare_at_resp_buff_handle(char* at_resp, AT_BUFF_SIZE_T at_resp_length, interface_buffer_handle_t *buff_handle)
-{
-	buff_handle->if_type = ESP_AT_IF;
-	buff_handle->if_num = 0x2;
-	buff_handle->priv_buffer_handle = at_resp;
-	buff_handle->free_buf_handle = free;
-	buff_handle->payload = (uint8_t*)at_resp;
-	buff_handle->payload_len = at_resp_length;
 }

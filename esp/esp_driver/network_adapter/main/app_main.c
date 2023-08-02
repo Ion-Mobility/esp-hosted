@@ -48,6 +48,7 @@
 #include "slave_bt.c"
 
 #include "at_cmd_app.h"
+#include "at_cmd_quectel_helpers.h"
 #include "mempool.h"
 
 static const char TAG[] = "NETWORK_ADAPTER";
@@ -123,6 +124,29 @@ static void print_firmware_version()
 	ESP_LOGI(TAG, "                Smart-Config   :: DISABLE                       ");
 #endif
 	ESP_LOGI(TAG, "*********************************************************************");
+}
+
+static void prepare_at_resp_buff_handle(char* at_resp, 
+    uint32_t at_resp_length, interface_buffer_handle_t *buff_handle)
+{
+	buff_handle->if_type = ESP_AT_IF;
+	buff_handle->if_num = 0x2;
+	buff_handle->priv_buffer_handle = at_resp;
+	buff_handle->free_buf_handle = free;
+	buff_handle->payload = (uint8_t*)at_resp;
+	buff_handle->payload_len = at_resp_length;
+}
+
+static int send_at_response_to_host_callback(void *sending_resp, uint32_t resp_len)
+{
+	interface_buffer_handle_t to_host_buff_handle;
+	prepare_at_resp_buff_handle(sending_resp, 
+		resp_len, &to_host_buff_handle);
+	if (send_to_host_queue(&to_host_buff_handle, PRIO_Q_OTHERS) != ESP_OK) 
+	{
+		return -1;
+	}
+	return 0;
 }
 
 static uint8_t get_capabilities()
@@ -397,7 +421,20 @@ void process_serial_rx_pkt(uint8_t *buf)
 	}
 }
 
+void process_at_cmd_payload(uint8_t *at_cmd_payload, uint16_t payload_size)
+{
+	// Allocate a copy of AT command payload to include the NULL-terminator
+	char *cpy_of_at_cmd_payload = calloc(1, payload_size + 1);
+	char *at_cmd_to_process = calloc(1, payload_size);
+	memcpy(cpy_of_at_cmd_payload, at_cmd_payload, payload_size);
+	AT_QuecTelString_To_NormalString(cpy_of_at_cmd_payload, 
+		strlen(cpy_of_at_cmd_payload), at_cmd_to_process);
+	free(cpy_of_at_cmd_payload);
 
+	make_request_to_handle_at_cmd(at_cmd_to_process, 
+		send_at_response_to_host_callback);
+	free(at_cmd_to_process);
+}
 
 void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 {
@@ -426,7 +463,7 @@ void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 		process_serial_rx_pkt(buf_handle->payload);
 #if CONFIG_USE_ION_AT_COMMAND
 	} else if (buf_handle->if_type == ESP_AT_IF) {
-		forward_to_at_cmd_task(payload, payload_len);
+		process_at_cmd_payload(payload, payload_len);
 #endif
 	}
 #if defined(CONFIG_BT_ENABLED) && BLUETOOTH_HCI
