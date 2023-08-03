@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "at_cmd_parse_and_exec.h"
 #include "unity.h"
+#include "common_test_helpers.h"
 #include <string.h>
 
 #define STRINGIFY_NUM(num) STRINGIFY(num)
@@ -128,7 +129,6 @@ static const at_cmd_test_scene_entry_t parse_test_cases_table[] =
     },
 };
 
-#define TEST_LOG(format, ...) printf("%s" format, module, ##__VA_ARGS__) 
 
 static void perform_all_test_cases(
     const at_cmd_test_scene_entry_t *test_cases_table, int num_of_test_cases);

@@ -2,20 +2,18 @@
 #include <string.h>
 #include <stdbool.h>
 #include "mqtt_service.h"
-#include "nvs_flash.h"
 #include "unity.h"
 #include "sdkconfig.h"
-#include "protocol_examples_common.h"
 #include "esp_random.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "common_test_helpers.h"
 
 #define RECV_BUFF_GROUP_TIMEOUT_ms 2000
 
 static const char *ion_broker_username = "9b5766d8-8766-492c-ace8-a80f191e47e6";
 static const char *ion_broker_password = "0caabff1-dd1e-49da-a3a3-9a00d4ff2cb6";
 static const char *ion_allowed_topic = "channels/ccb53e96-8628-4ac0-9e3f-95185f38733a/messages";
-static bool is_connected_to_wifi = false;
 
 
 typedef struct {
@@ -24,16 +22,13 @@ typedef struct {
     const char *expected_response;
 } at_cmd_test_scene_entry_t;
 
-#define TEST_LOG(format, ...) printf("%s" format, module, ##__VA_ARGS__) 
 
 static const char *module = "mqtt_test: ";
-static void connect_to_wifi();
 static void init_and_assert();
 static void connect_and_assert(int client_index,
     const char *client_id, const char *hostname, const char *username,
     const char *pass, uint16_t port);
 static void disconnect_and_assert(int client_index);
-static void connect_to_wifi();
 
 static void connect_and_assert(int client_index,
     const char *client_id, const char *hostname, const char *username,
@@ -60,16 +55,15 @@ static void basic_action_test(const char* hostname, uint16_t port,
 static void basic_action_test_for_ion_broker(int num_of_trials, 
     bool unsub_after_trial);
 
-static void test_done_deinit();
 
 void TestCase_Connect_to_WiFi()
 {
-    connect_to_wifi();
+    test_begin_setup();
 }
 
 void TestCase_MQTT_Connect_Disconnect()
 {
-    connect_to_wifi();
+    test_begin_setup();
     init_and_assert();
     TEST_LOG("Test connect and disconnect TCP-only from broker.hivemq.com\n");
     connect_and_assert(0, "esp32-wifi-test", "mqtt://broker.hivemq.com", 
@@ -80,7 +74,7 @@ void TestCase_MQTT_Connect_Disconnect()
         NULL, NULL, 1883);
     disconnect_and_assert(0);
     mqtt_service_deinit();
-    test_done_deinit();
+    test_done_clear_up();
 }
 
 void TestCase_MQTT_Basic_Actions()
@@ -95,7 +89,7 @@ void TestCase_MQTT_StressTest()
 
 void TestCase_MQTT_TLS_Connect_Disconnect()
 {
-    connect_to_wifi();
+    test_begin_setup();
     init_and_assert();
     TEST_LOG("Test connect and disconnect TLS from broker.hivemq.com\n");
     connect_and_assert(0, "esp32-wifi-test", "mqtts://broker.hivemq.com", 
@@ -106,7 +100,7 @@ void TestCase_MQTT_TLS_Connect_Disconnect()
         NULL, NULL, 8883);
     disconnect_and_assert(0);
     mqtt_service_deinit();
-    test_done_deinit();
+    test_done_clear_up();
 }
 
 void TestCase_MQTT_TLS_Basic_Actions()
@@ -121,14 +115,14 @@ void TestCase_MQTT_TLS_StressTest()
 
 void TestCase_MQTT_ION_Broker_Connect_Disconnect()
 {
-    connect_to_wifi();
+    test_begin_setup();
     init_and_assert();
     TEST_LOG("Test connect and disconnect ION broker\n");
     connect_and_assert(0, "esp32-wifi-test", "mqtts://ion-broker-s.ionmobility.net", 
         ion_broker_username, ion_broker_password, 8883);
     disconnect_and_assert(0);
     mqtt_service_deinit();
-    test_done_deinit();
+    test_done_clear_up();
 }
 
 void TestCase_MQTT_ION_Broker_Basic_Actions()
@@ -141,28 +135,6 @@ void TestCase_MQTT_ION_Broker_StressTest()
     basic_action_test_for_ion_broker(50, false);
 }
 
-static void connect_to_wifi()
-{
-    if (is_connected_to_wifi)
-        return;
-
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    ESP_ERROR_CHECK(example_connect());
-    is_connected_to_wifi = true;
-}
-
-static void test_done_deinit()
-{
-    if (!is_connected_to_wifi)
-        return;
-
-    ESP_ERROR_CHECK(example_disconnect());
-    ESP_ERROR_CHECK(esp_event_loop_delete_default());
-    ESP_ERROR_CHECK(nvs_flash_deinit());
-    is_connected_to_wifi = false;
-}
 
 static void init_and_assert()
 {
@@ -263,7 +235,7 @@ static void basic_action_test(const char* hostname, uint16_t port,
     bool unsub_after_trial)
 {
     recv_buffer_group_t test_recv_buff_group;
-    connect_to_wifi();
+    test_begin_setup();
     init_and_assert();
     connect_and_assert(0, "esp32-wifi-test", hostname, 
         username, password, port);
@@ -299,14 +271,14 @@ static void basic_action_test(const char* hostname, uint16_t port,
     }
     disconnect_and_assert(0);
     mqtt_service_deinit();
-    test_done_deinit();
+    test_done_clear_up();
 }
 
 static void basic_action_test_for_ion_broker(int num_of_trials, 
     bool unsub_after_trial)
 {
     recv_buffer_group_t test_recv_buff_group;
-    connect_to_wifi();
+    test_begin_setup();
     init_and_assert();
     connect_and_assert(0, "esp32-wifi-test", "mqtts://ion-broker-s.ionmobility.net", 
         ion_broker_username, ion_broker_password, 8883);
@@ -339,5 +311,5 @@ static void basic_action_test_for_ion_broker(int num_of_trials,
     }
     disconnect_and_assert(0);
     mqtt_service_deinit();
-    test_done_deinit();
+    test_done_clear_up();
 }
