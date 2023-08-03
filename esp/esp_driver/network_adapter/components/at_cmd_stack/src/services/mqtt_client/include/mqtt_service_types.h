@@ -103,8 +103,6 @@ typedef struct {
 } mqtt_recv_info_t;
 
 typedef struct {
-    bool is_unread;
-
     // since topic length can up to 65535 bytes, it's not wise to statically
     // allocate topic buffer
     char* topic;
@@ -118,7 +116,6 @@ typedef struct {
 
 typedef struct {
     recv_buffer_t buff[MAX_NUM_OF_RECV_BUFFER];
-    uint8_t current_empty_buff_index;
 } recv_buffer_group_t;
 
 typedef struct {

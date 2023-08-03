@@ -40,9 +40,9 @@ static void subscribe_and_assert(int client_index,
 static void unsubscribe_and_assert(int client_index,
     const char *topic);
 static void clear_recv_buff_group(int client_index);
-static void get_recv_buff_group_with_timeout_and_assert(
+static void get_recv_buff_with_timeout_and_assert(
     int client_index, size_t timeout_ms, 
-    recv_buffer_group_t *out_recv_buff_group);
+    recv_buffer_t *out_recv_buff);
 
 static void disconnect_and_assert(int client_index);
 
@@ -190,28 +190,45 @@ static void publish_and_assert(int client_index,
 static void clear_recv_buff_group(int client_index)
 {
     mqtt_service_status_t service_status;
-    service_status = mqtt_service_clear_recv_buff_group(client_index);
-    TEST_ASSERT_EQUAL_UINT(MQTT_SERVICE_STATUS_OK, service_status);
+    unsigned int num_of_filled_recv_buffs;
+    service_status = mqtt_service_get_num_of_filled_recv_buffs(0, &num_of_filled_recv_buffs);
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(MQTT_SERVICE_PACKET_STATUS_OK, 
+        service_status, "Failed to get num_of_filled_recv_buffs");
+    while (num_of_filled_recv_buffs)
+    {
+        service_status = mqtt_service_clear_current_filled_recv_buff(
+            client_index);
+        TEST_ASSERT_EQUAL_UINT_MESSAGE(MQTT_SERVICE_PACKET_STATUS_OK, 
+            service_status, "Failed to clear curent filled recv buff");
+        service_status = mqtt_service_get_num_of_filled_recv_buffs(
+            0, &num_of_filled_recv_buffs);
+        TEST_ASSERT_EQUAL_UINT_MESSAGE(MQTT_SERVICE_PACKET_STATUS_OK, 
+            service_status, "Failed to get num_of_filled_recv_buffs");
+    }
 }
 
-static void get_recv_buff_group_with_timeout_and_assert(
+static void get_recv_buff_with_timeout_and_assert(
     int client_index, size_t timeout_ms, 
-    recv_buffer_group_t *out_recv_buff_group)
+    recv_buffer_t *out_recv_buff)
 {
+    bool is_there_filled_recv_buff = false;
     mqtt_service_status_t service_status;
     uint32_t max_ticks_to_wait = pdMS_TO_TICKS(timeout_ms);
     while (max_ticks_to_wait > 0)
     {
-        service_status = mqtt_service_get_recv_buff_group(client_index, 
-            out_recv_buff_group);  
+        service_status = mqtt_service_read_current_filled_recv_buff(
+            client_index, out_recv_buff);  
         TEST_ASSERT_EQUAL_UINT(MQTT_SERVICE_STATUS_OK, service_status);
-        if (out_recv_buff_group->current_empty_buff_index > 0)
+        if ((out_recv_buff->topic) && (out_recv_buff->msg))
+        {
+            is_there_filled_recv_buff = true;
             break;
+        }
         max_ticks_to_wait--;
         vTaskDelay(1);
     }
-    TEST_ASSERT_GREATER_THAN_UINT(0, 
-        out_recv_buff_group->current_empty_buff_index);
+    TEST_ASSERT_TRUE_MESSAGE(is_there_filled_recv_buff, 
+        "No filled recv buff found");
 }
 
 static void generate_random_string(char *ret_random_string, size_t target_len)
@@ -234,7 +251,7 @@ static void basic_action_test(const char* hostname, uint16_t port,
     const char* username, const char* password, int num_of_trials, 
     bool unsub_after_trial)
 {
-    recv_buffer_group_t test_recv_buff_group;
+    recv_buffer_t test_recv_buff;
     test_begin_setup();
     init_and_assert();
     connect_and_assert(0, "esp32-wifi-test", hostname, 
@@ -255,12 +272,12 @@ static void basic_action_test(const char* hostname, uint16_t port,
         clear_recv_buff_group(0); 
         subscribe_and_assert(0, random_topic, MQTT_QOS_EXACTLY_ONCE);
         publish_and_assert(0, random_topic, random_msg, MQTT_QOS_EXACTLY_ONCE);
-        get_recv_buff_group_with_timeout_and_assert(0, 
-            RECV_BUFF_GROUP_TIMEOUT_ms, &test_recv_buff_group);
+        get_recv_buff_with_timeout_and_assert(0, 
+            RECV_BUFF_GROUP_TIMEOUT_ms, &test_recv_buff);
         if (unsub_after_trial)
             unsubscribe_and_assert(0, random_topic);
-        char *recv_topic = test_recv_buff_group.buff[0].topic;
-        char *recv_msg = test_recv_buff_group.buff[0].msg;
+        char *recv_topic = test_recv_buff.topic;
+        char *recv_msg = test_recv_buff.msg;
         TEST_LOG("Receive data: topic '%s' and msg '%s'.\n",
             recv_topic, recv_msg);
         TEST_ASSERT_EQUAL_UINT(strlen(random_topic), strlen(recv_topic));
@@ -277,7 +294,7 @@ static void basic_action_test(const char* hostname, uint16_t port,
 static void basic_action_test_for_ion_broker(int num_of_trials, 
     bool unsub_after_trial)
 {
-    recv_buffer_group_t test_recv_buff_group;
+    recv_buffer_t test_recv_buff;
     test_begin_setup();
     init_and_assert();
     connect_and_assert(0, "esp32-wifi-test", "mqtts://ion-broker-s.ionmobility.net", 
@@ -295,12 +312,12 @@ static void basic_action_test_for_ion_broker(int num_of_trials,
         clear_recv_buff_group(0); 
         subscribe_and_assert(0, ion_allowed_topic, MQTT_QOS_EXACTLY_ONCE);
         publish_and_assert(0, ion_allowed_topic, random_msg, MQTT_QOS_EXACTLY_ONCE);
-        get_recv_buff_group_with_timeout_and_assert(0, 
-            RECV_BUFF_GROUP_TIMEOUT_ms, &test_recv_buff_group);
+        get_recv_buff_with_timeout_and_assert(0, 
+            RECV_BUFF_GROUP_TIMEOUT_ms, &test_recv_buff);
         if (unsub_after_trial)
             unsubscribe_and_assert(0, ion_allowed_topic);
-        char *recv_topic = test_recv_buff_group.buff[0].topic;
-        char *recv_msg = test_recv_buff_group.buff[0].msg;
+        char *recv_topic = test_recv_buff.topic;
+        char *recv_msg = test_recv_buff.msg;
         TEST_LOG("Receive data: topic '%s' and msg '%s'.\n",
             recv_topic, recv_msg);
         TEST_ASSERT_EQUAL_UINT(strlen(ion_allowed_topic), strlen(recv_topic));

@@ -5,11 +5,13 @@
 #include "common_helpers.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "freertos/queue.h"
 #include "sys_common_funcs.h"
 #include "esp_crt_bundle.h"
 #include "nvs_flash.h"
 #include "sdkconfig.h"
 
+#define RECEIVE_BUFF_QUEUE_WAIT_TIME_ms 5
 
 #define MUST_GET_STRING_IN_NVS_OR_RETURN_ERR(str, str_size, handle, key, err_msg) \
     do { \
@@ -22,11 +24,6 @@
         } \
     } while (0)
 
-#define MQTT_CLIENT_LOCK(service_client_handle) \
-    xSemaphoreTake(service_client_handle->client_mutex, portMAX_DELAY)
-
-#define MQTT_CLIENT_UNLOCK(service_client_handle) \
-    xSemaphoreGive(service_client_handle->client_mutex)
 
 #define CLEAR_RECV_BUFF_GROUP(buff_group) do {\
     memset(buff_group.buff, 0, sizeof(recv_buffer_t) * MAX_NUM_OF_RECV_BUFFER); \
@@ -34,11 +31,10 @@
 } while (0)
 
 typedef struct {
-    SemaphoreHandle_t client_mutex;
     esp_mqtt_client_handle_t esp_client_handle;
     EventGroupHandle_t connect_req_event_group;
     EventGroupHandle_t connect_status_event_group;
-    recv_buffer_group_t recv_buff_group;
+    QueueHandle_t recv_queue_handle;
 } mqtt_service_client_t;
 
 static bool is_mqtt_service_initialized = false;
@@ -99,10 +95,8 @@ static void announce_connect_request_fail(int client_index,
 static void change_connection_status(int client_index, 
     mqtt_client_connection_status_t status_to_change);
 
-static int copy_new_sub_data_to_local_recv_buff(int client_idx, 
+static int push_new_sub_data_to_recv_buff_queue(int client_idx, 
     const char *topic, uint16_t topic_len, const char *msg, uint32_t msg_len);
-
-static void print_out_unread_buffer(int client_idx);
 
 static bool is_ion_broker(const char *hostname);
 
@@ -201,16 +195,10 @@ mqtt_service_status_t mqtt_service_init()
         AT_STACK_LOGD("Create event group for connect status successfully");
         // must initialize connection status to not connected
         change_connection_status(index, MQTT_CONNECTION_STATUS_NOT_CONNECTED);
-        CLEAR_RECV_BUFF_GROUP(service_client_handle->recv_buff_group);
 
-        // Create mutex
-        service_client_handle->client_mutex = xSemaphoreCreateMutex();
-        if (service_client_handle->client_mutex == NULL)
-        {
-            AT_STACK_LOGE("No more memory for creating client mutex lock");
-            goto init_err;
-        }
-        AT_STACK_LOGD("Create client mutex lock successfully");
+        // Create client's receive queue
+        service_client_handle->recv_queue_handle = 
+            xQueueCreate(MAX_NUM_OF_RECV_BUFFER, sizeof(recv_buffer_t));
     }
     /*  Initialize NVS. This is necessary because we don't know if NVS flash
         is initialized before by caller of this fuction. Moreover, if NVS flash
@@ -308,25 +296,20 @@ connect_done:
 mqtt_service_pkt_status_t mqtt_service_subscribe(int client_index,
     const char *topic, mqtt_qos_t qos)
 {
-    mqtt_service_client_t *service_client_handle = 
-            &mqtt_service_clients_table[client_index];
     uint32_t connect_status_bit = xEventGroupGetBits(
         mqtt_service_clients_table[client_index].connect_status_event_group);
     bool is_broker_connected = 
         (connect_status_bit == MQTT_CONNECT_STATUS_CONNECTED_BIT);
     MUST_BE_CORRECT_OR_EXIT(is_broker_connected, 
         MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND);
-    MQTT_CLIENT_LOCK(service_client_handle);
     esp_mqtt_client_handle_t client = 
         mqtt_service_clients_table[client_index].esp_client_handle;
     if (esp_mqtt_client_subscribe(client, topic, (int) qos) == -1)
     {
         AT_STACK_LOGE("Client #%d subscribe to topic '%s', qos %u FAILED!",
             client_index, topic, qos);
-        MQTT_CLIENT_UNLOCK(service_client_handle);
         return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
     }
-    MQTT_CLIENT_UNLOCK(service_client_handle);
     AT_STACK_LOGI("Client #%d subscribe to topic '%s', qos %u SUCCESS",
         client_index, topic, qos);
     return MQTT_SERVICE_PACKET_STATUS_OK;
@@ -335,8 +318,6 @@ mqtt_service_pkt_status_t mqtt_service_subscribe(int client_index,
 mqtt_service_pkt_status_t mqtt_service_unsubscribe(int client_index,
     const char *topic)
 {
-    mqtt_service_client_t *service_client_handle = 
-            &mqtt_service_clients_table[client_index];
     uint32_t connect_status_bit = xEventGroupGetBits(
         mqtt_service_clients_table[client_index].connect_status_event_group);
     bool is_broker_connected = 
@@ -347,11 +328,9 @@ mqtt_service_pkt_status_t mqtt_service_unsubscribe(int client_index,
         mqtt_service_clients_table[client_index].esp_client_handle;
     if (esp_mqtt_client_unsubscribe(client, topic) == -1)
     {
-        MQTT_CLIENT_UNLOCK(service_client_handle);
         AT_STACK_LOGE("Client #%d unsubscribe to topic '%s' FAILED", client_index, topic);
         return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
     }
-    MQTT_CLIENT_UNLOCK(service_client_handle);
     AT_STACK_LOGI("Client #%d unsubscribe to topic '%s' SUCCESS", 
         client_index, topic);
     return MQTT_SERVICE_PACKET_STATUS_OK;
@@ -361,8 +340,6 @@ mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
     const char *topic, const char* msg, mqtt_qos_t qos,
     bool is_retain)
 {
-    mqtt_service_client_t *service_client_handle = 
-            &mqtt_service_clients_table[client_index];
     uint32_t connect_status_bit = xEventGroupGetBits(
         mqtt_service_clients_table[client_index].connect_status_event_group);
     bool is_broker_connected = 
@@ -370,20 +347,17 @@ mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
     MUST_BE_CORRECT_OR_EXIT(is_broker_connected, 
         MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND);
 
-    MQTT_CLIENT_LOCK(service_client_handle);
     esp_mqtt_client_handle_t client = 
         mqtt_service_clients_table[client_index].esp_client_handle;
     if (esp_mqtt_client_publish(client, topic, msg, strlen(msg), qos, 
         is_retain) == -1)
     {
-        MQTT_CLIENT_UNLOCK(service_client_handle);
         AT_STACK_LOGE("Client #%d publish to topic '%s', msg '%s', qos %u, retain '%d' FAILED", 
             client_index, topic, msg, qos, 
             is_retain);
         return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
     }
     
-    MQTT_CLIENT_UNLOCK(service_client_handle);
     AT_STACK_LOGI("Client #%d publish to topic '%s', msg '%s', qos %u, retain '%d' SUCCESS", 
         client_index, topic, msg, qos, 
         is_retain);
@@ -414,8 +388,8 @@ mqtt_service_status_t mqtt_service_disconnect(int client_index)
     return MQTT_SERVICE_STATUS_OK;
 }
 
-mqtt_service_status_t mqtt_service_get_recv_buff_group_status(
-    int client_index, recv_buffer_group_t *out_recv_buff_group)
+mqtt_service_status_t mqtt_service_get_num_of_filled_recv_buffs(
+    int client_index, unsigned int *num_of_filled_recv_buffs)
 {
     mqtt_service_client_t *service_client_handle = 
             &mqtt_service_clients_table[client_index];
@@ -428,22 +402,16 @@ mqtt_service_status_t mqtt_service_get_recv_buff_group_status(
     MUST_BE_CORRECT_OR_EXIT(is_client_connected, 
         MQTT_SERVICE_STATUS_ERROR);
 
-    AT_STACK_LOGI("Get recv buff group status of client #%d", client_index);
-    MQTT_CLIENT_LOCK(service_client_handle);
-    recv_buffer_group_t *recv_group_to_get_status = 
-        &mqtt_service_clients_table[client_index].recv_buff_group;
-    for (int buff_index = 0; buff_index < MAX_NUM_OF_RECV_BUFFER; buff_index++)
-    {
-        out_recv_buff_group->buff[buff_index].is_unread = 
-            recv_group_to_get_status->buff[buff_index].is_unread;
-    }
-    MQTT_CLIENT_UNLOCK(service_client_handle);
+    *num_of_filled_recv_buffs = MAX_NUM_OF_RECV_BUFFER 
+        - uxQueueSpacesAvailable(service_client_handle->recv_queue_handle);
+    AT_STACK_LOGI("Get number of filled recv buffers of client #%d, num_of_filled_recv_buffs=%u", 
+        client_index, *num_of_filled_recv_buffs);
 
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
 
-mqtt_service_status_t mqtt_service_get_recv_buff_group(
-    int client_index, recv_buffer_group_t *out_recv_buff_group)
+mqtt_service_status_t mqtt_service_read_current_filled_recv_buff(
+    int client_index, recv_buffer_t *out_recv_buff)
 {
     mqtt_service_client_t *service_client_handle = 
             &mqtt_service_clients_table[client_index];
@@ -456,20 +424,26 @@ mqtt_service_status_t mqtt_service_get_recv_buff_group(
     MUST_BE_CORRECT_OR_EXIT(is_client_connected, 
         MQTT_SERVICE_STATUS_ERROR);
 
-    MQTT_CLIENT_LOCK(service_client_handle);
     // Simply copy local buffer group to output buffer group
     // NOTE: caller is responsible for free allocated buffer of topic and message
-    memcpy(out_recv_buff_group, 
-        &mqtt_service_clients_table[client_index].recv_buff_group,
-        sizeof(recv_buffer_group_t));
-    MQTT_CLIENT_UNLOCK(service_client_handle);
-    AT_STACK_LOGI("Get recv buff group of client #%d, num_of_filled_buffer=%d", 
-        client_index, out_recv_buff_group->current_empty_buff_index);
+    if (xQueuePeek(service_client_handle->recv_queue_handle,
+        out_recv_buff, pdMS_TO_TICKS(RECEIVE_BUFF_QUEUE_WAIT_TIME_ms))
+        != pdTRUE)
+    {
+        AT_STACK_LOGI("Read recv buff of client #%d FAILED",
+            client_index);
+        memset(out_recv_buff, 0, sizeof(recv_buffer_t));
+    }
+    else
+    {
+        AT_STACK_LOGI("Read recv buff of client #%d SUCCESS", 
+            client_index);
+    }
 
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
 
-mqtt_service_status_t mqtt_service_clear_recv_buff_group(
+mqtt_service_status_t mqtt_service_clear_current_filled_recv_buff(
     int client_index)
 {
     mqtt_service_client_t *service_client_handle = 
@@ -483,12 +457,20 @@ mqtt_service_status_t mqtt_service_clear_recv_buff_group(
     MUST_BE_CORRECT_OR_EXIT(is_client_connected, 
         MQTT_SERVICE_STATUS_ERROR);
 
-    MQTT_CLIENT_LOCK(service_client_handle);
-    CLEAR_RECV_BUFF_GROUP(mqtt_service_clients_table[client_index].recv_buff_group);
-    MQTT_CLIENT_UNLOCK(service_client_handle);
-    AT_STACK_LOGI("Clear recv buff group of client #%d, num_of_filled_buffer=%d", 
-        client_index, 
-        service_client_handle->recv_buff_group.current_empty_buff_index);
+    // Simply copy local buffer group to output buffer group
+    recv_buffer_t dummy_recv_buff;
+    if (xQueueReceive(service_client_handle->recv_queue_handle,
+        &dummy_recv_buff, pdMS_TO_TICKS(RECEIVE_BUFF_QUEUE_WAIT_TIME_ms))
+        != pdTRUE)
+    {
+        AT_STACK_LOGI("Clear recv buff of client #%d FAILED",
+            client_index);
+    }
+    else
+    {
+        AT_STACK_LOGI("Clear recv buff of client #%d SUCCESS", 
+            client_index);
+    }
 
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
@@ -523,14 +505,16 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
     case MQTT_EVENT_DATA:
         AT_STACK_LOGI("Client %d got a data", client_idx);
-        MQTT_CLIENT_LOCK(service_client_handle);
-        result = copy_new_sub_data_to_local_recv_buff(client_idx, 
+        result = push_new_sub_data_to_recv_buff_queue(client_idx, 
             event->topic, (uint16_t) event->topic_len, event->data, 
             (uint32_t)event->data_len);
-        MQTT_CLIENT_UNLOCK(service_client_handle);
         if (result)
         {
-            AT_STACK_LOGI("Recv buffer is full! Discard...");
+            AT_STACK_LOGI("Push new subscribed data FAILED for some reason!");
+        }
+        else
+        {
+            AT_STACK_LOGI("Push new subscribed data SUCCESS!");
         }
         break;
 
@@ -699,59 +683,36 @@ static void change_connection_status(int client_index,
     }
 }
 
-static int copy_new_sub_data_to_local_recv_buff(int client_idx, 
+static int push_new_sub_data_to_recv_buff_queue(int client_idx, 
     const char *topic, uint16_t topic_len, const char *msg, uint32_t msg_len)
 {
     mqtt_service_client_t *service_client_handle = 
         &mqtt_service_clients_table[client_idx];
-    uint8_t *client_current_empty_recv_buff_index = 
-        &service_client_handle->recv_buff_group.current_empty_buff_index;
-    if (*client_current_empty_recv_buff_index >= MAX_NUM_OF_RECV_BUFFER)
+    uint8_t client_num_of_empty_recv_buff = 
+        uxQueueSpacesAvailable(service_client_handle->recv_queue_handle);
+    if (!client_num_of_empty_recv_buff)
     {
-        AT_STACK_LOGW("client %d's current empty index = %d, mean recv buffer is full!", 
-            client_idx, *client_current_empty_recv_buff_index);
+        AT_STACK_LOGE("No more empty recv buffer. Discard this data!");
         return -1;
     }
-    recv_buffer_t *copy_recv_buff = 
-        &service_client_handle->recv_buff_group.
-        buff[*client_current_empty_recv_buff_index];
+    recv_buffer_t recv_buff_to_push;
     
-    copy_recv_buff->topic = sys_mem_calloc(topic_len + 1, 1);
-    memcpy(copy_recv_buff->topic, topic, topic_len);
-    copy_recv_buff->topic_len = topic_len;
+    recv_buff_to_push.topic = sys_mem_calloc(topic_len + 1, 1);
+    memcpy(recv_buff_to_push.topic, topic, topic_len);
+    recv_buff_to_push.topic_len = topic_len;
 
-    copy_recv_buff->msg = sys_mem_calloc(msg_len + 1, 1);
-    memcpy(copy_recv_buff->msg, msg, msg_len);
-    copy_recv_buff->msg_len = msg_len;
+    recv_buff_to_push.msg = sys_mem_calloc(msg_len + 1, 1);
+    memcpy(recv_buff_to_push.msg, msg, msg_len);
+    recv_buff_to_push.msg_len = msg_len;
 
-    copy_recv_buff->is_unread = true;
-    (*client_current_empty_recv_buff_index)++;
-    return 0;
-}
-
-static void print_out_unread_buffer(int client_idx)
-{
-    mqtt_service_client_t *service_client_handle = 
-        &mqtt_service_clients_table[client_idx];
-    recv_buffer_group_t *printing_recv_buff_group = 
-        &service_client_handle->recv_buff_group;
-    for (int buff_index = 0; buff_index < MAX_NUM_OF_RECV_BUFFER; buff_index++)
+    if (xQueueSend(service_client_handle->recv_queue_handle, &recv_buff_to_push,
+        pdMS_TO_TICKS(RECEIVE_BUFF_QUEUE_WAIT_TIME_ms)) != pdTRUE)
     {
-        recv_buffer_t printing_recv_buff = 
-            printing_recv_buff_group->buff[buff_index];
-        if (printing_recv_buff.is_unread)
-        {
-            AT_STACK_LOGD("print_unread: client %d, buff index %d, topic is '%s', data is '%s'",
-                client_idx, buff_index, 
-                printing_recv_buff.topic, 
-                printing_recv_buff.msg);
-        }
-        else
-        {
-            break;
-        }
+        AT_STACK_LOGE("Cannot push to client recv buff queue. Discard this data!");
+        return -1;
     }
-    AT_STACK_LOGI("print_unread: Done!");
+
+    return 0;
 }
 
 static int  mqtt_client_configure_and_request_connect(int client_index,
@@ -761,7 +722,6 @@ static int  mqtt_client_configure_and_request_connect(int client_index,
 {
     mqtt_service_client_t *service_client_handle = 
             &mqtt_service_clients_table[client_index];
-    MQTT_CLIENT_LOCK(service_client_handle);
     esp_mqtt_client_config_t client_config = 
     {
         .uri = hostname,
@@ -803,7 +763,6 @@ static int  mqtt_client_configure_and_request_connect(int client_index,
     if (err_from_esp_mqtt != ESP_OK) 
     {
         AT_STACK_LOGE("Cannot set configuration for MQTT client before connecting");
-        MQTT_CLIENT_UNLOCK(service_client_handle);      
         return -1;
     }
     
@@ -811,10 +770,8 @@ static int  mqtt_client_configure_and_request_connect(int client_index,
     if (err_from_esp_mqtt != ESP_OK) 
     {
         AT_STACK_LOGE("Cannot start MQTT");
-        MQTT_CLIENT_UNLOCK(service_client_handle);   
         return -1;
     }
-    MQTT_CLIENT_UNLOCK(service_client_handle);
     AT_STACK_LOGD("Configure and connect done!");
     return 0;
 }
@@ -936,7 +893,7 @@ static void mqtt_service_deinit_internal()
             vEventGroupDelete(service_client_handle->connect_req_event_group);
         if (service_client_handle->connect_status_event_group)
             vEventGroupDelete(service_client_handle->connect_status_event_group);
-        if (service_client_handle->client_mutex)
-            vSemaphoreDelete(service_client_handle->client_mutex);
+        if (service_client_handle->recv_queue_handle)
+            vQueueDelete(service_client_handle->recv_queue_handle);
     }
 }
