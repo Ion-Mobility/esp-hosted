@@ -113,6 +113,8 @@ static void at_handling_task(void* pvParameters)
 			// 'done_handling_req' immediately to avoid double-freeing 
 			// response buffer because freeing response buffer is 
 			// caller's responsibility now
+			AT_STACK_LOGI("Got response '%s' that will be sent through callback!", 
+				sending_at_response);
 			if (!recv_at_cmd_handling_req.resp_send_cb(
 				sending_at_response, sending_at_response_length))
 			{
