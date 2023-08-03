@@ -1,5 +1,6 @@
 #include "parse_test.h"
 #include "mqtt_test.h"
+#include "at_cmd_test.h"
 #include "unity.h"
 #include <string.h>
 #include "esp_system.h"
@@ -37,6 +38,7 @@ static const char *test_description_table[] =
     "Test TLS-MQTT connect/disconnect with ION broker",
     "Test TLS-MQTT basic actions with ION broker",
     "Test TLS-MQTT stress test with ION broker",
+    "Test AT command with AT+QMTRECV trimmed",
 };
 
 
@@ -139,5 +141,6 @@ static void parse_and_exec_option(char *option)
     CHECK_MQTT_TEST_OPTION_AND_RUN("9", 1, TestCase_MQTT_ION_Broker_Connect_Disconnect);
     CHECK_MQTT_TEST_OPTION_AND_RUN("10", 2, TestCase_MQTT_ION_Broker_Basic_Actions);
     CHECK_MQTT_TEST_OPTION_AND_RUN("11", 2, TestCase_MQTT_ION_Broker_StressTest);
+    CHECK_MQTT_TEST_OPTION_AND_RUN("12", 2, TestCase_QmtRecvTrimmed);
     printf("Not found such option. Please try again\n");
 }
