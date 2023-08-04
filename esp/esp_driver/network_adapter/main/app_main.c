@@ -367,11 +367,23 @@ void send_event_data_to_host(int event_id, uint8_t *data, int size)
 	protocomm_pserial_data_ready(pc_pserial, data, size, event_id);
 }
 
-static void on_got_ip(void *arg, esp_event_base_t event_base,
+static void station_event_handler(void *arg, esp_event_base_t event_base,
                       int32_t event_id, void *event_data)
 {
-    ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-    ESP_LOGI(TAG, "Got IPv4 event: Interface \"%s\" address: " IPSTR, esp_netif_get_desc(event->esp_netif), IP2STR(&event->ip_info.ip));
+	ip_event_got_ip_t *event;
+	switch (event_id)
+	{
+		case IP_EVENT_STA_GOT_IP:
+			event = (ip_event_got_ip_t *)event_data;
+    		ESP_LOGI(TAG, "Got IPv4 event: Interface \"%s\" address: " IPSTR, esp_netif_get_desc(event->esp_netif), IP2STR(&event->ip_info.ip));
+			send_event_to_host(CTRL_MSG_ID__Event_StationGotIP);
+			break;
+		case WIFI_EVENT_STA_DISCONNECTED:
+    		ESP_LOGI(TAG, "ESP32 Lost Connection to WiFi");
+			send_event_to_host(CTRL_MSG_ID__Event_StationLosIP);
+			break;
+	}
+
 }
 static void init_sta_netif()
 {
@@ -381,7 +393,9 @@ static void init_sta_netif()
     esp_wifi_set_default_wifi_sta_handlers();
 
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, 
-        &on_got_ip, NULL));
+        &station_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, 
+        &station_event_handler, NULL));
     return netif;
 }
 

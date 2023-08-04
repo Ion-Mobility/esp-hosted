@@ -2388,6 +2388,9 @@ static void esp_ctrl_msg_cleanup(CtrlMsg *resp)
 		} case (CTRL_MSG_ID__Event_StationConnectFromESPTOUCH) : {
 			mem_free(resp->event_station_connect_from_esptouch);
 			break;
+		} case (CTRL_MSG_ID__Event_StationGotIP) :
+		  case (CTRL_MSG_ID__Event_StationLosIP) :  {
+			break;
 		} default: {
 			ESP_LOGE(TAG, "Unsupported CtrlMsg type[%u]",resp->msg_id);
 			break;
@@ -2579,6 +2582,22 @@ err:
 	return ESP_OK;
 }
 
+static esp_err_t ctrl_ntfy_StationGotIP(CtrlMsg *ntfy,
+		const uint8_t *data, ssize_t len)
+{
+	ESP_LOGI(TAG, "%s: data: %x, len: %d\n", __func__, (uint32_t)data, len);
+	ntfy->payload_case = CTRL_MSG__PAYLOAD_EVENT_STATION_GOT_IP;
+	return ESP_OK;
+}
+
+static esp_err_t ctrl_ntfy_StationLostIP(CtrlMsg *ntfy,
+		const uint8_t *data, ssize_t len)
+{
+	ESP_LOGI(TAG, "%s: data: %x, len: %d\n", __func__, (uint32_t)data, len);
+	ntfy->payload_case = CTRL_MSG__PAYLOAD_EVENT_STATION_LOST_IP;
+	return ESP_OK;
+}
+
 esp_err_t ctrl_notify_handler(uint32_t session_id,const uint8_t *inbuf,
 		ssize_t inlen, uint8_t **outbuf, ssize_t *outlen, void *priv_data)
 {
@@ -2610,6 +2629,14 @@ esp_err_t ctrl_notify_handler(uint32_t session_id,const uint8_t *inbuf,
 		} case CTRL_MSG_ID__Event_StationConnectFromESPTOUCH: {
 			ESP_LOGI(TAG, "CTRL_MSG_ID__Event_StationConnectFromESPTOUCH\n");
 			ret = ctrl_ntfy_StationConnectFromESPTOUCH(&ntfy, inbuf, inlen);
+			break;
+		} case CTRL_MSG_ID__Event_StationGotIP: {
+			ESP_LOGI(TAG, "CTRL_MSG_ID__Event_StationGotIP\n");
+			ret = ctrl_ntfy_StationGotIP(&ntfy, inbuf, inlen);
+			break;
+		} case CTRL_MSG_ID__Event_StationLosIP: {
+			ESP_LOGI(TAG, "CTRL_MSG_ID__Event_StationLostIP\n");
+			ret = ctrl_ntfy_StationLostIP(&ntfy, inbuf, inlen);
 			break;
 		} default: {
 			ESP_LOGE(TAG, "Incorrect/unsupported Ctrl Notification[%u]\n",ntfy.msg_id);

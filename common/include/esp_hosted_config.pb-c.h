@@ -205,11 +205,13 @@ typedef enum _CtrlMsgId {
   CTRL_MSG_ID__Event_StationDisconnectFromAP = 303,
   CTRL_MSG_ID__Event_StationDisconnectFromESPSoftAP = 304,
   CTRL_MSG_ID__Event_StationConnectFromESPTOUCH = 305,
+  CTRL_MSG_ID__Event_StationGotIP = 306,
+  CTRL_MSG_ID__Event_StationLosIP = 307,
   /*
    * Add new control path command notification before Event_Max
    * and update Event_Max 
    */
-  CTRL_MSG_ID__Event_Max = 306
+  CTRL_MSG_ID__Event_Max
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(CTRL_MSG_ID)
 } CtrlMsgId;
 
@@ -773,7 +775,9 @@ typedef enum {
   CTRL_MSG__PAYLOAD_EVENT_HEARTBEAT = 302,
   CTRL_MSG__PAYLOAD_EVENT_STATION_DISCONNECT_FROM__AP = 303,
   CTRL_MSG__PAYLOAD_EVENT_STATION_DISCONNECT_FROM__ESP__SOFT_AP = 304,
-  CTRL_MSG__PAYLOAD_EVENT_STATION_CONNECT_FROM__ESPTOUCH = 305
+  CTRL_MSG__PAYLOAD_EVENT_STATION_CONNECT_FROM__ESPTOUCH = 305,
+  CTRL_MSG__PAYLOAD_EVENT_STATION_GOT_IP = 306,
+  CTRL_MSG__PAYLOAD_EVENT_STATION_LOST_IP = 307
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(CTRL_MSG__PAYLOAD__CASE)
 } CtrlMsg__PayloadCase;
 
