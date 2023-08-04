@@ -140,12 +140,21 @@ static void prepare_at_resp_buff_handle(char* at_resp,
 static int send_at_response_to_host_callback(void *sending_resp, uint32_t resp_len)
 {
 	interface_buffer_handle_t to_host_buff_handle;
-	prepare_at_resp_buff_handle(sending_resp, 
-		resp_len, &to_host_buff_handle);
+	uint32_t additional_characters_len = 2*strlen("\r\n") + 1;
+	
+	char *quectel_resp_send_to_host = calloc(1, resp_len + additional_characters_len);
+	uint32_t quectel_resp_len = AT_NormalString_To_QuecTelString(
+		sending_resp, resp_len, quectel_resp_send_to_host
+	);
+	// Free the original response because it's no longer needed now
+	free(sending_resp);
+	prepare_at_resp_buff_handle(quectel_resp_send_to_host, 
+		quectel_resp_len, &to_host_buff_handle);
 	if (send_to_host_queue(&to_host_buff_handle, PRIO_Q_OTHERS) != ESP_OK) 
 	{
 		return -1;
 	}
+	ESP_LOGI(TAG, "Done sending response to host!");
 	return 0;
 }
 
