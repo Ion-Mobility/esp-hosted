@@ -60,6 +60,43 @@ extern int convert_and_validate(const char* str,
     long int* converted_number);
 
 /**
+ * @brief Tokenize next quoted string
+ * 
+ * @param str input string to tokenize. Can be NULL if token_ctx is not NULL
+ * for continuing processing [in]
+ * @param delim delimiter string [in]
+ * @param out_token return token. NULL if no such token is found [out]
+ * @param token_ctx context to tokenize and to return for next tokenizing
+ * [in,out]
+ * 
+ * @retval 0 if found quoted string VALID or no token is found
+ * @retval -1 if found quoted string INVALID
+ */
+extern int tokenize_quoted_string(const char *str, const char *delim,
+    char **out_token, char **token_ctx);
+
+/**
+ * @brief Remove all escape characters in a string
+ * 
+ * @param string_to_remove pointer to string to resolve [in,out]
+ */
+extern void remove_escape_characters_in_string(char* string_to_remove);
+
+/**
+ * @brief Add escape characters before every special characters in string
+ * 
+ * @param string_to_add pointer to string to resolve [in,out]
+ */
+extern void add_escape_characters_in_string(char* string_to_add);
+
+/**
+ * @brief Add begin and end quote characters to string
+ * 
+ * @param string_to_quote pointer to string to quote [in,out]
+ */
+extern void add_quote_characters_to_string(char* string_to_quote);
+
+/**
  * @brief Get next token, validate and assign to a unsigned long integer. 
  * If no token is found or valus is out of range, return 'ERROR' response.
  * 
@@ -171,19 +208,19 @@ extern int convert_and_validate(const char* str,
  */
 #define TOKENIZE_AND_ASSIGN_REQUIRED_QUOTED_STRING(dest, input_str, \
     token, token_ctx, handler_tmp_buff, resp)  do { \
-    token = sys_strtok(NULL, param_delim, &token_ctx); \
-    if (token == NULL) \
+    int tok_err = tokenize_quoted_string(NULL, param_delim, \
+        &token, &token_ctx); \
+    if (tok_err) \
     { \
-        AT_STACK_LOGE("Not found required quoted string token!"); \
+        AT_STACK_LOGE("Tokenize invalid quoted string"); \
     } \
-    else if ((token != NULL) && ((token[0] != '"') || \
-        (token[strlen(token) - 1] != '"'))) \
+    else if (token == NULL) \
     { \
-        AT_STACK_LOGE("Found token not properly quoted!"); \
+        AT_STACK_LOGE("Need to find quote string but reach the end of tokenize string"); \
     } \
-    MUST_BE_CORRECT_OR_RESPOND_ERROR((token != NULL) && \
-        (token[0] == '"') && (token[strlen(token) - 1] == '"') \
-        , handler_tmp_buff, resp); \
+    MUST_BE_CORRECT_OR_RESPOND_ERROR((!tok_err) && \
+        (token != NULL), handler_tmp_buff, resp); \
+    remove_escape_characters_in_string(token); \
     dest = &token[1]; \
     token[strlen(token) - 1] = '\0'; \
 } while (0)
@@ -205,22 +242,22 @@ extern int convert_and_validate(const char* str,
  */
 #define TOKENIZE_AND_ASSIGN_OPTIONAL_QUOTED_STRING(dest, input_str, \
     token, token_ctx, handler_tmp_buff, resp)  do { \
-    token = sys_strtok(NULL, param_delim, &token_ctx); \
-    if (token != NULL) \
+    int tok_err = tokenize_quoted_string(NULL, param_delim, \
+        &token, &token_ctx); \
+    if ((!tok_err) && (token != NULL)) \
     { \
-        if ((token[0] != '"') || \
-            (token[strlen(token) - 1] != '"')) \
-        { \
-            AT_STACK_LOGE("Found token not properly quoted!"); \
-        } \
-        MUST_BE_CORRECT_OR_RESPOND_ERROR((token[0] == '"') && \
-            (token[strlen(token) - 1] == '"'), handler_tmp_buff, resp); \
+        remove_escape_characters_in_string(token); \
         dest = &token[1]; \
         token[strlen(token) - 1] = '\0'; \
     } \
-    else \
+    else if ((!tok_err) && (token == NULL)) \
     { \
         AT_STACK_LOGD("Not found optional quoted string token!"); \
+    } \
+    else if (tok_err) \
+    { \
+        AT_STACK_LOGE("Tokenize invalid quoted string"); \
+        MUST_BE_CORRECT_OR_RESPOND_ERROR(!tok_err, handler_tmp_buff, resp); \
     } \
 } while (0)
 
