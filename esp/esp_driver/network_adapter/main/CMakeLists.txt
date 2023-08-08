@@ -7,9 +7,12 @@ set(COMPONENT_SRCS "../../../../common/esp_hosted_config.pb-c.c"
                    "tm/tm_ble_gatts_server.c"
                    "tm/tm_spi_slave_driver.c"
                    "tm/tm_ble.c"
-                   "tm/tm_atcmd.c")
+                   "tm/tm_atcmd.c"
+                   "crypto/lib/monocypher-ed25519.c"
+                   "crypto/lib/monocypher.c")
                    set(COMPONENT_ADD_INCLUDEDIRS "."
                                                  "./tm"
+                                                 "./crypto/lib"
                                                  "../../../../common/include")
 
 if(CONFIG_ESP_SDIO_HOST_INTERFACE)
