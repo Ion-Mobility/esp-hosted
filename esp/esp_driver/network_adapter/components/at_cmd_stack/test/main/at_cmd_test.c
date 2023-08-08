@@ -11,6 +11,8 @@
 #include "freertos/queue.h"
 #include "unity.h"
 
+#define TOTAL_STEPS_OF_TEST_SUITE(test_suite) sizeof(test_suite) / sizeof(test_step_t)
+
 typedef struct {
     char *resp;
 } resp_buff_handle_t;
@@ -34,6 +36,9 @@ static int send_at_response_callback_for_test_app(
 
 static bool is_test_step_good(
     const test_step_t *test_step);
+
+static void perform_at_cmd_test_suite(const test_step_t *test_suite, 
+    unsigned int num_of_test_steps);
 
 static QueueHandle_t recv_resp_queue_handle = NULL;
 
@@ -89,37 +94,80 @@ static const test_step_t test_suite_qmt_recv_trimmed[] =
     },
 };
 
+static const test_step_t test_suite_qmt_recv_special_characters[] =
+{
+    {
+        .at_cmd = "AT+QMTCONN=0,\"mqtt://broker.hivemq.com\",1883,\"esp32-wifi\"",
+        .expected_resp = "OK\r\n\r\n+QMTCONN: 0,0,0"
+    },
+    {
+        .at_cmd = "AT+QMTRECV=0",
+        .expected_resp = NULL,
+    },
+    {
+        .at_cmd = "AT+QMTSUB=0,\"\\\"quoted_topic\\\"\",2",
+        .expected_resp = "OK\r\n+QMTSUB: 0,0"
+    },
+    {
+        .at_cmd = "AT+QMTPUBEX=0,2,0,\"\\\"quoted_topic\\\"\",\"\\\"temperature\\\": \\\"23,24\\\"\"",
+        .expected_resp = "OK\r\n+QMTPUBEX: 0,0"
+    },
+    {
+        .at_cmd = "AT+QMTRECV=0",
+        .expected_resp = "+QMTRECV:\r\n0,\"\\\"quoted_topic\\\"\",\"\\\"temperature\\\": \\\"23,24\\\"\"",
+        .delay_before_send_cmd_ms = 800,
+    },
+    {
+        .at_cmd = "AT+QMTUNS=0,\"\\\"quoted_topic\\\"\",",
+        .expected_resp = "OK\r\n+QMTUNS: 0,0",
+    },
+    {
+        .at_cmd = "AT+QMTDISC=0",
+        .expected_resp = "OK\r\n+QMTDISC: 0,0"
+    },
+};
+
+static const test_step_t test_suite_qmt_wrong_quote[] =
+{
+    {
+        .at_cmd = "AT+QMTCONN=0,\"mqtt://broker.hivemq.com\",1883,\"esp32-wifi\"",
+        .expected_resp = "OK\r\n\r\n+QMTCONN: 0,0,0"
+    },
+    {
+        .at_cmd = "AT+QMTRECV=0",
+        .expected_resp = NULL,
+    },
+    {
+        .at_cmd = "AT+QMTPUBEX=0,2,0,\"\"quoted_topic\"\",\"\\\"temperature\\\": \\\"23,24\\\"\"",
+        .expected_resp = "ERROR"
+    },
+    {
+        .at_cmd = "AT+QMTPUBEX=0,2,0,\"\\\"quoted_topic\\\"\",\"\"temperature\": \\\"23,24\\\"\"",
+        .expected_resp = "ERROR"
+    },
+    {
+        .at_cmd = "AT+QMTDISC=0",
+        .expected_resp = "OK\r\n+QMTDISC: 0,0"
+    },
+};
+
 
 void TestCase_QmtRecvTrimmed()
 {
-    running_test_suite_status.target_test_suite = test_suite_qmt_recv_trimmed;
-    recv_resp_queue_handle = xQueueCreate(1, sizeof(resp_buff_handle_t));
-    test_begin_setup();
-    init_at_cmd_app();
-    int num_of_test = 
-        sizeof(test_suite_qmt_recv_trimmed) / sizeof(test_step_t);
-    
-    for (int index = 0; index < num_of_test; index++)
-    {
-        const test_step_t *current_test_step = 
-            &running_test_suite_status.target_test_suite[index];
-        running_test_suite_status.current_retry = current_test_step->retry_count;
-        while (1)
-        {
-            TEST_LOG("Step #%u, current retry: %d\n", 
-                index, running_test_suite_status.current_retry);
-            if (is_test_step_good(current_test_step))
-            {
-                TEST_LOG("Test step PASSED\n");
-                break;
-            }
-            if (running_test_suite_status.current_retry-- < 0)
-                break;
-        }
-        TEST_ASSERT_GREATER_OR_EQUAL_INT(0, running_test_suite_status.current_retry);
+    perform_at_cmd_test_suite(test_suite_qmt_recv_trimmed,
+        TOTAL_STEPS_OF_TEST_SUITE(test_suite_qmt_recv_trimmed));
+}
 
-    }
-    test_done_clear_up();
+void TestCase_QmtRecvSpecialCharacters()
+{
+    perform_at_cmd_test_suite(test_suite_qmt_recv_special_characters,
+        TOTAL_STEPS_OF_TEST_SUITE(test_suite_qmt_recv_special_characters));
+}
+
+void TestCase_QmtPubexWrongQuote()
+{
+    perform_at_cmd_test_suite(test_suite_qmt_wrong_quote,
+        TOTAL_STEPS_OF_TEST_SUITE(test_suite_qmt_wrong_quote));
 }
 
 static int send_at_response_callback_for_test_app(
@@ -141,6 +189,37 @@ static int send_at_response_callback_for_test_app(
     }
     TEST_LOG("Send response SUCCESS");
     return 0;
+}
+
+static void perform_at_cmd_test_suite(const test_step_t *test_suite, 
+    unsigned int num_of_test_steps)
+{
+    running_test_suite_status.target_test_suite = test_suite;
+    recv_resp_queue_handle = xQueueCreate(1, sizeof(resp_buff_handle_t));
+    test_begin_setup();
+    init_at_cmd_app();
+    
+    for (int index = 0; index < num_of_test_steps; index++)
+    {
+        const test_step_t *current_test_step = 
+            &running_test_suite_status.target_test_suite[index];
+        running_test_suite_status.current_retry = current_test_step->retry_count;
+        while (1)
+        {
+            TEST_LOG("Step #%u, current retry: %d\n", 
+                index, running_test_suite_status.current_retry);
+            if (is_test_step_good(current_test_step))
+            {
+                TEST_LOG("Test step PASSED\n");
+                break;
+            }
+            if (running_test_suite_status.current_retry-- < 0)
+                break;
+        }
+        TEST_ASSERT_GREATER_OR_EQUAL_INT(0, running_test_suite_status.current_retry);
+
+    }
+    test_done_clear_up();    
 }
 
 static bool is_test_step_good(

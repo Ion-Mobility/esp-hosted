@@ -39,6 +39,8 @@ static const char *test_description_table[] =
     "Test TLS-MQTT basic actions with ION broker",
     "Test TLS-MQTT stress test with ION broker",
     "Test AT command with AT+QMTRECV trimmed",
+    "Test AT command with AT+QMTRECV that has quote characters in message and topic",
+    "Test AT command with AT+PUBEX that has wrong format quote character in message and topic",
 };
 
 
@@ -142,5 +144,7 @@ static void parse_and_exec_option(char *option)
     CHECK_MQTT_TEST_OPTION_AND_RUN("10", 2, TestCase_MQTT_ION_Broker_Basic_Actions);
     CHECK_MQTT_TEST_OPTION_AND_RUN("11", 2, TestCase_MQTT_ION_Broker_StressTest);
     CHECK_MQTT_TEST_OPTION_AND_RUN("12", 2, TestCase_QmtRecvTrimmed);
+    CHECK_MQTT_TEST_OPTION_AND_RUN("13", 2, TestCase_QmtRecvSpecialCharacters);
+    CHECK_MQTT_TEST_OPTION_AND_RUN("14", 2, TestCase_QmtPubexWrongQuote);
     printf("Not found such option. Please try again\n");
 }
