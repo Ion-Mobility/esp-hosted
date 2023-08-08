@@ -20,7 +20,7 @@ static const at_cmd_test_scene_entry_t parse_test_cases_table[] =
     {
         .test_name = "Correct AT test command",
         .at_cmd = "AT+PARSETEST=?",
-        .expected_response = "+PARSETEST: <0-1>,<required_quoted_string>[,<0-65535>[,<optional_quoted_string>]]\r\n\r\nOK",
+        .expected_response = "+PARSETEST: <0-1>,<required_quoted_string>[,<0-65535>[,<optional_quoted_string_1>[,<optional_quoted_string_2>]]]\r\n\r\nOK",
     },
     {
         .test_name = "Incorrect AT test command with additional character",
@@ -93,9 +93,39 @@ static const at_cmd_test_scene_entry_t parse_test_cases_table[] =
         .expected_response = "ERROR"
     },
     {
-        .test_name = "Correct AT write command both optional lint and quoted string",
+        .test_name = "Correct AT write command both optional lint and 1 quoted string",
         .at_cmd = "AT+PARSETEST=0,\"test_req\",0,\"test_opt\"",
         .expected_response = "+PARSETEST: found required '0','test_req'; found optional '0','test_opt'\r\n\r\nOK"
+    },
+    {
+        .test_name = "Correct AT write command both optional lint and 1 quoted string. Comma in quote string",
+        .at_cmd = "AT+PARSETEST=0,\"test_req, hello\",0,\"test_opt, hello\"",
+        .expected_response = "+PARSETEST: found required '0','test_req, hello'; found optional '0','test_opt, hello'\r\n\r\nOK"
+    },
+    {
+        .test_name = "Correct AT write command both optional lint and 1 quoted string. Quote character in quote string",
+        .at_cmd = "AT+PARSETEST=0,\"\\\"test_req\\\"\",0,\"\\\"test_opt\\\"\"",
+        .expected_response = "+PARSETEST: found required '0','\"test_req\"'; found optional '0','\"test_opt\"'\r\n\r\nOK"
+    },
+    {
+        .test_name = "Correct AT write command both optional lint and 1 quoted string. Quote character and comma in quote string",
+        .at_cmd = "AT+PARSETEST=0,\"\\\"test_req\\\", hello\",0,\"\\\"test_opt\\\", hello\"",
+        .expected_response = "+PARSETEST: found required '0','\"test_req\", hello'; found optional '0','\"test_opt\", hello'\r\n\r\nOK"
+    },
+    {
+        .test_name = "Correct AT write command both optional lint and 2 quoted strings. Comma in quote strings",
+        .at_cmd = "AT+PARSETEST=0,\"test_req, hello\",0,\"test_opt1, hello\",\"test_opt2, hello\"",
+        .expected_response = "+PARSETEST: found required '0','test_req, hello'; found optional '0','test_opt1, hello','test_opt2, hello'\r\n\r\nOK"
+    },
+    {
+        .test_name = "Correct AT write command both optional lint and 2 quoted strings. Quote character in quote strings",
+        .at_cmd = "AT+PARSETEST=0,\"\\\"test_req\\\"\",0,\"\\\"test_opt1\\\"\",\"\\\"test_opt2\\\"\"",
+        .expected_response = "+PARSETEST: found required '0','\"test_req\"'; found optional '0','\"test_opt1\"','\"test_opt2\"'\r\n\r\nOK"
+    },
+    {
+        .test_name = "Correct AT write command both optional lint and 2 quoted strings. Quote character and comma in quote strings",
+        .at_cmd = "AT+PARSETEST=0,\"\\\"test_req\\\", hello\",0,\"\\\"test_opt1\\\", hello\",\"\\\"test_opt2\\\", hello\"",
+        .expected_response = "+PARSETEST: found required '0','\"test_req\", hello'; found optional '0','\"test_opt1\", hello','\"test_opt2\", hello'\r\n\r\nOK"
     },
     {
         .test_name = "Incorrect AT write command with incorrect optional quoted string #1",
