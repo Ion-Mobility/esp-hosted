@@ -97,25 +97,45 @@ void remove_escape_characters_in_string(char* string_to_remove)
     }
 }
 
-void add_escape_characters_in_string(char* string_to_add)
+int add_escape_characters_in_string(char* dst_string,
+    unsigned int dst_string_buff_size)
 {
-    for (unsigned int pos = 0; pos < strlen(string_to_add); pos++)
+    char *ret_string = sys_mem_malloc(dst_string_buff_size);
+    memcpy(ret_string, dst_string, dst_string_buff_size);
+    for (unsigned int pos = 0; pos < strlen(ret_string); pos++)
     {
-        if (string_to_add[pos] == '"')
+        if (ret_string[pos] == '"')
         {
-            memmove(&string_to_add[pos + 1], &string_to_add[pos], 
-                strlen(string_to_add) - pos);
-            string_to_add[pos] = '\\';
+            // Plus 2 because of one escape characters '\\' and 
+            // one NULL character '\0'
+            if (strlen(ret_string) + 2  > dst_string_buff_size)
+                goto buff_size_not_enough;
+
+            memmove(&ret_string[pos + 1], &ret_string[pos], 
+                strlen(ret_string) - pos);
+            ret_string[pos] = '\\';
             pos++;
         }
     }
+    memcpy(dst_string, ret_string, dst_string_buff_size);
+    sys_mem_free(ret_string);
+    return 0;
+buff_size_not_enough:
+    sys_mem_free(ret_string);
+    return -1;
 }
 
-void add_quote_characters_to_string(char* string_to_quote)
+int add_quote_characters_to_string(char* dst_string,
+    unsigned int dst_string_buff_size)
 {
-    memmove(&string_to_quote[1], &string_to_quote[0], 
-        strlen(string_to_quote) + 1);
-    string_to_quote[0] = '"';
-    string_to_quote[strlen(string_to_quote) + 1] = '\0';
-    string_to_quote[strlen(string_to_quote)] = '"';
+    // Plus 3 because of two quote characters '"' and 
+    // one NULL character '\0'
+    if (strlen(dst_string) + 3 > dst_string_buff_size)
+        return -1;
+    memmove(&dst_string[1], &dst_string[0], 
+        strlen(dst_string) + 1);
+    dst_string[0] = '"';
+    dst_string[strlen(dst_string) + 1] = '\0';
+    dst_string[strlen(dst_string)] = '"';
+    return 0;
 }

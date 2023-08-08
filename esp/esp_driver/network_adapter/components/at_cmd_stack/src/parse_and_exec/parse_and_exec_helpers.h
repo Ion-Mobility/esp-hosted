@@ -85,16 +85,27 @@ extern void remove_escape_characters_in_string(char* string_to_remove);
 /**
  * @brief Add escape characters before every special characters in string
  * 
- * @param string_to_add pointer to string to resolve [in,out]
+ * @param dst_string pointer to string to add escape characters [in,out]
+ * @param dst_string_buff_size size of adding string buffer to [in]
+ * 
+ * @retval 0 add escape characters SUCCESS
+ * @retval -1 0 add escape characters FAILED due to new string's is bigger than
+ * buffer size
  */
-extern void add_escape_characters_in_string(char* string_to_add);
+extern int add_escape_characters_in_string(char* dst_string,
+    unsigned int dst_string_buff_size);
 
 /**
  * @brief Add begin and end quote characters to string
  * 
  * @param string_to_quote pointer to string to quote [in,out]
+ * 
+ * @retval 0 add quote characters SUCCESS
+ * @retval -1 add quote characters FAILED due to new string's is bigger than
+ * buffer size
  */
-extern void add_quote_characters_to_string(char* string_to_quote);
+extern int add_quote_characters_to_string(char* dst_string,
+    unsigned int dst_string_buff_size);
 
 /**
  * @brief Get next token, validate and assign to a unsigned long integer. 
