@@ -88,9 +88,9 @@ void TestCase_MQTT_Connect_Disconnect()
 {
     test_begin_setup();
     mqtt_basic_actions_test(0, "mqtt://broker.hivemq.com", 1883, NULL, NULL, 
-        NULL, NULL, 1, false, false, false, false);
+        NULL, NULL, 10, false, false, false, true);
     mqtt_basic_actions_test(0, "mqtt://mqtt.eclipseprojects.io", 1883, NULL, NULL, 
-        NULL, NULL, 1, false, false, false, false);
+        NULL, NULL, 10, false, false, false, true);
     test_done_clear_up();
 }
 
@@ -114,9 +114,9 @@ void TestCase_MQTT_TLS_Connect_Disconnect()
 {
     test_begin_setup();
     mqtt_basic_actions_test(0, "mqtts://broker.hivemq.com", 8883, NULL, NULL,
-        NULL, NULL, 1, false, false, false, false);
+        NULL, NULL, 10, false, false, false, true);
     mqtt_basic_actions_test(0, "mqtts://mqtt.eclipseprojects.io", 8883, NULL, NULL,
-        NULL, NULL, 1, false, false, false, false);
+        NULL, NULL, 10, false, false, false, true);
     test_done_clear_up();
 }
 
@@ -140,8 +140,8 @@ void TestCase_MQTT_ION_Broker_Connect_Disconnect()
 {
     test_begin_setup();
     mqtt_basic_actions_test(0, "mqtts://ion-broker-s.ionmobility.net", 8883, 
-        ion_broker_username, ion_broker_password, NULL, NULL, 1,
-        false, false, false, false);
+        ion_broker_username, ion_broker_password, NULL, NULL, 10,
+        false, false, false, true);
     test_done_clear_up();
 }
 
