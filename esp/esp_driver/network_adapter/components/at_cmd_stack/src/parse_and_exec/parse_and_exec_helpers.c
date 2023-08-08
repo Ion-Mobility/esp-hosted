@@ -96,3 +96,26 @@ void remove_escape_characters_in_string(char* string_to_remove)
         }
     }
 }
+
+void add_escape_characters_in_string(char* string_to_add)
+{
+    for (unsigned int pos = 0; pos < strlen(string_to_add); pos++)
+    {
+        if (string_to_add[pos] == '"')
+        {
+            memmove(&string_to_add[pos + 1], &string_to_add[pos], 
+                strlen(string_to_add) - pos);
+            string_to_add[pos] = '\\';
+            pos++;
+        }
+    }
+}
+
+void add_quote_characters_to_string(char* string_to_quote)
+{
+    memmove(&string_to_quote[1], &string_to_quote[0], 
+        strlen(string_to_quote) + 1);
+    string_to_quote[0] = '"';
+    string_to_quote[strlen(string_to_quote) + 1] = '\0';
+    string_to_quote[strlen(string_to_quote)] = '"';
+}

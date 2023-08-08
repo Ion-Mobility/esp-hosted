@@ -2,6 +2,15 @@
 #include "../parse_and_exec_helpers.h"
 #include "mqtt_service.h"
 
+#define PREPARE_STRING_AND_APPEND_TO_RESP(str, tmp_buff, resp) do { \
+    memset(handler_tmp_buff->tmp_resp_buff, 0, MAX_AT_RESP_LENGTH); \
+    sprintf(tmp_buff, "%s", str); \
+    add_escape_characters_in_string(tmp_buff); \
+    add_quote_characters_to_string(tmp_buff); \
+    strcat(resp, ","); \
+    strcat(resp, tmp_buff); \
+} while (0)
+
 //==============================
 // Public functions definition
 //==============================
@@ -90,13 +99,13 @@ AT_BUFF_SIZE_T qmtrecv_write_cmd_parse_exec_handler(const char *arg,
             AT_STACK_LOGD("Stop append new data because next recv buff will cause response bigger than max length");
             break;
         }
-        sprintf(handler_tmp_buff->tmp_resp_buff,"%s", at_resp);
         AT_STACK_LOGD("copy at resp to tmp_resp_buff. topic = %p, msg = %p",
             read_recv_buff.topic,
             read_recv_buff.msg);
-        sprintf(at_resp,"%s,\"%s\",\"%s\"", handler_tmp_buff->tmp_resp_buff, 
-            read_recv_buff.topic,
-            read_recv_buff.msg);
+        PREPARE_STRING_AND_APPEND_TO_RESP(read_recv_buff.topic,
+            handler_tmp_buff->tmp_resp_buff, at_resp);
+        PREPARE_STRING_AND_APPEND_TO_RESP(read_recv_buff.msg,
+            handler_tmp_buff->tmp_resp_buff, at_resp);
         AT_STACK_LOGD("at resp appends! Response = '%s'", at_resp);
         sys_mem_free(read_recv_buff.topic);
         sys_mem_free(read_recv_buff.msg);
