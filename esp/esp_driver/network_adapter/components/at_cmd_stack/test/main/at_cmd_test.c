@@ -44,7 +44,7 @@ static QueueHandle_t recv_resp_queue_handle = NULL;
 
 static test_suite_status_t running_test_suite_status;
 
-static const test_step_t test_suite_qmt_recv_trimmed[] =
+static const test_step_t test_suite_multiple_publishes[] =
 {
     {
         .at_cmd = "AT+QMTCONN=0,\"mqtts://ion-broker-s.ionmobility.net\",8883,\"esp32-wifi\",\"9b5766d8-8766-492c-ace8-a80f191e47e6\",\"0caabff1-dd1e-49da-a3a3-9a00d4ff2cb6\"",
@@ -75,14 +75,41 @@ static const test_step_t test_suite_qmt_recv_trimmed[] =
         .expected_resp = "OK\r\n+QMTPUBEX: 0,0"
     },
     {
-        .at_cmd = "AT+QMTRECV=0",
-        .expected_resp = "+QMTRECV:\r\n0,\"channels/ccb53e96-8628-4ac0-9e3f-95185f38733a/messages\",\"Speedy Speedy BRRUHHHH\",\"channels/ccb53e96-8628-4ac0-9e3f-95185f38733a/messages\",\"Speedy Speedy BRRUHHHH\",\"channels/ccb53e96-8628-4ac0-9e3f-95185f38733a/messages\",\"Speedy Speedy BRRUHHHH\"",
+        .at_cmd = "AT+QMTRECV?",
+        .expected_resp = "+QMTRECV\r\n0,1\r\n\r\nOK",
         .delay_before_send_cmd_ms = 800,
     },
     {
         .at_cmd = "AT+QMTRECV=0",
         .expected_resp = "+QMTRECV:\r\n0,\"channels/ccb53e96-8628-4ac0-9e3f-95185f38733a/messages\",\"Speedy Speedy BRRUHHHH\"",
-        .delay_before_send_cmd_ms = 200,
+    },
+    {
+        .at_cmd = "AT+QMTRECV?",
+        .expected_resp = "+QMTRECV\r\n0,1\r\n\r\nOK",
+    },
+    {
+        .at_cmd = "AT+QMTRECV=0",
+        .expected_resp = "+QMTRECV:\r\n0,\"channels/ccb53e96-8628-4ac0-9e3f-95185f38733a/messages\",\"Speedy Speedy BRRUHHHH\"",
+    },
+    {
+        .at_cmd = "AT+QMTRECV?",
+        .expected_resp = "+QMTRECV\r\n0,1\r\n\r\nOK",
+    },
+    {
+        .at_cmd = "AT+QMTRECV=0",
+        .expected_resp = "+QMTRECV:\r\n0,\"channels/ccb53e96-8628-4ac0-9e3f-95185f38733a/messages\",\"Speedy Speedy BRRUHHHH\"",
+    },
+    {
+        .at_cmd = "AT+QMTRECV?",
+        .expected_resp = "+QMTRECV\r\n0,1\r\n\r\nOK",
+    },
+    {
+        .at_cmd = "AT+QMTRECV=0",
+        .expected_resp = "+QMTRECV:\r\n0,\"channels/ccb53e96-8628-4ac0-9e3f-95185f38733a/messages\",\"Speedy Speedy BRRUHHHH\"",
+    },
+    {
+        .at_cmd = "AT+QMTRECV?",
+        .expected_resp = "+QMTRECV\r\n0,0\r\n\r\nOK",
     },
     {
         .at_cmd = "AT+QMTUNS=0,\"channels/ccb53e96-8628-4ac0-9e3f-95185f38733a/messages\",",
@@ -152,10 +179,10 @@ static const test_step_t test_suite_qmt_wrong_quote[] =
 };
 
 
-void TestCase_QmtRecvTrimmed()
+void TestCase_QmtMultiplePublishes()
 {
-    perform_at_cmd_test_suite(test_suite_qmt_recv_trimmed,
-        TOTAL_STEPS_OF_TEST_SUITE(test_suite_qmt_recv_trimmed));
+    perform_at_cmd_test_suite(test_suite_multiple_publishes,
+        TOTAL_STEPS_OF_TEST_SUITE(test_suite_multiple_publishes));
 }
 
 void TestCase_QmtRecvSpecialCharacters()
