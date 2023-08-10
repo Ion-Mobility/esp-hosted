@@ -1,9 +1,9 @@
 key,type,encoding,value
 ssl_crts,namespace,,
-root_ca_cert,file,string,certs/root_ca_cert.crt
-esp_priv_key,file,string,certs/client_priv_key.key
-esp_cert,file,string,certs/client_cert.crt
+root_ca_cert,file,string,certs/ca.crt
+esp_priv_key,file,string,certs/thing.key
+esp_cert,file,string,certs/thing.crt
 ssl_crts_backup,namespace,,
-root_ca_cert,file,string,certs/root_ca_cert.crt
-esp_priv_key,file,string,certs/client_priv_key.key
-esp_cert,file,string,certs/client_cert.crt
+root_ca_cert,file,string,certs/ca.crt
+esp_priv_key,file,string,certs/thing.key
+esp_cert,file,string,certs/thing.crt
