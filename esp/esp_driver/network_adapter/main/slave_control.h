@@ -37,6 +37,24 @@ typedef struct {
 	uint16_t count;
 } credentials_t;
 
+enum {
+	CTRL_ERR_NOT_CONNECTED = 1,
+	CTRL_ERR_NO_AP_FOUND,
+	CTRL_ERR_INVALID_PASSWORD,
+	CTRL_ERR_INVALID_ARGUMENT,
+	CTRL_ERR_OUT_OF_RANGE,
+	CTRL_ERR_MEMORY_FAILURE,
+	CTRL_ERR_UNSUPPORTED_MSG,
+	CTRL_ERR_INCORRECT_ARG,
+	CTRL_ERR_PROTOBUF_ENCODE,
+	CTRL_ERR_PROTOBUF_DECODE,
+	CTRL_ERR_SET_ASYNC_CB,
+	CTRL_ERR_TRANSPORT_SEND,
+	CTRL_ERR_REQUEST_TIMEOUT,
+	CTRL_ERR_REQ_IN_PROG,
+	OUT_OF_RANGE
+};
+
 esp_err_t data_transfer_handler(uint32_t session_id,const uint8_t *inbuf,
 		ssize_t inlen,uint8_t **outbuf, ssize_t *outlen, void *priv_data);
 esp_err_t ctrl_notify_handler(uint32_t session_id,const uint8_t *inbuf,

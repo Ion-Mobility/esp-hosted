@@ -260,6 +260,40 @@ static void smartconfig_event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
+static void resolve_wifi_err_reason_for_wifi_event_group_sync(int32_t err_reason)
+{
+	switch (err_reason)
+	{
+	case WIFI_REASON_NO_AP_FOUND:
+		xEventGroupSetBits(wifi_event_group, WIFI_NO_AP_FOUND_BIT);
+		break;
+	case WIFI_REASON_AUTH_FAIL:
+		xEventGroupSetBits(wifi_event_group, WIFI_WRONG_PASSWORD_BIT);
+		break;
+	default:
+		// simply unknown error
+		xEventGroupSetBits(wifi_event_group, WIFI_FAIL_BIT);
+		break;
+	}
+}
+
+static void send_event_to_host_if_necessary(int32_t err_reason)
+{
+	if (station_connected &&
+			!((WIFI_HOST_REQUEST_BIT & xEventGroupGetBitsFromISR(wifi_event_group)) &
+				WIFI_HOST_REQUEST_BIT)) {
+		/* Event should not be triggered if event handler is
+			* called as part of host triggered procedure like sta_disconnect etc
+			**/
+		ESP_LOGI(TAG, "Station unexpectedly lost connection to AP, reason: %u\n", err_reason);
+		send_event_data_to_host(CTRL_MSG_ID__Event_StationDisconnectFromAP,
+				&err_reason, 1);
+	} else {
+		ESP_LOGI(TAG, "Station not connected during host request process, reason: %u\n",
+				err_reason);
+	}
+}
+
 /* event handler for station connect/disconnect to/from AP */
 static void station_event_handler(void *arg, esp_event_base_t event_base,
 		int32_t event_id, void *event_data)
@@ -270,32 +304,14 @@ static void station_event_handler(void *arg, esp_event_base_t event_base,
 		(wifi_event_sta_disconnected_t *) event_data;
 
 	if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
-			ESP_LOGI(TAG,"%s: WIFI_EVENT_STA_DISCONNECTED\n", __func__);
+		ESP_LOGI(TAG,"%s: WIFI_EVENT_STA_DISCONNECTED reason %d\n", __func__,
+			disconnected_event->reason);
 
 		/* find out reason for failure and
 		 * set corresponding event bit */
-		if (disconnected_event->reason == WIFI_REASON_NO_AP_FOUND)
-			xEventGroupSetBits(wifi_event_group, WIFI_NO_AP_FOUND_BIT);
-		else if ((disconnected_event->reason == WIFI_REASON_CONNECTION_FAIL) ||
-				(disconnected_event->reason == WIFI_REASON_NOT_AUTHED))
-			xEventGroupSetBits(wifi_event_group, WIFI_WRONG_PASSWORD_BIT);
-		else
-			xEventGroupSetBits(wifi_event_group, WIFI_FAIL_BIT);
-
-		if ( station_connected &&
-		     !((WIFI_HOST_REQUEST_BIT & xEventGroupGetBitsFromISR(wifi_event_group)) &
-		         WIFI_HOST_REQUEST_BIT)) {
-			/* Event should not be triggered if event handler is
-			 * called as part of host triggered procedure like sta_disconnect etc
-			 **/
-			ESP_LOGI(TAG, "CTRL_MSG_ID__Event_StationDisconnectFromAP\n");
-			send_event_data_to_host(CTRL_MSG_ID__Event_StationDisconnectFromAP,
-					&disconnected_event->reason, 1);
-		} else {
-			ESP_LOGI(TAG, "Station not connected. reason: %u\n",
-					disconnected_event->reason);
-		}
-
+		resolve_wifi_err_reason_for_wifi_event_group_sync(
+			disconnected_event->reason);
+		send_event_to_host_if_necessary(disconnected_event->reason);
 		/* Mark as station disconnected */
 		station_connected = false;
 
@@ -745,21 +761,23 @@ static esp_err_t req_connect_ap_handler (CtrlMsg *req,
 #if CONFIG_ESP_STA_WLAN_DATA_PATH
 			esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_STA, (wifi_rxcb_t) wlan_sta_rx_callback);
 #endif
+			resp_payload->resp = SUCCESS;
 			break;
 		} else {
 			if (bits & WIFI_NO_AP_FOUND_BIT) {
 				ESP_LOGI(TAG, "No AP available as SSID:'%s'",
 						req->req_connect_ap->ssid ? req->req_connect_ap->ssid : "(null)");
-				resp_payload->resp = CTRL__STATUS__No_AP_Found;
+				resp_payload->resp = CTRL_ERR_NO_AP_FOUND;
 			} else if (bits & WIFI_WRONG_PASSWORD_BIT) {
 				ESP_LOGI(TAG, "Password incorrect for SSID:'%s', password:'%s'",
 						req->req_connect_ap->ssid ? req->req_connect_ap->ssid : "(null)",
 						req->req_connect_ap->pwd ? req->req_connect_ap->pwd :"(null)");
-				resp_payload->resp = CTRL__STATUS__Connection_Fail;
+				resp_payload->resp = CTRL_ERR_INVALID_PASSWORD;
 			} else if (bits & WIFI_FAIL_BIT) {
 				ESP_LOGI(TAG, "Failed to connect to SSID:'%s', password:'%s'",
 						req->req_connect_ap->ssid ? req->req_connect_ap->ssid : "(null)",
 						req->req_connect_ap->pwd ? req->req_connect_ap->pwd : "(null)");
+				resp_payload->resp = CTRL_ERR_NOT_CONNECTED;
 			} else {
 				ESP_LOGE(TAG, "Timeout occured");
 			}
@@ -777,12 +795,9 @@ static esp_err_t req_connect_ap_handler (CtrlMsg *req,
 	}while(retry < MAX_STA_CONNECT_ATTEMPTS);
 
 err:
-	if (station_connected) {
-		resp_payload->resp = SUCCESS;
-	} else {
+	if (!station_connected) {
 		mem_free(resp_payload->mac.data);
 		resp_payload->mac.len = 0;
-		resp_payload->resp = FAILURE;
 	}
 	mem_free(wifi_cfg);
 
