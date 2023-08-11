@@ -790,12 +790,6 @@ err:
 		xEventGroupClearBits(wifi_event_group,
 			(WIFI_CONNECTED_BIT | WIFI_FAIL_BIT | WIFI_HOST_REQUEST_BIT |
 			 WIFI_NO_AP_FOUND_BIT | WIFI_WRONG_PASSWORD_BIT));
-
-	if(station_connected == false)
-	{
-		req_smartconfig_start();
-	}
-
 	return ESP_OK;
 }
 
