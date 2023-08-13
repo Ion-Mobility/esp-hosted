@@ -9,10 +9,12 @@ set(COMPONENT_SRCS "../../../../common/esp_hosted_config.pb-c.c"
                    "tm/tm_ble.c"
                    "tm/tm_atcmd.c"
                    "crypto/lib/monocypher-ed25519.c"
-                   "crypto/lib/monocypher.c")
+                   "crypto/lib/monocypher.c"
+                   "crypto/crypto.c")
                    set(COMPONENT_ADD_INCLUDEDIRS "."
                                                  "./tm"
                                                  "./crypto/lib"
+                                                 "./crypto"
                                                  "../../../../common/include")
 
 if(CONFIG_ESP_SDIO_HOST_INTERFACE)

@@ -10,6 +10,7 @@
 #include "tm_atcmd.h"
 #include "tm_atcmd_parser.h"
 #include "tm_ble.h"
+#include "crypto.h"
 
 #define BLE_TASK_PRIO           3
 #define ION_BLE_TAG             "TM_BLE"
