@@ -172,8 +172,10 @@ static int discard_next_recv_buff_if_invalid(int client_index)
     recv_buffer_t recv_buff;
     memset(testing_resp, 0, MAX_AT_RESP_LENGTH);
     sprintf(testing_resp,"+QMTRECV:\r\n%u", client_index);
-    mqtt_service_read_current_filled_recv_buff(client_index, &recv_buff);
-    if ((recv_buff.msg == NULL) || (recv_buff.topic == NULL))
+    mqtt_service_status_t err =
+        mqtt_service_read_current_filled_recv_buff(client_index, &recv_buff);
+    if ((err) || (recv_buff.msg == NULL) || 
+        (recv_buff.topic == NULL))
         return -1;
     if (!can_append_next_recv_buff(&recv_buff, testing_resp))
     {
