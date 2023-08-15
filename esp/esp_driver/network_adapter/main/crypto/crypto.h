@@ -2,27 +2,91 @@
 #include <stdlib.h>
 #include <string.h>
 
-extern int signature_eddsa_verification(uint8_t *signature,
-                                        uint8_t *public_key,
-                                        uint8_t *message,
-                                        size_t message_size);
+#define KEY_LEN                 (32)
+#define SESSION_ID_LEN          (32)
+#define SIGNATURE_LEN           (64)
+#define PAIRING_RESPONSE_LEN    (64)
+#define MSG_AUTHN_CODE_LEN      (16)
+#define MAX_PHONE               (3)
 
-extern int xed25519_verify(uint8_t signature[64],
-                           uint8_t public_key[32],
-                           uint8_t *message,
-                           size_t message_size);
+//------------------pair request---------------------
+typedef struct {
+    uint8_t phone_identity_pk[KEY_LEN];
+    uint8_t phone_pairing_pk[KEY_LEN];
+} pair_request_content_t;
 
-extern void xed25519_sign(uint8_t signature[64],
-                          uint8_t secret_key[32],
-                          uint8_t random[64],
-                          uint8_t *message,
-                          size_t message_size);
+typedef struct {
+    uint8_t signature[SIGNATURE_LEN];
+    pair_request_content_t contents;
+} pair_request_t;
+// --------------------------------------------------
 
-extern int bike_session(uint8_t *session_id,
-                        uint8_t *new_signature,
-                        uint8_t *session_aead_secretkey,
-                        uint8_t *session_response,
-                        uint8_t signature[64],
-                        uint8_t session_request[128],
-                        int session_request_len,
-                        uint8_t secret_key[32]);
+
+//------------------pair response--------------------
+typedef struct {
+    uint8_t phone_pairing_pk[KEY_LEN];
+    uint8_t bike_pairing_pk[KEY_LEN];
+} pair_response_content_t;
+
+typedef struct {
+    uint8_t signature[SIGNATURE_LEN];
+    pair_response_content_t contents;
+} pair_response_t;
+// --------------------------------------------------
+
+
+//------------------session response-----------------
+typedef struct {
+    uint8_t ephemeral_pk[KEY_LEN];
+    uint8_t session_id[SESSION_ID_LEN];
+} session_response_content_t;
+
+typedef struct {
+    uint8_t signature[SIGNATURE_LEN];
+    uint8_t phone_derived_session_key[KEY_LEN];
+    session_response_content_t contents;
+} session_response_t;
+// --------------------------------------------------
+
+
+//------------------session request------------------
+typedef struct {
+    uint8_t phone_pairing_pk[KEY_LEN];
+    uint8_t bike_pairing_pk[KEY_LEN];
+    uint8_t phone_identity_pk[KEY_LEN];
+    uint8_t ephemeral_pk[KEY_LEN];
+} session_request_content_t;
+
+typedef struct {
+    uint8_t signature[SIGNATURE_LEN];
+    session_request_content_t contents;
+} session_request_t;
+// --------------------------------------------------
+
+
+//------------------message lock/unlock--------------
+typedef struct {
+    uint8_t session_id[SESSION_ID_LEN];
+    uint8_t mac[MSG_AUTHN_CODE_LEN];
+    uint8_t aead_sk[KEY_LEN];           //Phone derived sesion key
+    uint8_t *plaintext;
+    size_t  plaintext_len;
+    uint8_t *ciphertext;
+    size_t  *ciphertext_len;
+} msg_lock_t;
+
+typedef struct {
+    uint8_t session_id[SESSION_ID_LEN];
+    uint8_t mac[MSG_AUTHN_CODE_LEN];
+    uint8_t aead_sk[KEY_LEN];           //Phone derived sesion key
+    uint8_t *plaintext;
+    size_t  *plaintext_len;
+    uint8_t *ciphertext;
+    size_t  ciphertext_len;
+} msg_unlock_t;
+// --------------------------------------------------
+
+int pair(pair_request_t *pair_request, pair_response_t *pair_response);
+int session(session_request_t *session_request, session_response_t *session_response);
+void message_lock(msg_lock_t *msg_lock);
+void message_unlock(msg_unlock_t *msg_unlock);
