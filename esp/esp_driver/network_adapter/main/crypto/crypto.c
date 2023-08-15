@@ -9,29 +9,115 @@
 #include "crypto.h"
 
 #define CRYPTO_TAG              "CRYPTO"
+#define KEY_LEN                 (32)
+#define SESSION_ID_LEN          (32)
+#define SIGNATURE_LEN           (64)
+#define PAIRING_RESPONSE_LEN    (64)
+#define MSG_AUTHN_CODE_LEN      (16)
+#define MAX_PHONE               (3)
 
+// key pair
 typedef struct {
     uint8_t sk[KEY_LEN];
     uint8_t pk[KEY_LEN];
 } keypair_t;
 
+// phone
 typedef struct {
-    uint8_t identity_pk[KEY_LEN];       // long-term, one per device
-    uint8_t pairing_pk[KEY_LEN];        // medium-term, pairing key (1 week expired)
-    uint8_t ephemeral_pk[KEY_LEN];      // short-term, session key
+    uint8_t identity_pk[KEY_LEN];           // long-term, one per device
+    uint8_t pairing_pk[KEY_LEN];            // medium-term, pairing key (1 week expired)
+    uint8_t ephemeral_pk[KEY_LEN];          // short-term, session key
+    uint8_t derived_session_key[KEY_LEN];   // derived session key
 } phone_t;
 
+// bike
 typedef struct {
     keypair_t identity;                 // long-term, one per device
     keypair_t pairing;                  // medium-term, pairing key (1 week expired)
 } bike_t;
 
+// server
 typedef struct {
     uint8_t identity_pk[KEY_LEN];
 } server_t;
 
+// pair request
+typedef struct {
+    uint8_t phone_identity_pk[KEY_LEN];
+    uint8_t phone_pairing_pk[KEY_LEN];
+} pair_request_content_t;
+
+typedef struct {
+    uint8_t signature[SIGNATURE_LEN];
+    pair_request_content_t contents;
+} pair_request_t;
+
+// pair response
+typedef struct {
+    uint8_t phone_pairing_pk[KEY_LEN];
+    uint8_t bike_pairing_pk[KEY_LEN];
+} pair_response_content_t;
+
+typedef struct {
+    uint8_t signature[SIGNATURE_LEN];
+    pair_response_content_t contents;
+} pair_response_t;
+
+// session response
+typedef struct {
+    uint8_t ephemeral_pk[KEY_LEN];
+    uint8_t session_id[SESSION_ID_LEN];
+} session_response_content_t;
+
+typedef struct {
+    uint8_t signature[SIGNATURE_LEN];
+    uint8_t phone_derived_session_key[KEY_LEN];
+    session_response_content_t contents;
+} session_response_t;
+
+// session request
+typedef struct {
+    uint8_t phone_pairing_pk[KEY_LEN];
+    uint8_t bike_pairing_pk[KEY_LEN];
+    uint8_t phone_identity_pk[KEY_LEN];
+    uint8_t ephemeral_pk[KEY_LEN];
+} session_request_content_t;
+
+typedef struct {
+    uint8_t signature[SIGNATURE_LEN];
+    session_request_content_t contents;
+} session_request_t;
+
+// message lock
+typedef struct {
+    uint8_t *session_id;
+    uint8_t *mac;
+    uint8_t *aead_sk;           //Phone derived sesion key
+    uint8_t *plaintext;
+    size_t  plaintext_len;
+    uint8_t *ciphertext;
+    size_t  *ciphertext_len;
+} msg_lock_t;
+
+// message unlock
+typedef struct {
+    uint8_t *session_id;
+    uint8_t *mac;
+    uint8_t *aead_sk;           //Phone derived sesion key
+    uint8_t *plaintext;
+    size_t  *plaintext_len;
+    uint8_t *ciphertext;
+    size_t  ciphertext_len;
+} msg_unlock_t;
+
 static void xed25519_sign(uint8_t signature[SIGNATURE_LEN], uint8_t secret_key[KEY_LEN], uint8_t *message, size_t message_size);
 static int xed25519_verify(uint8_t signature[SIGNATURE_LEN], uint8_t public_key[KEY_LEN], uint8_t *message, size_t message_size);
+static void random_generator(uint8_t *out, size_t len);
+static void generate_bike_pairing_key(void);
+static void message_lock(msg_lock_t *msg_lock);
+static void message_unlock(msg_unlock_t *msg_unlock);
+static int pair(pair_request_t *pair_request, pair_response_t *pair_response);
+static int session(session_request_t *session_request, session_response_t *session_response);
 
 phone_t phone = {0};
 bike_t bike = {0};      //todo: read from NVS
@@ -49,19 +135,105 @@ void crypto_init(void) {
     srand(time(NULL));
 }
 
-void random_generator(uint8_t *out, size_t len) {
+int session_request(uint8_t* request, size_t req_len, uint8_t* response, size_t *res_len)
+{
+    if (req_len != sizeof(session_request_t))
+        return -1;
+
+    session_request_t *session_request = (session_request_t*)request;
+    int session_result = session(session_request, (session_response_t*)response);
+    if (session_result != 0) {
+        ESP_LOGE(CRYPTO_TAG, "Failed to establish a session"); 
+    } else {
+        ESP_LOGI(CRYPTO_TAG, "Successed to establish a session"); 
+        *res_len = sizeof(session_response_t);
+    }
+
+    return session_result;
+
+}
+
+int pairing_request(uint8_t* request, size_t req_len, uint8_t* response, size_t *res_len)
+{
+    if (req_len != sizeof(pair_request_t))
+        return -1;
+
+    pair_request_t *pair_request = (pair_request_t*)request;
+    int pair_result = pair(pair_request, (pair_response_t*)response);
+    if (pair_result != 0) {
+        ESP_LOGE(CRYPTO_TAG, "Failed to pair"); 
+    } else {
+        ESP_LOGI(CRYPTO_TAG, "Successed to pair"); 
+        *res_len = sizeof(pair_response_t);
+    }
+
+    return pair_result;
+}
+
+static void message_lock(msg_lock_t *msg_lock)
+{
+    crypto_aead_lock(msg_lock->ciphertext, msg_lock->mac,
+                 msg_lock->aead_sk, msg_lock->session_id,
+                 NULL, 0,
+                 msg_lock->plaintext, msg_lock->plaintext_len);
+    *(msg_lock->ciphertext_len) = msg_lock->plaintext_len;
+}
+
+static void message_unlock(msg_unlock_t *msg_unlock)
+{
+    if (crypto_aead_unlock(msg_unlock->plaintext, msg_unlock->mac,
+                        msg_unlock->aead_sk, msg_unlock->session_id,
+                        NULL, 0,
+                        msg_unlock->ciphertext, msg_unlock->ciphertext_len)) {
+        ESP_LOGE(CRYPTO_TAG, "The message is corrupted");
+    } else {
+        ESP_LOGI(CRYPTO_TAG, "decrypted mes: ");
+        *(msg_unlock->plaintext_len) = msg_unlock->ciphertext_len;
+        ESP_LOG_BUFFER_CHAR(CRYPTO_TAG, msg_unlock->plaintext, *(msg_unlock->plaintext_len));
+    }
+}
+
+void message_encrypt(uint8_t *ciphertext, size_t *ciphertext_len, uint8_t *mac, uint8_t *plaintext, size_t plaintext_len)
+{
+    msg_lock_t msg_lock;
+    msg_lock.plaintext = plaintext;
+    msg_lock.plaintext_len = plaintext_len;
+    msg_lock.ciphertext = ciphertext;
+    msg_lock.ciphertext_len = ciphertext_len;
+    msg_lock.mac = mac;
+    msg_lock.aead_sk = phone.derived_session_key;
+    msg_lock.session_id = phone.ephemeral_pk;
+
+    message_lock(&msg_lock);
+}
+
+void message_decrypt(uint8_t*plaintext, size_t *plaintext_len, uint8_t *mac, uint8_t *ciphertext, size_t ciphertext_len)
+{
+    msg_unlock_t msg_unlock;
+    msg_unlock.plaintext = plaintext;
+    msg_unlock.plaintext_len = plaintext_len;
+    msg_unlock.ciphertext = ciphertext;
+    msg_unlock.ciphertext_len = ciphertext_len;
+    msg_unlock.mac = mac;
+    msg_unlock.aead_sk = phone.derived_session_key;
+    msg_unlock.session_id = phone.ephemeral_pk;
+
+    message_unlock(&msg_unlock);
+}
+
+static void random_generator(uint8_t *out, size_t len) {
     for (int i=0; i<len; i++) {
         out[i] = rand();
     }
 }
 
-void generate_bike_pairing_key(void) {
+static void generate_bike_pairing_key(void) {
     // bike pairing key pair, generate for new phone pairing
     random_generator(bike.pairing.sk, KEY_LEN);
     crypto_x25519_public_key(bike.pairing.pk, bike.pairing.sk);
 }
 
-int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
+static int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
     // Verify that the message was actually signed by the server
     int verify_server_signature = crypto_eddsa_check(pair_request->signature, server.identity_pk, (uint8_t*)&pair_request->contents, sizeof(pair_request_content_t));
     if (verify_server_signature != 0) {
@@ -83,7 +255,7 @@ int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
     return 0;
 }
 
-int session(session_request_t *session_request, session_response_t *session_response) {
+static int session(session_request_t *session_request, session_response_t *session_response) {
     int verify = xed25519_verify(session_request->signature, phone.identity_pk, (uint8_t*)&session_request->contents, sizeof(session_request_content_t));
     if (!verify) {
         ESP_LOGI(CRYPTO_TAG, "session signature is correct");
@@ -120,30 +292,8 @@ int session(session_request_t *session_request, session_response_t *session_resp
     xed25519_sign(session_response->signature,
                    bike.identity.sk,
                    (uint8_t*)&session_response->contents, sizeof(session_response_content_t));
+    memcpy(phone.derived_session_key, session_response->phone_derived_session_key, KEY_LEN);
     return 0;
-}
-
-void message_lock(msg_lock_t *msg_lock)
-{
-    crypto_aead_lock(msg_lock->ciphertext, msg_lock->mac,
-                 msg_lock->aead_sk, msg_lock->session_id,
-                 NULL, 0,
-                 msg_lock->plaintext, msg_lock->plaintext_len);
-    *(msg_lock->ciphertext_len) = msg_lock->plaintext_len;
-}
-
-void message_unlock(msg_unlock_t *msg_unlock)
-{
-    if (crypto_aead_unlock(msg_unlock->plaintext, msg_unlock->mac,
-                        msg_unlock->aead_sk, msg_unlock->session_id,
-                        NULL, 0,
-                        msg_unlock->ciphertext, msg_unlock->ciphertext_len)) {
-        ESP_LOGE(CRYPTO_TAG, "The message is corrupted");
-    } else {
-        ESP_LOGI(CRYPTO_TAG, "decrypted mes: ");
-        *(msg_unlock->plaintext_len) = msg_unlock->ciphertext_len;
-        ESP_LOG_BUFFER_CHAR(CRYPTO_TAG, msg_unlock->plaintext, *(msg_unlock->plaintext_len));
-    }
 }
 
 static void xed25519_sign(uint8_t signature[SIGNATURE_LEN],
