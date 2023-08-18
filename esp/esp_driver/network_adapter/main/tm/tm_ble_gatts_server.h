@@ -5,18 +5,18 @@
 /* Attributes State Machine */
 enum
 {
-    BAT_IDX_SVC,
-    BAT_IDX_CHAR_A,
-    BAT_IDX_CHAR_VAL_A,
-    BAT_IDX_CHAR_CFG_A,
+    IDX_SVC,
+    IDX_CHAR_A,
+    IDX_CHAR_VAL_A,
+    IDX_CHAR_CFG_A,
 
-    BAT_IDX_CHAR_B,
-    BAT_IDX_CHAR_VAL_B,
+    IDX_CHAR_B,
+    IDX_CHAR_VAL_B,
 
-    BAT_IDX_CHAR_C,
-    BAT_IDX_CHAR_VAL_C,
+    IDX_CHAR_C,
+    IDX_CHAR_VAL_C,
 
-    BAT_IDX_NB,
+    HRS_IDX_NB,
 };
 
 typedef enum {

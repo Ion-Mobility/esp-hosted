@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define CMD_PREFIX              "AT+"
 #define CMD_MIN_LEN             strlen(CMD_PREFIX)
 #define CMD_MAX_LEN             255
 #define CMD_START_CHAR_INDEX    CMD_MIN_LEN

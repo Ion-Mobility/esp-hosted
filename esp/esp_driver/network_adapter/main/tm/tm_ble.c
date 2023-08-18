@@ -39,15 +39,15 @@ static void ble_task(void *arg)
             // bike's screen should show "connect to phone"
             // spi_slave_send_ble_connect_event();
         }
-        if ((xEventGroupValue & REQUEST_TO_PAIR) !=0) {
-            // generated passkey
-            ESP_LOGI(ION_BLE_TAG, "passkey generated");
-            // spi_slave_display_6digits_pairing_number();
-        }
-        if ((xEventGroupValue & CONFIRM_PASSKEY) !=0) {
-            // this event is received from 148 when user press(o) on bike
-            ESP_LOGI(ION_BLE_TAG, "confirm button(o) onbike pressed");
-        }
+        // if ((xEventGroupValue & REQUEST_TO_PAIR) !=0) {
+        //     // generated passkey
+        //     ESP_LOGI(ION_BLE_TAG, "passkey generated");
+        //     // spi_slave_display_6digits_pairing_number();
+        // }
+        // if ((xEventGroupValue & CONFIRM_PASSKEY) !=0) {
+        //     // this event is received from 148 when user press(o) on bike
+        //     ESP_LOGI(ION_BLE_TAG, "confirm button(o) onbike pressed");
+        // }
         if ((xEventGroupValue & DISCONNECT) !=0) {
             // BLE disconnect
             ESP_LOGI(ION_BLE_TAG, "BLE disconected");
