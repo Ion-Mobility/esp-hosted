@@ -26,6 +26,10 @@ static void ble_task(void *arg)
     battery_t battery = {0};
     trip_t trip = {0};
 
+    uint8_t ciphertext[BLE_MSG_MAX_LEN];
+    size_t ciphertext_len;
+    uint8_t mac[16];    /* Message authentication code */
+
     while(1) {
         //wait for message
         if (xQueueReceive(ble_queue, &ble_msg, portMAX_DELAY) != pdTRUE)
@@ -79,7 +83,6 @@ static void ble_task(void *arg)
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_LOGIN");
                 memset(&login, 0, sizeof(login_t));
                 memcpy(&login, ble_msg.data, sizeof(login_t));
-                // todo: encrypt these data before sending to phone
                 ESP_LOGI(ION_BLE_TAG, "battery                    %d",login.battery);
                 ESP_LOGI(ION_BLE_TAG, "est_range                  %d",login.est_range);
                 ESP_LOGI(ION_BLE_TAG, "odo                        %d",login.odo);
@@ -88,27 +91,34 @@ static void ble_task(void *arg)
                 ESP_LOGI(ION_BLE_TAG, "last_trip_elec_used        %d",login.last_trip_elec_used);
                 ESP_LOGI(ION_BLE_TAG, "last_charge_level          %d",login.last_charge_level);
                 ESP_LOGI(ION_BLE_TAG, "distance_since_last_charge %d",login.distance_since_last_charge);
+                // todo: encrypt these data before sending to phone
+                message_encrypt(ciphertext, &ciphertext_len, mac, ble_msg.data, ble_msg.len);
+                //todo: send to phone
                 break;
 
             case TM_BLE_CHARGE:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_CHARGE");
                 memset(&charge, 0, sizeof(charge_t));
                 memcpy(&charge, ble_msg.data, sizeof(charge_t));
-                // todo: encrypt these data before sending to phone
                 ESP_LOGI(ION_BLE_TAG, "charge state            %d",charge.state);
                 ESP_LOGI(ION_BLE_TAG, "charge vol              %d",charge.vol);
                 ESP_LOGI(ION_BLE_TAG, "charge cur              %d",charge.cur);
                 ESP_LOGI(ION_BLE_TAG, "charge cycle            %d",charge.cycle);
                 ESP_LOGI(ION_BLE_TAG, "charge time_to_full     %d",charge.time_to_full);
+                // todo: encrypt these data before sending to phone
+                message_encrypt(ciphertext, &ciphertext_len, mac, ble_msg.data, ble_msg.len);
+                //todo: send to phone
                 break;
 
             case TM_BLE_BATTERY:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_BATTERY");
                 memset(&battery, 0, sizeof(battery_t));
                 memcpy(&battery, ble_msg.data, sizeof(battery_t));
-                // todo: encrypt these data before sending to phone
                 ESP_LOGI(ION_BLE_TAG, "battery level           %d",battery.level);
                 ESP_LOGI(ION_BLE_TAG, "estimate range vol      %d",battery.estimate_range);
+                // todo: encrypt these data before sending to phone
+                message_encrypt(ciphertext, &ciphertext_len, mac, ble_msg.data, ble_msg.len);
+                //todo: send to phone
                 break;
 
             case TM_BLE_LAST_TRIP:
@@ -119,6 +129,9 @@ static void ble_task(void *arg)
                 ESP_LOGI(ION_BLE_TAG, "last trip distance      %d",trip.distance);
                 ESP_LOGI(ION_BLE_TAG, "last trip ride time     %d",trip.ride_time);
                 ESP_LOGI(ION_BLE_TAG, "last trip electric used %d",trip.elec_used);
+                // todo: encrypt these data before sending to phone
+                message_encrypt(ciphertext, &ciphertext_len, mac, ble_msg.data, ble_msg.len);
+                //todo: send to phone
                 break;
 
             default:

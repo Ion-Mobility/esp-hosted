@@ -27,7 +27,7 @@
 /* The max length of characteristic value. When the GATT client performs a write or prepare write operation,
 *  the data length must be less than GATTS_ION_CHAR_VAL_LEN_MAX.
 */
-#define GATTS_ION_CHAR_VAL_LEN_MAX  BLE_MSG_MAX_LEN
+#define GATTS_ION_CHAR_VAL_LEN_MAX  BLE_MSG_MAX_LEN+1   //1 byte for header
 #define PREPARE_BUF_MAX_SIZE        1024
 #define CHAR_DECLARATION_SIZE       (sizeof(uint8_t))
 
@@ -172,7 +172,7 @@ static const uint16_t character_declaration_uuid   = ESP_GATT_UUID_CHAR_DECLARE;
 static const uint8_t char_prop_read                = ESP_GATT_CHAR_PROP_BIT_READ;
 static const uint8_t char_prop_write               = ESP_GATT_CHAR_PROP_BIT_WRITE;
 //todo:replace this data by info from 148
-static uint8_t char_value[BLE_MSG_MAX_LEN]         = {0};
+static uint8_t char_value[GATTS_ION_CHAR_VAL_LEN_MAX]         = {0};
 
 
 /* Full Database Description - Used to add attributes into the database */
@@ -560,11 +560,6 @@ void tm_ble_gatts_server_init(void)
     esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(GATTS_ION_CHAR_VAL_LEN_MAX);
     if (local_mtu_ret){
         ESP_LOGE(GATTS_TABLE_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
-    }
-
-    //todo:replace this data by info from 148
-    for (int i=0; i<128; i++) {
-        char_value[i] = i;
     }
 }
 

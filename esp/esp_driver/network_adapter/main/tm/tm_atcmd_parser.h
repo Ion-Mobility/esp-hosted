@@ -30,7 +30,7 @@ typedef enum {
     DATA_BATTERY        =2,         //AT+BATTERY,battery (%),                               (1 byte)
                                     //           estimate range(km)                         (2 bytes)
 
-    DATA_LAST_TRIP           =3,         //AT+TRIP,distance(km)                                  (2 bytes)
+    DATA_LAST_TRIP      =3,         //AT+TRIP,distance(km)                                  (2 bytes)
                                     //        ride time(mins)                               (2 bytes)
                                     //        electric used(kWh)                            (2 bytes)
 
