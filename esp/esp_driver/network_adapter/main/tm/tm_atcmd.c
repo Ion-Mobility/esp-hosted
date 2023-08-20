@@ -306,10 +306,17 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len) {
     return ESP_OK;
 }
 
-void to_tm_login_msg(ble_to_tm_msg_t* pMsg) {
-    ble_to_tm_msg_t ble_to_tm_msg;
-    memcpy(&ble_to_tm_msg, pMsg, sizeof(ble_to_tm_msg_t));
-    xQueueSend(ble_to_tm_queue, (void*)&ble_to_tm_msg, (TickType_t)0);
+void send_to_tm_queue(uint8_t msg_id, uint8_t *data, int len)
+{
+    if (msg_id < BLE_TM_UNKNOWN) {
+        ble_to_tm_msg_t ble_to_tm_msg = {0};
+        ble_to_tm_msg.msg_id = msg_id;
+        if (data != NULL) {
+            ble_to_tm_msg.len = len;
+            memcpy(ble_to_tm_msg.data, data, ble_to_tm_msg.len);
+        }
+        xQueueSend(ble_to_tm_queue, (void*)&ble_to_tm_msg, (TickType_t)0);
+    }
 }
 
 static esp_err_t send_msg_to_ble(uint8_t msg_id, uint8_t *data, int len) {

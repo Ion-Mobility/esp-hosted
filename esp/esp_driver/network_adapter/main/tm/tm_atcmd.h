@@ -42,3 +42,4 @@ typedef struct {
 
 extern void tm_atcmd_tasks_init(void);
 extern void to_tm_login_msg(ble_to_tm_msg_t* pMsg);
+extern void send_to_tm_queue(uint8_t msg_id, uint8_t *data, int len);

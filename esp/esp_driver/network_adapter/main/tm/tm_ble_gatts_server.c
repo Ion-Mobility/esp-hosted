@@ -47,8 +47,9 @@ enum
     ION_IDX_NB,
 };
 
-static uint8_t adv_config_done       = 0;
-static bool ready_to_advertise       = false;
+static uint8_t adv_config_done      = 0;
+static bool ready_to_advertise      = false;
+static bool on_going_reading        = false;
 
 uint16_t ion_handle_table[ION_IDX_NB];
 
@@ -371,28 +372,31 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
        	    break;
         case ESP_GATTS_READ_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_READ_EVT");
-            send_to_ble_queue(BLE_PHONE_READ, NULL, 0);
-            esp_gatt_rsp_t rsp;
-            // ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_READ_EVT, conn_id %d, trans_id %d, handle %d",  
-            // param->read.conn_id, param->read.trans_id, param->read.handle);
-            ESP_LOGI(GATTS_TABLE_TAG, "param->read.is_long: %d", param->read.is_long);
-            ESP_LOGI(GATTS_TABLE_TAG, "param->read.need_rsp: %d", param->read.need_rsp);
+            // only authenticated phone can read
+            if (tm_ble_get_phone_request_status() == RD_DATA_READY) {
+                on_going_reading = true;
+                send_to_ble_queue(BLE_PHONE_READ, NULL, 0);
+                esp_gatt_rsp_t rsp;
+                ESP_LOGI(GATTS_TABLE_TAG, "param->read.is_long: %d", param->read.is_long);
+                ESP_LOGI(GATTS_TABLE_TAG, "param->read.need_rsp: %d", param->read.need_rsp);
 
-            prepare_read_env.prepare_buf = char_value;
-            prepare_read_env.prepare_len = sizeof(char_value);
-            memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
-            rsp.attr_value.handle = param->read.handle;
-            ESP_LOGI(GATTS_TABLE_TAG, "param->read.offset: %d", param->read.offset);
+                prepare_read_env.prepare_buf = char_value;
+                prepare_read_env.prepare_len = sizeof(char_value);
+                memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
+                rsp.attr_value.handle = param->read.handle;
+                ESP_LOGI(GATTS_TABLE_TAG, "param->read.offset: %d", param->read.offset);
 
-            int remaining_read = prepare_read_env.prepare_len;
-            if (param->read.is_long) {
-                remaining_read = prepare_read_env.prepare_len - param->read.offset;
-                rsp.attr_value.len = (remaining_read) > DEFAULT_MTU_TRUNCATED_SIZE ? DEFAULT_MTU_TRUNCATED_SIZE: remaining_read;
-            } else {
-                rsp.attr_value.len = remaining_read;
+                int remaining_read = prepare_read_env.prepare_len;
+                if (param->read.is_long) {
+                    remaining_read = prepare_read_env.prepare_len - param->read.offset;
+                    rsp.attr_value.len = (remaining_read) > DEFAULT_MTU_TRUNCATED_SIZE ? DEFAULT_MTU_TRUNCATED_SIZE: remaining_read;
+                } else {
+                    rsp.attr_value.len = remaining_read;
+                }
+                memcpy(rsp.attr_value.value, prepare_read_env.prepare_buf + param->read.offset, rsp.attr_value.len);
+                esp_ble_gatts_send_response(gatts_if, param->read.conn_id, param->read.trans_id, ESP_GATT_OK, &rsp);
             }
-            memcpy(rsp.attr_value.value, prepare_read_env.prepare_buf + param->read.offset, rsp.attr_value.len);
-            esp_ble_gatts_send_response(gatts_if, param->read.conn_id, param->read.trans_id, ESP_GATT_OK, &rsp);
+            on_going_reading = false;
        	    break;
         case ESP_GATTS_WRITE_EVT:
             if (!param->write.is_prep){
@@ -420,9 +424,6 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                 esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(param->mtu.mtu);
                 if (local_mtu_ret){
                     ESP_LOGE(GATTS_TABLE_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
-                } else {
-                    //vle: before send/recv data, phone must set MTU to GATTS_ION_CHAR_VAL_LEN_MAX to be able to transfer large data
-                    send_to_ble_queue(BLE_CONNECTED, NULL, 0);
                 }
             }
             break;
@@ -450,6 +451,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
         case ESP_GATTS_DISCONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_DISCONNECT_EVT, reason = 0x%x", param->disconnect.reason);
             send_to_ble_queue(BLE_DISCONNECT, NULL, 0);
+            tm_ble_set_phone_request_status(UNPAIRED);
             // esp_ble_gap_start_advertising(&adv_params);
             break;
         case ESP_GATTS_CREAT_ATTR_TAB_EVT:{
@@ -569,6 +571,12 @@ void tm_ble_gatts_start_advertise(void)
         esp_ble_gap_start_advertising(&adv_params);
 }
 
+void update_read_response(uint8_t *data, int len)
+{
+    while(on_going_reading);
+    memcpy(char_value, data, len);
+}
+
 static void send_to_ble_queue(uint8_t msg_id, uint8_t *data, int len) {
     if (len > BLE_MSG_MAX_LEN)
         return;
@@ -576,8 +584,10 @@ static void send_to_ble_queue(uint8_t msg_id, uint8_t *data, int len) {
     ble_msg_t ble_msg = {0};
     ble_msg.msg_id = msg_id;
     ble_msg.len = len;
-    if (ble_msg.len > 0)
+    if (data != NULL) {
+        ble_msg.len = len;
         memcpy(ble_msg.data, data, ble_msg.len);
+    }
 
     xQueueSend(ble_queue, (void*)&ble_msg, (TickType_t)0);
 }

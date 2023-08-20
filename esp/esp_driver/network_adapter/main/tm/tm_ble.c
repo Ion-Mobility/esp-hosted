@@ -14,12 +14,24 @@
 #define BLE_TASK_PRIO           3
 #define ION_BLE_TAG             "TM_BLE"
 
+typedef enum {
+    PHONE_BLE_AUTHEN        = 0,
+    PHONE_BLE_PAIRING       = 1,
+    PHONE_BLE_SESSION       = 2,
+    PHONE_BLE_LOGIN         = 3,
+    PHONE_BLE_BATTERY       = 4,
+    PHONE_BLE_CHARGE        = 5,
+    PHONE_BLE_LAST_TRIP     = 6
+} phone_ble_msg_t;
+
 QueueHandle_t ble_queue;
+static uint8_t phone_request_status = UNPAIRED;
+
+static void send_to_phone(uint8_t *data, int len);
 
 static void ble_task(void *arg)
 {
     ble_msg_t ble_msg = {0};
-    ble_to_tm_msg_t ble_to_tm_msg = {0};
 
     login_t login = {0};
     charge_t charge = {0};
@@ -44,6 +56,7 @@ static void ble_task(void *arg)
 
             case BLE_DISCONNECT:
                 ESP_LOGI(ION_BLE_TAG, "BLE_DISCONNECT");
+                tm_ble_set_phone_request_status(UNPAIRED);
                 tm_ble_gatts_start_advertise();
                 break;
 
@@ -53,21 +66,6 @@ static void ble_task(void *arg)
 
             case BLE_CONNECTED:
                 ESP_LOGI(ION_BLE_TAG, "BLE_CONNECTED");
-                ble_to_tm_msg.msg_id = BLE_TM_LOGIN;
-                ble_to_tm_msg.len = 0;
-                to_tm_login_msg(&ble_to_tm_msg);
-                break;
-
-            case BLE_AUTHEN:
-                ESP_LOGI(ION_BLE_TAG, "BLE_AUTHEN");
-                break;
-
-            case BLE_PAIRING:
-                ESP_LOGI(ION_BLE_TAG, "BLE_PAIRING...");
-                break;
-
-            case BLE_SESSION:
-                ESP_LOGI(ION_BLE_TAG, "BLE_SESSION");
                 break;
 
             case BLE_PHONE_READ:
@@ -77,6 +75,52 @@ static void ble_task(void *arg)
             case BLE_PHONE_WRITE:
                 ESP_LOGI(ION_BLE_TAG, "BLE_PHONE_WRITE");
                 esp_log_buffer_hex(ION_BLE_TAG, ble_msg.data, ble_msg.len);
+                switch (ble_msg.data[0]) {
+                    case PHONE_BLE_PAIRING:
+                        if (phone_request_status == UNPAIRED) {
+                            //todo: verify this msg
+                            ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_PAIRING");
+                            tm_ble_set_phone_request_status(PAIRED);
+                            //todo: response to phone
+                        }
+                        break;
+                    case PHONE_BLE_SESSION:
+                        if (phone_request_status == PAIRED) {
+                            //todo: verify this msg
+                            ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_SESSION");
+                            tm_ble_set_phone_request_status(SESSION_VERIFIED);
+                        }
+                        break;
+                    case PHONE_BLE_LOGIN:
+                        ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_LOGIN");
+                        if (phone_request_status >= SESSION_VERIFIED) {
+                            phone_request_status = PHONE_BLE_LOGIN;
+                            send_to_tm_queue(BLE_TM_LOGIN, NULL, 0);
+                        }
+                        break;
+                    case PHONE_BLE_BATTERY:
+                        ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_BATTERY");
+                        if (phone_request_status >= SESSION_VERIFIED) {
+                            phone_request_status = PHONE_BLE_BATTERY;
+                            send_to_tm_queue(BLE_TM_BATTERY, NULL, 0);
+                        }
+                        break;
+                    case PHONE_BLE_CHARGE:
+                        ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_CHARGE");
+                        if (phone_request_status >= SESSION_VERIFIED) {
+                            phone_request_status = PHONE_BLE_CHARGE;
+                            send_to_tm_queue(BLE_TM_CHARGE, NULL, 0);
+                        }
+                        break;
+                    case PHONE_BLE_LAST_TRIP:
+                        ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_LAST_TRIP");
+                        if (phone_request_status >= SESSION_VERIFIED) {
+                            send_to_tm_queue(BLE_TM_LAST_TRIP, NULL, 0);
+                        }                        
+                        break;
+                    default:
+                        break;
+                }
                 break;
 
             case TM_BLE_LOGIN:
@@ -94,6 +138,7 @@ static void ble_task(void *arg)
                 // todo: encrypt these data before sending to phone
                 message_encrypt(ciphertext, &ciphertext_len, mac, ble_msg.data, ble_msg.len);
                 //todo: send to phone
+                send_to_phone((uint8_t*)&login, sizeof(login_t));
                 break;
 
             case TM_BLE_CHARGE:
@@ -108,6 +153,7 @@ static void ble_task(void *arg)
                 // todo: encrypt these data before sending to phone
                 message_encrypt(ciphertext, &ciphertext_len, mac, ble_msg.data, ble_msg.len);
                 //todo: send to phone
+                send_to_phone((uint8_t*)&charge, sizeof(charge_t));
                 break;
 
             case TM_BLE_BATTERY:
@@ -119,6 +165,7 @@ static void ble_task(void *arg)
                 // todo: encrypt these data before sending to phone
                 message_encrypt(ciphertext, &ciphertext_len, mac, ble_msg.data, ble_msg.len);
                 //todo: send to phone
+                send_to_phone((uint8_t*)&battery, sizeof(battery_t));
                 break;
 
             case TM_BLE_LAST_TRIP:
@@ -132,6 +179,7 @@ static void ble_task(void *arg)
                 // todo: encrypt these data before sending to phone
                 message_encrypt(ciphertext, &ciphertext_len, mac, ble_msg.data, ble_msg.len);
                 //todo: send to phone
+                send_to_phone((uint8_t*)&trip, sizeof(trip_t));
                 break;
 
             default:
@@ -156,4 +204,22 @@ void tm_ble_start_advertise(void)
     ble_msg.msg_id = BLE_START_ADVERTISE;
     ble_msg.len = 0;
     xQueueSend(ble_queue, (void*)&ble_msg, (TickType_t)0);
+}
+
+uint8_t tm_ble_get_phone_request_status(void)
+{
+    //todo: mutex here
+    return phone_request_status;
+}
+
+void tm_ble_set_phone_request_status(uint8_t status)
+{
+    //todo: mutex here
+    if (status <= RD_DATA_READY)
+    phone_request_status = status;
+}
+
+static void send_to_phone(uint8_t *data, int len) {
+    update_read_response(data, len);
+    tm_ble_set_phone_request_status(RD_DATA_READY);
 }
