@@ -13,6 +13,7 @@
 #include "esp_gatt_common_api.h"
 
 #include "tm_ble_gatts_server.h"
+#include "tm_ble.h"
 
 #define GATTS_TABLE_TAG "BLE_GATTS_SERVER"
 
@@ -26,12 +27,25 @@
 /* The max length of characteristic value. When the GATT client performs a write or prepare write operation,
 *  the data length must be less than GATTS_ION_CHAR_VAL_LEN_MAX.
 */
-#define GATTS_ION_CHAR_VAL_LEN_MAX  500
+#define GATTS_ION_CHAR_VAL_LEN_MAX  BLE_MSG_MAX_LEN
 #define PREPARE_BUF_MAX_SIZE        1024
 #define CHAR_DECLARATION_SIZE       (sizeof(uint8_t))
 
 #define ADV_CONFIG_FLAG             (1 << 0)
 #define SCAN_RSP_CONFIG_FLAG        (1 << 1)
+
+enum
+{
+    IDX_SVC,
+
+    IDX_CHAR_RD,
+    IDX_CHAR_VAL_RD,
+
+    IDX_CHAR_VAL_WR,
+    IDX_CHAR_VAL_C,
+
+    ION_IDX_NB,
+};
 
 static uint8_t adv_config_done       = 0;
 static bool ready_to_advertise       = false;
@@ -46,7 +60,6 @@ typedef struct {
 static prepare_type_env_t prepare_write_env;
 static prepare_type_env_t prepare_read_env;
 
-EventGroupHandle_t ion_ble_event_group;
 #define CONFIG_SET_RAW_ADV_DATA
 #ifdef CONFIG_SET_RAW_ADV_DATA
 static uint8_t raw_adv_data[] = {
@@ -137,6 +150,7 @@ struct gatts_profile_inst {
     esp_bt_uuid_t descr_uuid;
 };
 
+static void send_to_ble_queue(uint8_t msg_id, uint8_t *data, int len);
 static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
 					esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 
@@ -158,7 +172,7 @@ static const uint16_t character_declaration_uuid   = ESP_GATT_UUID_CHAR_DECLARE;
 static const uint8_t char_prop_read                = ESP_GATT_CHAR_PROP_BIT_READ;
 static const uint8_t char_prop_write               = ESP_GATT_CHAR_PROP_BIT_WRITE;
 //todo:replace this data by info from 148
-static uint8_t char_value[128]                     = {0};
+static uint8_t char_value[BLE_MSG_MAX_LEN]         = {0};
 
 
 /* Full Database Description - Used to add attributes into the database */
@@ -249,8 +263,7 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
                   param->update_conn_params.conn_int,
                   param->update_conn_params.latency,
                   param->update_conn_params.timeout);
-
-            xEventGroupSetBits(ion_ble_event_group, CONNECTED);
+            ESP_LOGI(GATTS_TABLE_TAG, "midway-connected, phone must set MTU to GATTS_ION_CHAR_VAL_LEN_MAX to be able to transfer large data\n");
             break;
         default:
             break;
@@ -305,6 +318,7 @@ void example_prepare_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t 
 
 void example_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param){
     if (param->exec_write.exec_write_flag == ESP_GATT_PREP_WRITE_EXEC && prepare_write_env->prepare_buf){
+        ESP_LOGI(GATTS_TABLE_TAG,"example_exec_write_event_env");
         esp_log_buffer_hex(GATTS_TABLE_TAG, prepare_write_env->prepare_buf, prepare_write_env->prepare_len);
     }else{
         ESP_LOGI(GATTS_TABLE_TAG,"ESP_GATT_PREP_WRITE_CANCEL");
@@ -357,6 +371,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
        	    break;
         case ESP_GATTS_READ_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_READ_EVT");
+            send_to_ble_queue(BLE_PHONE_READ, NULL, 0);
             esp_gatt_rsp_t rsp;
             // ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_READ_EVT, conn_id %d, trans_id %d, handle %d",  
             // param->read.conn_id, param->read.trans_id, param->read.handle);
@@ -383,7 +398,8 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             if (!param->write.is_prep){
                 // the data length of gattc write  must be less than GATTS_ION_CHAR_VAL_LEN_MAX.
                 ESP_LOGI(GATTS_TABLE_TAG, "GATT_WRITE_EVT, handle = %d, value len = %d, value :", param->write.handle, param->write.len);
-                esp_log_buffer_hex(GATTS_TABLE_TAG, param->write.value, param->write.len);
+                // esp_log_buffer_hex(GATTS_TABLE_TAG, param->write.value, param->write.len);
+                send_to_ble_queue(BLE_PHONE_WRITE, param->write.value, param->write.len);
                 /* send response when param->write.need_rsp is true*/
                 if (param->write.need_rsp){
                     esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
@@ -404,6 +420,9 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                 esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(param->mtu.mtu);
                 if (local_mtu_ret){
                     ESP_LOGE(GATTS_TABLE_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
+                } else {
+                    //vle: before send/recv data, phone must set MTU to GATTS_ION_CHAR_VAL_LEN_MAX to be able to transfer large data
+                    send_to_ble_queue(BLE_CONNECTED, NULL, 0);
                 }
             }
             break;
@@ -426,11 +445,11 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             conn_params.timeout = 400;    // timeout = 400*10ms = 4000ms
             //start sent the update connection parameters to the peer device.
             esp_ble_gap_update_conn_params(&conn_params);
-            xEventGroupSetBits(ion_ble_event_group, CONNECTING);
+            send_to_ble_queue(BLE_CONNECTING, NULL, 0);
             break;
         case ESP_GATTS_DISCONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_DISCONNECT_EVT, reason = 0x%x", param->disconnect.reason);
-            xEventGroupSetBits(ion_ble_event_group, DISCONNECT);
+            send_to_ble_queue(BLE_DISCONNECT, NULL, 0);
             // esp_ble_gap_start_advertising(&adv_params);
             break;
         case ESP_GATTS_CREAT_ATTR_TAB_EVT:{
@@ -538,7 +557,7 @@ void tm_ble_gatts_server_init(void)
         return;
     }
 
-    esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(500);
+    esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(GATTS_ION_CHAR_VAL_LEN_MAX);
     if (local_mtu_ret){
         ESP_LOGE(GATTS_TABLE_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
@@ -549,8 +568,21 @@ void tm_ble_gatts_server_init(void)
     }
 }
 
-void tm_ble_start_advertising(void)
+void ble_gatts_start_advertise(void)
 {
     if (ready_to_advertise)
         esp_ble_gap_start_advertising(&adv_params);
+}
+
+static void send_to_ble_queue(uint8_t msg_id, uint8_t *data, int len) {
+    if (len > BLE_MSG_MAX_LEN)
+        return;
+
+    ble_msg_t ble_msg = {0};
+    ble_msg.msg_id = msg_id;
+    ble_msg.len = len;
+    if (ble_msg.len > 0)
+        memcpy(ble_msg.data, data, ble_msg.len);
+
+    xQueueSend(ble_queue, (void*)&ble_msg, (TickType_t)0);
 }

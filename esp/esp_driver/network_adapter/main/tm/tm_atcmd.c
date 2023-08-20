@@ -22,7 +22,6 @@
 #define ION_TM_ATCMD_TAG    "TM_ATCMD"
 
 QueueHandle_t ble_to_tm_queue;
-QueueHandle_t tm_to_ble_queue;
 
 static esp_err_t tm_atcmd_construct(ble_to_tm_msg_t *msg, char* txbuf);
 static esp_err_t tm_atcmd_send(char* msg);

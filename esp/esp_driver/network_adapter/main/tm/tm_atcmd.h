@@ -3,7 +3,6 @@
 #include <string.h>
 
 #define BLE_TO_TM_MSG_MAX_LEN   128
-#define TM_TO_BLE_MSG_MAX_LEN   128
 
 typedef struct {
     int8_t battery;
