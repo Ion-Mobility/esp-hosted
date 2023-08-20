@@ -71,7 +71,7 @@ int tm_atcmd_recv_parser(char* cmd, int len) {
         case 'T':
             //TM+TRIP,...
             if (strncmp("TRIP",&cmd[CMD_START_CHAR_INDEX], sizeof("TRIP")-1) == 0) {
-                ret = DATA_TRIP;
+                ret = DATA_LAST_TRIP;
                 break;
             }
             ret = -1;

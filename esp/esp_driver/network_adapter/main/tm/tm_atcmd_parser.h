@@ -30,7 +30,7 @@ typedef enum {
     DATA_BATTERY        =2,         //AT+BATTERY,battery (%),                               (1 byte)
                                     //           estimate range(km)                         (2 bytes)
 
-    DATA_TRIP           =3,         //AT+TRIP,distance(km)                                  (2 bytes)
+    DATA_LAST_TRIP           =3,         //AT+TRIP,distance(km)                                  (2 bytes)
                                     //        ride time(mins)                               (2 bytes)
                                     //        electric used(kWh)                            (2 bytes)
 
@@ -43,15 +43,15 @@ typedef enum {
 
 
 typedef enum {
-    BLE_OK              =0,         //BLE+OK
-    BLE_ERR             =1,         //BLE+ERR
-    LOGIN               =2,         //BLE+LOGIN
-    CHARGE              =3,         //BLE+CHARGE
-    BATTERY             =4,         //BLE+BATTERY
-    LAST_TRIP           =5,         //BLE+TRIP
-    LOCK                =6,         //BLE+LOCK,keystring
-    UNLOCK              =7,         //BLE+UNLOCK,keystring
-    UNKNOWN             =8
+    BLE_OK                  =0,         //BLE+OK
+    BLE_ERR                 =1,         //BLE+ERR
+    BLE_TM_LOGIN            =2,         //BLE+LOGIN
+    BLE_TM_CHARGE           =3,         //BLE+CHARGE
+    BLE_TM_BATTERY          =4,         //BLE+BATTERY
+    BLE_TM_LAST_TRIP        =5,         //BLE+TRIP
+    BLE_TM_LOCK             =6,         //BLE+LOCK,keystring
+    BLE_TM_UNLOCK           =7,         //BLE+UNLOCK,keystring
+    BLE_TM_UNKNOWN          =8
 } at_cmd_resp_t;
 
 // parse command

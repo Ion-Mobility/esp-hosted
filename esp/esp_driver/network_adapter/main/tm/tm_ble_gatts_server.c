@@ -568,7 +568,7 @@ void tm_ble_gatts_server_init(void)
     }
 }
 
-void ble_gatts_start_advertise(void)
+void tm_ble_gatts_start_advertise(void)
 {
     if (ready_to_advertise)
         esp_ble_gap_start_advertising(&adv_params);
