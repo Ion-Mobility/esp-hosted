@@ -13,7 +13,7 @@ typedef struct {
     uint16_t last_trip_elec_used;
     uint16_t last_charge_level;
     uint16_t distance_since_last_charge;
-} login_t;
+} general_t;
 
 typedef struct {
     bool state;
@@ -35,11 +35,10 @@ typedef struct {
 } trip_t;
 
 typedef struct {
-    uint8_t msg_id;
-    uint8_t len;
+    int msg_id;
+    int len;
     uint8_t data[BLE_TO_TM_MSG_MAX_LEN];
 } ble_to_tm_msg_t;
 
 extern void tm_atcmd_tasks_init(void);
-extern void to_tm_login_msg(ble_to_tm_msg_t* pMsg);
-extern void send_to_tm_queue(uint8_t msg_id, uint8_t *data, int len);
+extern void send_to_tm_queue(int msg_id, uint8_t *data, int len);

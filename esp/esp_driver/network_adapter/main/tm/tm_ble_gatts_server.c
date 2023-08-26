@@ -27,7 +27,7 @@
 /* The max length of characteristic value. When the GATT client performs a write or prepare write operation,
 *  the data length must be less than GATTS_ION_CHAR_VAL_LEN_MAX.
 */
-#define GATTS_ION_CHAR_VAL_LEN_MAX  BLE_MSG_MAX_LEN+1   //1 byte for header
+#define GATTS_ION_CHAR_VAL_LEN_MAX  BLE_MSG_MAX_LEN+sizeof(int)+sizeof(int)+1   //1 byte for header
 #define PREPARE_BUF_MAX_SIZE        1024
 #define CHAR_DECLARATION_SIZE       (sizeof(uint8_t))
 
@@ -38,18 +38,17 @@ enum
 {
     IDX_SVC,
 
-    IDX_CHAR_RD,
-    IDX_CHAR_VAL_RD,
+    IDX_CHAR_TX,
+    IDX_CHAR_VAL_TX,
 
-    IDX_CHAR_VAL_WR,
-    IDX_CHAR_VAL_C,
+    IDX_CHAR_RX,
+    IDX_CHAR_VAL_RX,
 
     ION_IDX_NB,
 };
 
 static uint8_t adv_config_done      = 0;
 static bool ready_to_advertise      = false;
-static bool on_going_reading        = false;
 
 uint16_t ion_handle_table[ION_IDX_NB];
 
@@ -59,7 +58,6 @@ typedef struct {
 } prepare_type_env_t;
 
 static prepare_type_env_t prepare_write_env;
-static prepare_type_env_t prepare_read_env;
 
 #define CONFIG_SET_RAW_ADV_DATA
 #ifdef CONFIG_SET_RAW_ADV_DATA
@@ -69,11 +67,11 @@ static uint8_t raw_adv_data[] = {
         /* tx power*/
         0x02, 0x0a, 0xeb,
         /* service uuid */
-        0x03, 0x03, 0x12, 0x34,
+        0x03, 0x03, 0xFF, 0x00,
         /* device id */
         0x0B, 0x01, 0x00, 0x01, 0x0e, 0x00, 0x03, 0x00, 0x15, 0x00, 0x10, 0x4d,
         /* device name */
-        0x04, 0X09, 'I', 'O', 'N',
+        0x04, 0x09, 'I', 'O', 'N',
 };
 static uint8_t raw_scan_rsp_data[] = {
         /* flags */
@@ -81,7 +79,7 @@ static uint8_t raw_scan_rsp_data[] = {
         /* tx power */
         0x02, 0x0a, 0xeb,
         /* service uuid */
-        0x03, 0x03, 0x12, 0x34,
+        0x03, 0x03, 0xFF, 0x00,
 };
 
 
@@ -89,7 +87,7 @@ static uint8_t raw_scan_rsp_data[] = {
 static uint8_t service_uuid[16] = {
     /* LSB <--------------------------------------------------------------------------------> MSB */
     //first uuid, 16bit, [12],[13] is the value
-    0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0x12, 0x34, 0x00, 0x00,
+    0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00,
 };
 
 /* The length of adv data must be less than 31 bytes */
@@ -151,7 +149,7 @@ struct gatts_profile_inst {
     esp_bt_uuid_t descr_uuid;
 };
 
-static void send_to_ble_queue(uint8_t msg_id, uint8_t *data, int len);
+static void send_to_ble_queue(int msg_id, uint8_t *data, int len);
 static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
 					esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 
@@ -164,16 +162,17 @@ static struct gatts_profile_inst ion_profile_tab[PROFILE_NUM] = {
 };
 
 /* Service */
-static const uint16_t GATTS_SERVICE_UUID_TEST      = 0x00FF;
-static const uint16_t GATTS_CHAR_UUID_TEST_RD      = 0xFF01;
-static const uint16_t GATTS_CHAR_UUID_TEST_WR      = 0xFF02;
+static const uint16_t GATTS_SERVICE_UUID_TEST       = 0x00FF;
+static const uint16_t GATTS_CHAR_UUID_TX            = 0xFF01;
+static const uint16_t GATTS_CHAR_UUID_RX            = 0xFF02;
 
-static const uint16_t primary_service_uuid         = ESP_GATT_UUID_PRI_SERVICE;
-static const uint16_t character_declaration_uuid   = ESP_GATT_UUID_CHAR_DECLARE;
-static const uint8_t char_prop_read                = ESP_GATT_CHAR_PROP_BIT_READ;
-static const uint8_t char_prop_write               = ESP_GATT_CHAR_PROP_BIT_WRITE;
+static const uint16_t primary_service_uuid          = ESP_GATT_UUID_PRI_SERVICE;
+static const uint16_t character_declaration_uuid    = ESP_GATT_UUID_CHAR_DECLARE;
+static const uint8_t char_prop_tx                   = ESP_GATT_CHAR_PROP_BIT_NOTIFY;
+static const uint8_t char_prop_rx                   = ESP_GATT_CHAR_PROP_BIT_WRITE;
 //todo:replace this data by info from 148
-static uint8_t char_value[GATTS_ION_CHAR_VAL_LEN_MAX]         = {0};
+static uint8_t tx_value[GATTS_ION_CHAR_VAL_LEN_MAX]         = {0};
+static uint8_t rx_value[GATTS_ION_CHAR_VAL_LEN_MAX]         = {0};
 
 
 /* Full Database Description - Used to add attributes into the database */
@@ -185,24 +184,24 @@ static const esp_gatts_attr_db_t gatt_db[ION_IDX_NB] =
       sizeof(uint16_t), sizeof(GATTS_SERVICE_UUID_TEST), (uint8_t *)&GATTS_SERVICE_UUID_TEST}},
 
     /* Characteristic Declaration */
-    [IDX_CHAR_RD]      =
+    [IDX_CHAR_TX]      =
     {{ESP_GATT_RSP_BY_APP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
-      CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read}},
+      CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_tx}},
 
     /* Characteristic Value */
-    [IDX_CHAR_VAL_RD]  =
-    {{ESP_GATT_RSP_BY_APP}, {ESP_UUID_LEN_16, (uint8_t *)&GATTS_CHAR_UUID_TEST_RD, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
-      GATTS_ION_CHAR_VAL_LEN_MAX, sizeof(char_value), (uint8_t *)char_value}},
+    [IDX_CHAR_VAL_TX]  =
+    {{ESP_GATT_RSP_BY_APP}, {ESP_UUID_LEN_16, (uint8_t *)&GATTS_CHAR_UUID_TX, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
+      GATTS_ION_CHAR_VAL_LEN_MAX, sizeof(tx_value), (uint8_t *)tx_value}},
 
     /* Characteristic Declaration */
-    [IDX_CHAR_VAL_WR]      =
+    [IDX_CHAR_RX]      =
     {{ESP_GATT_RSP_BY_APP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
-      CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_write}},
+      CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_rx}},
 
     /* Characteristic Value */
-    [IDX_CHAR_VAL_C]  =
-    {{ESP_GATT_RSP_BY_APP}, {ESP_UUID_LEN_16, (uint8_t *)&GATTS_CHAR_UUID_TEST_WR, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
-      GATTS_ION_CHAR_VAL_LEN_MAX, sizeof(char_value), (uint8_t *)char_value}},
+    [IDX_CHAR_VAL_RX]  =
+    {{ESP_GATT_RSP_BY_APP}, {ESP_UUID_LEN_16, (uint8_t *)&GATTS_CHAR_UUID_RX, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
+      GATTS_ION_CHAR_VAL_LEN_MAX, sizeof(rx_value), (uint8_t *)rx_value}},
 
 };
 
@@ -372,38 +371,23 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
        	    break;
         case ESP_GATTS_READ_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_READ_EVT");
-            // only authenticated phone can read
-            if (tm_ble_get_phone_request_status() == RD_DATA_READY) {
-                on_going_reading = true;
-                send_to_ble_queue(BLE_PHONE_READ, NULL, 0);
-                esp_gatt_rsp_t rsp;
-                ESP_LOGI(GATTS_TABLE_TAG, "param->read.is_long: %d", param->read.is_long);
-                ESP_LOGI(GATTS_TABLE_TAG, "param->read.need_rsp: %d", param->read.need_rsp);
-
-                prepare_read_env.prepare_buf = char_value;
-                prepare_read_env.prepare_len = sizeof(char_value);
-                memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
-                rsp.attr_value.handle = param->read.handle;
-                ESP_LOGI(GATTS_TABLE_TAG, "param->read.offset: %d", param->read.offset);
-
-                int remaining_read = prepare_read_env.prepare_len;
-                if (param->read.is_long) {
-                    remaining_read = prepare_read_env.prepare_len - param->read.offset;
-                    rsp.attr_value.len = (remaining_read) > DEFAULT_MTU_TRUNCATED_SIZE ? DEFAULT_MTU_TRUNCATED_SIZE: remaining_read;
-                } else {
-                    rsp.attr_value.len = remaining_read;
-                }
-                memcpy(rsp.attr_value.value, prepare_read_env.prepare_buf + param->read.offset, rsp.attr_value.len);
-                esp_ble_gatts_send_response(gatts_if, param->read.conn_id, param->read.trans_id, ESP_GATT_OK, &rsp);
-            }
-            on_going_reading = false;
        	    break;
         case ESP_GATTS_WRITE_EVT:
             if (!param->write.is_prep){
                 // the data length of gattc write  must be less than GATTS_ION_CHAR_VAL_LEN_MAX.
                 ESP_LOGI(GATTS_TABLE_TAG, "GATT_WRITE_EVT, handle = %d, value len = %d, value :", param->write.handle, param->write.len);
                 // esp_log_buffer_hex(GATTS_TABLE_TAG, param->write.value, param->write.len);
-                send_to_ble_queue(BLE_PHONE_WRITE, param->write.value, param->write.len);
+                int msg_id;
+                int len;
+                if (param->write.len <= sizeof(int) + sizeof(int)) {
+                    memcpy(&msg_id, &param->write.value[0], sizeof(int));
+                    send_to_ble_queue(msg_id, NULL, 0);
+                } else {
+                    memcpy(&msg_id, &param->write.value[0], sizeof(int));
+                    memcpy(&len, &param->write.value[sizeof(int)], sizeof(int));
+                    send_to_ble_queue(msg_id, &param->write.value[sizeof(int) + sizeof(int)], len);
+                }
+
                 /* send response when param->write.need_rsp is true*/
                 if (param->write.need_rsp){
                     esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
@@ -451,7 +435,6 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
         case ESP_GATTS_DISCONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_DISCONNECT_EVT, reason = 0x%x", param->disconnect.reason);
             send_to_ble_queue(BLE_DISCONNECT, NULL, 0);
-            tm_ble_set_phone_request_status(UNPAIRED);
             // esp_ble_gap_start_advertising(&adv_params);
             break;
         case ESP_GATTS_CREAT_ATTR_TAB_EVT:{
@@ -571,23 +554,59 @@ void tm_ble_gatts_start_advertise(void)
         esp_ble_gap_start_advertising(&adv_params);
 }
 
-void update_read_response(uint8_t *data, int len)
+void tm_ble_gattd_send_to_phone(uint8_t *data, int len)
 {
-    while(on_going_reading);
-    memcpy(char_value, data, len);
-}
-
-static void send_to_ble_queue(uint8_t msg_id, uint8_t *data, int len) {
-    if (len > BLE_MSG_MAX_LEN)
+    if (len > GATTS_ION_CHAR_VAL_LEN_MAX)
         return;
 
-    ble_msg_t ble_msg = {0};
-    ble_msg.msg_id = msg_id;
-    ble_msg.len = len;
-    if (data != NULL) {
-        ble_msg.len = len;
-        memcpy(ble_msg.data, data, ble_msg.len);
+    esp_ble_gatts_send_indicate(ion_profile_tab[PROFILE_APP_IDX].gatts_if, ion_profile_tab[PROFILE_APP_IDX].conn_id, ion_handle_table[IDX_CHAR_VAL_TX],
+                            len, data, false);
+
+}
+
+static void send_to_ble_queue(int msg_id, uint8_t *data, int len) {
+    if (len > BLE_MSG_MAX_LEN)
+        return;
+    ble_msg_t to_ble_msg = {0};
+
+    switch (msg_id) {
+        case BLE_DISCONNECT:
+            to_ble_msg.msg_id = BLE_DISCONNECT;
+            break;
+        case BLE_CONNECTING:
+            to_ble_msg.msg_id = BLE_CONNECTING;
+            break;
+        case BLE_CONNECTED:
+            to_ble_msg.msg_id = BLE_CONNECTED;
+            break;
+        case PHONE_BLE_PAIRING:
+            to_ble_msg.msg_id = PHONE_BLE_PAIRING;
+            if (len > BLE_MSG_MAX_LEN)
+                return;
+            // memcpy(to_ble_msg.data, data, len);
+            break;
+        case PHONE_BLE_SESSION:
+            if (len > BLE_MSG_MAX_LEN)
+                return;
+            to_ble_msg.msg_id = PHONE_BLE_SESSION;
+            // memcpy(to_ble_msg.data, data, len);
+            break;
+        case PHONE_BLE_GENERAL:
+            to_ble_msg.msg_id = PHONE_BLE_GENERAL;
+            break;
+        case PHONE_BLE_BATTERY:
+            to_ble_msg.msg_id = PHONE_BLE_BATTERY;
+            break;
+        case PHONE_BLE_CHARGE:
+            to_ble_msg.msg_id = PHONE_BLE_CHARGE;
+            break;
+        case PHONE_BLE_LAST_TRIP:
+            to_ble_msg.msg_id = PHONE_BLE_LAST_TRIP;
+            break;
+        default:
+            return;
     }
 
-    xQueueSend(ble_queue, (void*)&ble_msg, (TickType_t)0);
+    to_ble_msg.len = len;
+    xQueueSend(ble_queue, (void*)&to_ble_msg, (TickType_t)0);
 }
