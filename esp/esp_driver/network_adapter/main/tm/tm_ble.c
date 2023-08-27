@@ -13,11 +13,7 @@
 
 #define BLE_TASK_PRIO           3
 #define ION_BLE_TAG             "TM_BLE"
-
-// ble to phone serialization
-#define MSG_ID_BYTE_IDX         0
-#define MSG_LEN_BYTE_IDX        1
-#define MSG_DATA_BYTE_IDX       5
+#define BLE_PAIRING_TIMEOUT     10  //10s
 
 QueueHandle_t ble_queue;
 static uint8_t pair_status = UNPAIRED;
@@ -56,11 +52,12 @@ static void ble_task(void *arg)
                 ESP_LOGI(ION_BLE_TAG, "BLE_DISCONNECT");
                 tm_ble_gatts_start_advertise();
                 pair_status = UNPAIRED;
+                client_disconnect();
                 break;
 
             case BLE_CONNECT:
                 ESP_LOGI(ION_BLE_TAG, "BLE_CONNECT");
-                start_oneshot_timer(10);
+                start_oneshot_timer(BLE_PAIRING_TIMEOUT);
                 pair_status = UNPAIRED;
                 break;
 

@@ -28,22 +28,21 @@ typedef struct {
 
 // phone
 typedef struct {
-    uint8_t identity_pk[KEY_LEN];           // long-term, one per device
-    uint8_t pairing_pk[KEY_LEN];            // medium-term, pairing key (1 week expired)
-    uint8_t ephemeral_pk[KEY_LEN];          // short-term, session key
-    uint8_t derived_session_key[KEY_LEN];   // derived session key
-} phone_t;
+    keypair_t bike_pairing_key;             // bike pairing key pair for each phone
+    uint8_t session_id[SESSION_ID_LEN];     // session id
+    uint8_t phone_identity_pk[KEY_LEN];     // long-term, one per device
+    uint8_t phone_pairing_pk[KEY_LEN];      // medium-term, pairing key (1 week expired)
+    uint8_t derived_key[KEY_LEN];           // short-term, session derived key
+    time_t start_time;
+    time_t expiry_time;
+} paired_phone_t;
 
 // bike
 typedef struct {
-    keypair_t pairing;
-    uint8_t identity_pk[KEY_LEN];
-} paired_phone_t;
-
-typedef struct {
-    keypair_t identity;                         // long-term, one per device
-    paired_phone_t paired_phone[MAX_PAIRED_PHONE];    // medium-term, pairing key (1 week expired)
+    keypair_t identity;                                 // long-term, one per device
+    paired_phone_t paired_phone[MAX_PAIRED_PHONE];      // medium-term, pairing key (1 week expired)            
     uint8_t num_paired_phone;
+    uint8_t cur_paired_phone_idx;
 } bike_t;
 
 // server
@@ -53,12 +52,15 @@ typedef struct {
 
 // pair request
 typedef struct {
+    uint8_t bike_identity_pk[KEY_LEN];
     uint8_t phone_identity_pk[KEY_LEN];
     uint8_t phone_pairing_pk[KEY_LEN];
+    time_t start_time;
+    time_t expiry_time;
 } pair_request_content_t;
 
 typedef struct {
-    uint8_t signature[SIGNATURE_LEN];
+    uint8_t signature[SIGNATURE_LEN];   //pair request must be signed by server
     pair_request_content_t contents;
 } pair_request_t;
 
@@ -69,19 +71,18 @@ typedef struct {
 } pair_response_content_t;
 
 typedef struct {
-    uint8_t signature[SIGNATURE_LEN];
+    uint8_t signature[SIGNATURE_LEN];   //pair response must be signed by bike secret identity key
     pair_response_content_t contents;
 } pair_response_t;
 
 // session response
 typedef struct {
-    uint8_t ephemeral_pk[KEY_LEN];
+    uint8_t ephemeral_pk[KEY_LEN];      //phone ephemeral key
     uint8_t session_id[SESSION_ID_LEN];
 } session_response_content_t;
 
 typedef struct {
-    uint8_t signature[SIGNATURE_LEN];
-    uint8_t phone_derived_session_key[KEY_LEN];
+    uint8_t signature[SIGNATURE_LEN];   //session response must be signed by bike secret identity key
     session_response_content_t contents;
 } session_response_t;
 
@@ -89,8 +90,7 @@ typedef struct {
 typedef struct {
     uint8_t phone_pairing_pk[KEY_LEN];
     uint8_t bike_pairing_pk[KEY_LEN];
-    uint8_t phone_identity_pk[KEY_LEN];
-    uint8_t ephemeral_pk[KEY_LEN];
+    uint8_t ephemeral_pk[KEY_LEN];      //phone ephemeral key
 } session_request_content_t;
 
 typedef struct {
@@ -100,9 +100,7 @@ typedef struct {
 
 // message lock
 typedef struct {
-    uint8_t *session_id;
     uint8_t *mac;
-    uint8_t *aead_sk;           //Phone derived sesion key
     uint8_t *plaintext;
     size_t  plaintext_len;
     uint8_t *ciphertext;
@@ -111,9 +109,7 @@ typedef struct {
 
 // message unlock
 typedef struct {
-    uint8_t *session_id;
     uint8_t *mac;
-    uint8_t *aead_sk;           //Phone derived sesion key
     uint8_t *plaintext;
     size_t  *plaintext_len;
     uint8_t *ciphertext;
@@ -123,14 +119,13 @@ typedef struct {
 static void xed25519_sign(uint8_t signature[SIGNATURE_LEN], uint8_t secret_key[KEY_LEN], uint8_t *message, size_t message_size);
 static int xed25519_verify(uint8_t signature[SIGNATURE_LEN], uint8_t public_key[KEY_LEN], uint8_t *message, size_t message_size);
 static void random_generator(uint8_t *out, size_t len);
-static uint8_t generate_bike_pairing_key(uint8_t *phone_identity_pk);
+static uint8_t update_paired_phone_table(pair_request_t *pair_request);
 static void message_lock(msg_lock_t *msg_lock);
 static void message_unlock(msg_unlock_t *msg_unlock);
 static int pair(pair_request_t *pair_request, pair_response_t *pair_response);
 static int session(session_request_t *session_request, session_response_t *session_response);
 static void cleanup_paired_storage(nvs_handle_t *my_handle);
 
-phone_t phone               = {0};
 bike_t bike                 = {0};
 server_t server             = {0};
 uint8_t empty_key[KEY_LEN]  = {0};
@@ -226,6 +221,9 @@ esp_err_t crypto_init(void) {
     // init random number generator module
     srand(time(NULL));
 
+    // no pairing at init time
+    bike.cur_paired_phone_idx = MAX_PAIRED_PHONE;
+
 init_exit:
     // Close
     nvs_close(my_handle);
@@ -267,6 +265,11 @@ int pairing_request(uint8_t* request, size_t req_len, uint8_t* response, size_t 
     return pair_result;
 }
 
+void client_disconnect(void)
+{
+    bike.cur_paired_phone_idx = MAX_PAIRED_PHONE;
+}
+
 static void cleanup_paired_storage(nvs_handle_t *my_handle) {
     bike.num_paired_phone = 0;
     nvs_set_u8(*my_handle, "num_paired_phone", bike.num_paired_phone);
@@ -278,16 +281,18 @@ static void cleanup_paired_storage(nvs_handle_t *my_handle) {
 static void message_lock(msg_lock_t *msg_lock)
 {
     crypto_aead_lock(msg_lock->ciphertext, msg_lock->mac,
-                 msg_lock->aead_sk, msg_lock->session_id,
-                 NULL, 0,
-                 msg_lock->plaintext, msg_lock->plaintext_len);
+                bike.paired_phone[bike.cur_paired_phone_idx].derived_key,
+                bike.paired_phone[bike.cur_paired_phone_idx].session_id,
+                NULL, 0,
+                msg_lock->plaintext, msg_lock->plaintext_len);
     *(msg_lock->ciphertext_len) = msg_lock->plaintext_len;
 }
 
 static void message_unlock(msg_unlock_t *msg_unlock)
 {
     if (crypto_aead_unlock(msg_unlock->plaintext, msg_unlock->mac,
-                        msg_unlock->aead_sk, msg_unlock->session_id,
+                        bike.paired_phone[bike.cur_paired_phone_idx].derived_key,
+                        bike.paired_phone[bike.cur_paired_phone_idx].session_id,
                         NULL, 0,
                         msg_unlock->ciphertext, msg_unlock->ciphertext_len)) {
         ESP_LOGE(CRYPTO_TAG, "The message is corrupted");
@@ -306,9 +311,6 @@ void message_encrypt(uint8_t *ciphertext, size_t *ciphertext_len, uint8_t *mac, 
     msg_lock.ciphertext = ciphertext;
     msg_lock.ciphertext_len = ciphertext_len;
     msg_lock.mac = mac;
-    msg_lock.aead_sk = phone.derived_session_key;
-    msg_lock.session_id = phone.ephemeral_pk;
-
     message_lock(&msg_lock);
 }
 
@@ -320,9 +322,6 @@ void message_decrypt(uint8_t*plaintext, size_t *plaintext_len, uint8_t *mac, uin
     msg_unlock.ciphertext = ciphertext;
     msg_unlock.ciphertext_len = ciphertext_len;
     msg_unlock.mac = mac;
-    msg_unlock.aead_sk = phone.derived_session_key;
-    msg_unlock.session_id = phone.ephemeral_pk;
-
     message_unlock(&msg_unlock);
 }
 
@@ -332,29 +331,43 @@ static void random_generator(uint8_t *out, size_t len) {
     }
 }
 
-static uint8_t generate_bike_pairing_key(uint8_t *phone_identity_pk) {
+static uint8_t update_paired_phone_table(pair_request_t *pair_request) {
     // bike pairing key for each phone
     // if this phone already existed, just update pairing key
     // else add new phone
+
+    //check if this pairing key is expired
+    // if (pair_request->contents.expiry_time < now())
+    //     return MAX_PAIRED_PHONE;
+
+    // if this phone is already in paired table, just update the table, else add new phone to the table
     int index = 0;
     for (index = 0; index < MAX_PAIRED_PHONE; index++) {
-        if (!memcmp(bike.paired_phone[index].identity_pk, phone_identity_pk, KEY_LEN))
+        if (!memcmp(bike.paired_phone[index].phone_identity_pk, pair_request->contents.phone_identity_pk, KEY_LEN)) {
+            //phone founded
+            bike.cur_paired_phone_idx = index;
+
+            //todo: update start/expiry key time if needed
             break;
+        }
     }
 
     if (index >= MAX_PAIRED_PHONE) {
         // found no phone, find a free slot to add this new phone
-        for (int i = 0; i < MAX_PAIRED_PHONE; i++)
-            if (!memcmp(bike.paired_phone[i].identity_pk, empty_key, KEY_LEN)) {
-                index = i;
+        for (index = 0; index < MAX_PAIRED_PHONE; index++) {
+            if (!memcmp(bike.paired_phone[index].phone_identity_pk, empty_key, KEY_LEN)) {
+                bike.cur_paired_phone_idx = index;
+                memcpy(&bike.paired_phone[bike.cur_paired_phone_idx].phone_identity_pk, pair_request->contents.phone_identity_pk, KEY_LEN);
+                bike.paired_phone[bike.cur_paired_phone_idx].start_time = pair_request->contents.start_time;
+                bike.paired_phone[bike.cur_paired_phone_idx].expiry_time = pair_request->contents.expiry_time;
+                random_generator(bike.paired_phone[bike.cur_paired_phone_idx ].bike_pairing_key.sk, KEY_LEN);
+                crypto_x25519_public_key(bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.pk, bike.paired_phone[index].bike_pairing_key.sk);
                 break;
             }
+        }
     }
 
-    memset(&bike.paired_phone[index].pairing, 0, sizeof(keypair_t));
-    random_generator(bike.paired_phone[index].pairing.sk, KEY_LEN);
-    crypto_x25519_public_key(bike.paired_phone[index].pairing.pk, bike.paired_phone[index].pairing.sk);
-    return index;
+    return bike.cur_paired_phone_idx;
 }
 
 static int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
@@ -370,31 +383,29 @@ static int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
         return verify_server_signature;
     }
 
-    // Generate a new bike pairing key for this phone pairing key and
-    int index = generate_bike_pairing_key(pair_request->contents.phone_identity_pk);
+    bike.cur_paired_phone_idx = update_paired_phone_table(pair_request);
 
     // Create the response and sign it
-    memcpy(pair_response->contents.phone_pairing_pk, phone.pairing_pk, KEY_LEN);
-    memcpy(pair_response->contents.bike_pairing_pk, bike.paired_phone[index].pairing.pk, KEY_LEN);
-    xed25519_sign(pair_response->signature, bike.paired_phone[index].pairing.sk, (uint8_t*)&pair_response->contents, sizeof(pair_request_content_t));
+    memcpy(pair_response->contents.phone_pairing_pk, pair_request->contents.phone_pairing_pk, KEY_LEN);
+    memcpy(pair_response->contents.bike_pairing_pk, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.pk, KEY_LEN);
+    xed25519_sign(pair_response->signature, bike.identity.sk, (uint8_t*)&pair_response->contents, sizeof(pair_request_content_t));
 
     return 0;
 }
 
 static int session(session_request_t *session_request, session_response_t *session_response) {
     // Ensure that we're paired with this phone
-    int index = 0;
-    for (index = 0; index < MAX_PAIRED_PHONE; index++) {
-        if (!memcmp(bike.paired_phone[index].pairing.pk, session_request->contents.bike_pairing_pk, KEY_LEN))
-            break;
-    }
-
-    if (index >= MAX_PAIRED_PHONE) {
-        ESP_LOGE(CRYPTO_TAG, "phone not paired yet...");
+    if (bike.cur_paired_phone_idx >= MAX_PAIRED_PHONE) {
+        ESP_LOGE(CRYPTO_TAG, "no phone paired yet...");
         return -1;
     }
 
-    int verify = xed25519_verify(session_request->signature, phone.identity_pk, (uint8_t*)&session_request->contents, sizeof(session_request_content_t));
+    if (!memcmp(bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.pk, session_request->contents.bike_pairing_pk, KEY_LEN)) {
+        ESP_LOGE(CRYPTO_TAG, "invalid pairing key...");
+        return -1;
+    }
+
+    int verify = xed25519_verify(session_request->signature, bike.paired_phone[bike.cur_paired_phone_idx].phone_identity_pk, (uint8_t*)&session_request->contents, sizeof(session_request_content_t));
     if (!verify) {
         ESP_LOGI(CRYPTO_TAG, "session signature is correct");
     } else {
@@ -403,34 +414,39 @@ static int session(session_request_t *session_request, session_response_t *sessi
     }
 
     uint8_t dh1[KEY_LEN];
-    crypto_x25519(dh1, bike.identity.sk, phone.identity_pk);
+    crypto_x25519(dh1, bike.identity.sk, bike.paired_phone[bike.cur_paired_phone_idx].phone_identity_pk);
 
     uint8_t dh2[KEY_LEN];
-    crypto_x25519(dh2, bike.identity.sk, phone.pairing_pk);
+    crypto_x25519(dh2, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.sk, bike.paired_phone[bike.cur_paired_phone_idx].phone_pairing_pk);
 
     uint8_t dh3[KEY_LEN];
-    crypto_x25519(dh3, bike.identity.sk, phone.ephemeral_pk);
+    crypto_x25519(dh3, bike.identity.sk, session_request->contents.ephemeral_pk);
 
     uint8_t dh4[KEY_LEN];
-    crypto_x25519(dh4, bike.paired_phone[index].pairing.sk, phone.ephemeral_pk);
+    crypto_x25519(dh4, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.sk, session_request->contents.ephemeral_pk);
 
+    uint8_t sk[KEY_LEN*2] = {0};
     crypto_blake2b_ctx ctx;
     crypto_blake2b_init(&ctx, KEY_LEN);
     crypto_blake2b_update(&ctx, dh1, KEY_LEN);
     crypto_blake2b_update(&ctx, dh2, KEY_LEN);
     crypto_blake2b_update(&ctx, dh3, KEY_LEN);
     crypto_blake2b_update(&ctx, dh4, KEY_LEN);
-    crypto_blake2b_final(&ctx, session_response->phone_derived_session_key);
+    crypto_blake2b_final(&ctx, sk);
+    memcpy(bike.paired_phone[bike.cur_paired_phone_idx].derived_key, sk, KEY_LEN);
+    ESP_LOGI(CRYPTO_TAG, "bike derived key");
+    esp_log_buffer_hex(CRYPTO_TAG, bike.paired_phone[bike.cur_paired_phone_idx].derived_key, KEY_LEN);
 
-    random_generator(session_response->contents.session_id, KEY_LEN);
-    memcpy(session_response->contents.ephemeral_pk, phone.ephemeral_pk, KEY_LEN);
+    // generate random session id
+    random_generator(bike.paired_phone[bike.cur_paired_phone_idx].session_id, KEY_LEN);
+    memcpy(session_response->contents.session_id, bike.paired_phone[bike.cur_paired_phone_idx].session_id, KEY_LEN);
+    memcpy(session_response->contents.ephemeral_pk, session_request->contents.ephemeral_pk, KEY_LEN);
 
     uint8_t random[SIGNATURE_LEN];
     random_generator(random, SIGNATURE_LEN);
     xed25519_sign(session_response->signature,
                    bike.identity.sk,
                    (uint8_t*)&session_response->contents, sizeof(session_response_content_t));
-    memcpy(phone.derived_session_key, session_response->phone_derived_session_key, KEY_LEN);
     return 0;
 }
 
