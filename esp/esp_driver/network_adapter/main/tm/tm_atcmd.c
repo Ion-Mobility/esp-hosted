@@ -13,7 +13,6 @@
 
 #include "tm_spi_slave_driver.h"
 #include "tm_atcmd.h"
-// #include "tm_atcmd_parser.h"
 #include "tm_ble.h"
 
 #define ATCMD_TASK_PRIO         3

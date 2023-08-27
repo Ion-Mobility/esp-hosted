@@ -29,10 +29,9 @@ typedef enum {
 
     BLE_START_ADVERTISE         =12,
     BLE_DISCONNECT              =13,
-    BLE_CONNECTING              =14,
-    BLE_CONNECTED               =15,
+    BLE_CONNECT                 =14,
 
-    BLE_INVALID_MSG             =16
+    BLE_INVALID_MSG             =15
 } ble_msg_id_t;
 
 typedef struct {

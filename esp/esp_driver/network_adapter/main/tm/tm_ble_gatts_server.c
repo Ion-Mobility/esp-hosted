@@ -430,7 +430,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             conn_params.timeout = 400;    // timeout = 400*10ms = 4000ms
             //start sent the update connection parameters to the peer device.
             esp_ble_gap_update_conn_params(&conn_params);
-            send_to_ble_queue(BLE_CONNECTING, NULL, 0);
+            send_to_ble_queue(BLE_CONNECT, NULL, 0);
             break;
         case ESP_GATTS_DISCONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_DISCONNECT_EVT, reason = 0x%x", param->disconnect.reason);
@@ -554,7 +554,7 @@ void tm_ble_gatts_start_advertise(void)
         esp_ble_gap_start_advertising(&adv_params);
 }
 
-void tm_ble_gattd_send_to_phone(uint8_t *data, int len)
+void tm_ble_gatts_send_to_phone(uint8_t *data, int len)
 {
     if (len > GATTS_ION_CHAR_VAL_LEN_MAX)
         return;
@@ -573,11 +573,8 @@ static void send_to_ble_queue(int msg_id, uint8_t *data, int len) {
         case BLE_DISCONNECT:
             to_ble_msg.msg_id = BLE_DISCONNECT;
             break;
-        case BLE_CONNECTING:
-            to_ble_msg.msg_id = BLE_CONNECTING;
-            break;
-        case BLE_CONNECTED:
-            to_ble_msg.msg_id = BLE_CONNECTED;
+        case BLE_CONNECT:
+            to_ble_msg.msg_id = BLE_CONNECT;
             break;
         case PHONE_BLE_PAIRING:
             to_ble_msg.msg_id = PHONE_BLE_PAIRING;
@@ -609,4 +606,9 @@ static void send_to_ble_queue(int msg_id, uint8_t *data, int len) {
 
     to_ble_msg.len = len;
     xQueueSend(ble_queue, (void*)&to_ble_msg, (TickType_t)0);
+}
+
+void tm_ble_gatts_kill_connection(void)
+{
+    esp_ble_gatts_close(ion_profile_tab[PROFILE_APP_IDX].gatts_if, ion_profile_tab[PROFILE_APP_IDX].conn_id);
 }
