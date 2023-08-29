@@ -1,6 +1,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/semphr.h"
 #include "esp_system.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
@@ -50,6 +51,7 @@ enum
 
 static uint8_t adv_config_done      = 0;
 static bool ready_to_advertise      = false;
+SemaphoreHandle_t xBinarySemaphore = NULL;
 
 uint16_t ion_handle_table[ION_IDX_NB];
 
@@ -176,6 +178,7 @@ static const uint8_t char_prop_rx                   = ESP_GATT_CHAR_PROP_BIT_WRI
 static uint8_t tx_value[GATTS_ION_CHAR_VAL_LEN_MAX] = {0};
 static uint8_t rx_value[GATTS_ION_CHAR_VAL_LEN_MAX] = {0};
 static const uint8_t ion_ccc[2]                     = {0x00, 0x00};
+static int tx_value_len = 0;
 
 /* Full Database Description - Used to add attributes into the database */
 static const esp_gatts_attr_db_t gatt_db[ION_IDX_NB] =
@@ -400,6 +403,8 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                 } else {
                     int msg_id;
                     int len;
+                    memset(tx_value, 0, sizeof(tx_value));
+                    tx_value_len = -1;
                     if (param->write.len <= sizeof(int) + sizeof(int)) {
                         memcpy(&msg_id, &param->write.value[0], sizeof(int));
                         send_to_ble_queue(msg_id, NULL, 0);
@@ -409,13 +414,12 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                         send_to_ble_queue(msg_id, &param->write.value[sizeof(int) + sizeof(int)], len);
                     }
                     //todo: replace this by data from 148
-                    uint8_t indicate_data[15];
-                    for (int i = 0; i < sizeof(indicate_data); ++i)
-                    {
-                        indicate_data[i] = i % 0xff;
+                    if( xSemaphoreTake( xBinarySemaphore, ( TickType_t ) (5000 / portTICK_PERIOD_MS) ) == pdTRUE ) {
+                        if (tx_value_len > 0)
+                            esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, ion_handle_table[IDX_CHAR_VAL_TX],
+                                    tx_value_len, tx_value, false);
                     }
-                    esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, ion_handle_table[IDX_CHAR_VAL_TX],
-                                sizeof(indicate_data), indicate_data, false);
+                    tx_value_len = 0;
                 }
                 /* send response when param->write.need_rsp is true*/
                 if (param->write.need_rsp){
@@ -575,6 +579,8 @@ void tm_ble_gatts_server_init(void)
     if (local_mtu_ret){
         ESP_LOGE(GATTS_TABLE_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
+
+    xBinarySemaphore = xSemaphoreCreateBinary();
 }
 
 void tm_ble_gatts_start_advertise(void)
@@ -587,10 +593,12 @@ void tm_ble_gatts_send_to_phone(uint8_t *data, int len)
 {
     if (len > GATTS_ION_CHAR_VAL_LEN_MAX)
         return;
-
-    esp_ble_gatts_send_indicate(ion_profile_tab[PROFILE_APP_IDX].gatts_if, ion_profile_tab[PROFILE_APP_IDX].conn_id, ion_handle_table[IDX_CHAR_VAL_TX],
-                            len, data, false);
-
+    
+    if (tx_value_len == -1) {
+        memcpy(tx_value, data, len);
+        tx_value_len = len;
+        xSemaphoreGive(xBinarySemaphore);
+    }
 }
 
 static void send_to_ble_queue(int msg_id, uint8_t *data, int len) {
