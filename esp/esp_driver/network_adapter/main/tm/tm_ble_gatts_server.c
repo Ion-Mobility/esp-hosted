@@ -40,6 +40,7 @@ enum
 
     IDX_CHAR_TX,
     IDX_CHAR_VAL_TX,
+    IDX_CHAR_CFG_TX,
 
     IDX_CHAR_RX,
     IDX_CHAR_VAL_RX,
@@ -67,7 +68,7 @@ static uint8_t raw_adv_data[] = {
         /* tx power*/
         0x02, 0x0a, 0xeb,
         /* service uuid */
-        0x03, 0x03, 0xFF, 0x00,
+        0x03, 0x03, 0x00, 0xFF,
         /* device id */
         0x0B, 0x01, 0x00, 0x01, 0x0e, 0x00, 0x03, 0x00, 0x15, 0x00, 0x10, 0x4d,
         /* device name */
@@ -79,7 +80,7 @@ static uint8_t raw_scan_rsp_data[] = {
         /* tx power */
         0x02, 0x0a, 0xeb,
         /* service uuid */
-        0x03, 0x03, 0xFF, 0x00,
+        0x03, 0x03, 0x00, 0xFF
 };
 
 
@@ -87,7 +88,7 @@ static uint8_t raw_scan_rsp_data[] = {
 static uint8_t service_uuid[16] = {
     /* LSB <--------------------------------------------------------------------------------> MSB */
     //first uuid, 16bit, [12],[13] is the value
-    0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00,
+    0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00,
 };
 
 /* The length of adv data must be less than 31 bytes */
@@ -168,12 +169,13 @@ static const uint16_t GATTS_CHAR_UUID_RX            = 0xFF02;
 
 static const uint16_t primary_service_uuid          = ESP_GATT_UUID_PRI_SERVICE;
 static const uint16_t character_declaration_uuid    = ESP_GATT_UUID_CHAR_DECLARE;
+static const uint16_t character_client_config_uuid  = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
 static const uint8_t char_prop_tx                   = ESP_GATT_CHAR_PROP_BIT_NOTIFY;
 static const uint8_t char_prop_rx                   = ESP_GATT_CHAR_PROP_BIT_WRITE;
 //todo:replace this data by info from 148
-static uint8_t tx_value[GATTS_ION_CHAR_VAL_LEN_MAX]         = {0};
-static uint8_t rx_value[GATTS_ION_CHAR_VAL_LEN_MAX]         = {0};
-
+static uint8_t tx_value[GATTS_ION_CHAR_VAL_LEN_MAX] = {0};
+static uint8_t rx_value[GATTS_ION_CHAR_VAL_LEN_MAX] = {0};
+static const uint8_t ion_ccc[2]                     = {0x00, 0x00};
 
 /* Full Database Description - Used to add attributes into the database */
 static const esp_gatts_attr_db_t gatt_db[ION_IDX_NB] =
@@ -192,6 +194,11 @@ static const esp_gatts_attr_db_t gatt_db[ION_IDX_NB] =
     [IDX_CHAR_VAL_TX]  =
     {{ESP_GATT_RSP_BY_APP}, {ESP_UUID_LEN_16, (uint8_t *)&GATTS_CHAR_UUID_TX, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
       GATTS_ION_CHAR_VAL_LEN_MAX, sizeof(tx_value), (uint8_t *)tx_value}},
+
+    /* Client Characteristic Configuration Descriptor */
+    [IDX_CHAR_CFG_TX]  =
+    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
+      sizeof(uint16_t), sizeof(ion_ccc), (uint8_t *)ion_ccc}},
 
     /* Characteristic Declaration */
     [IDX_CHAR_RX]      =
@@ -374,20 +381,42 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
        	    break;
         case ESP_GATTS_WRITE_EVT:
             if (!param->write.is_prep){
-                // the data length of gattc write  must be less than GATTS_ION_CHAR_VAL_LEN_MAX.
+                // the data length of gattc write  must be less than GATTS_DEMO_CHAR_VAL_LEN_MAX.
                 ESP_LOGI(GATTS_TABLE_TAG, "GATT_WRITE_EVT, handle = %d, value len = %d, value :", param->write.handle, param->write.len);
-                // esp_log_buffer_hex(GATTS_TABLE_TAG, param->write.value, param->write.len);
-                int msg_id;
-                int len;
-                if (param->write.len <= sizeof(int) + sizeof(int)) {
-                    memcpy(&msg_id, &param->write.value[0], sizeof(int));
-                    send_to_ble_queue(msg_id, NULL, 0);
+                esp_log_buffer_hex(GATTS_TABLE_TAG, param->write.value, param->write.len);
+                if (ion_handle_table[IDX_CHAR_CFG_TX] == param->write.handle && param->write.len == 2){
+                    uint16_t descr_value = param->write.value[1]<<8 | param->write.value[0];
+                    if (descr_value == 0x0001){
+                        ESP_LOGI(GATTS_TABLE_TAG, "notify enable");
+                    }else if (descr_value == 0x0002){
+                        ESP_LOGI(GATTS_TABLE_TAG, "indicate enable");
+                    }
+                    else if (descr_value == 0x0000){
+                        ESP_LOGI(GATTS_TABLE_TAG, "notify/indicate disable ");
+                    }else{
+                        ESP_LOGE(GATTS_TABLE_TAG, "unknown descr value");
+                        esp_log_buffer_hex(GATTS_TABLE_TAG, param->write.value, param->write.len);
+                    }
                 } else {
-                    memcpy(&msg_id, &param->write.value[0], sizeof(int));
-                    memcpy(&len, &param->write.value[sizeof(int)], sizeof(int));
-                    send_to_ble_queue(msg_id, &param->write.value[sizeof(int) + sizeof(int)], len);
+                    int msg_id;
+                    int len;
+                    if (param->write.len <= sizeof(int) + sizeof(int)) {
+                        memcpy(&msg_id, &param->write.value[0], sizeof(int));
+                        send_to_ble_queue(msg_id, NULL, 0);
+                    } else {
+                        memcpy(&msg_id, &param->write.value[0], sizeof(int));
+                        memcpy(&len, &param->write.value[sizeof(int)], sizeof(int));
+                        send_to_ble_queue(msg_id, &param->write.value[sizeof(int) + sizeof(int)], len);
+                    }
+                    //todo: replace this by data from 148
+                    uint8_t indicate_data[15];
+                    for (int i = 0; i < sizeof(indicate_data); ++i)
+                    {
+                        indicate_data[i] = i % 0xff;
+                    }
+                    esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, ion_handle_table[IDX_CHAR_VAL_TX],
+                                sizeof(indicate_data), indicate_data, false);
                 }
-
                 /* send response when param->write.need_rsp is true*/
                 if (param->write.need_rsp){
                     esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
