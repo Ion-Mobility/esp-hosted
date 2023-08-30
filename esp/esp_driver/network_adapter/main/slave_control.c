@@ -304,8 +304,8 @@ static void station_event_handler(void *arg, esp_event_base_t event_base,
 		(wifi_event_sta_disconnected_t *) event_data;
 
 	if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
-		ESP_LOGI(TAG,"%s: WIFI_EVENT_STA_DISCONNECTED reason %d\n", __func__,
-			disconnected_event->reason);
+		ESP_LOGI(TAG,"%s: WIFI_EVENT_STA_DISCONNECTED reason %d, rssi=%ddBm\n", __func__,
+			disconnected_event->reason, disconnected_event->rssi);
 
 		/* find out reason for failure and
 		 * set corresponding event bit */
@@ -754,10 +754,16 @@ static esp_err_t req_connect_ap_handler (CtrlMsg *req,
 					pdFALSE,
 					TIMEOUT);
 		if (bits & WIFI_CONNECTED_BIT) {
-			ESP_LOGI(TAG, "connected to ap SSID:'%s', password:'%s'",
+			wifi_ap_record_t *ap_info =
+				(wifi_ap_record_t *)calloc(1,sizeof(wifi_ap_record_t));
+			ret = esp_wifi_sta_get_ap_info(ap_info);
+			ESP_LOGI(TAG, "connected to ap SSID:'%s', password:'%s'. AP info: channel=%d, rssi=%ddBm, authmode=%d",
 					req->req_connect_ap->ssid ? req->req_connect_ap->ssid :"(null)",
-					req->req_connect_ap->pwd ? req->req_connect_ap->pwd :"(null)");
+					req->req_connect_ap->pwd ? req->req_connect_ap->pwd :"(null)",
+					ap_info->primary, ap_info->rssi, ap_info->authmode);
+			free(ap_info);
 			station_connected = true;
+			esp_wifi_set_inactive_time(WIFI_IF_STA, 10);
 #if CONFIG_ESP_STA_WLAN_DATA_PATH
 			esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_STA, (wifi_rxcb_t) wlan_sta_rx_callback);
 #endif
