@@ -702,6 +702,9 @@ static esp_err_t req_connect_ap_handler (CtrlMsg *req,
 		wifi_cfg->sta.listen_interval = req->req_connect_ap->listen_interval;
 	}
 
+	wifi_cfg->sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
+	wifi_cfg->sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
+
 	ret = esp_wifi_get_mac(ESP_IF_WIFI_STA , mac);
 	ESP_LOGI(TAG,"Get station mac address");
 	if (ret) {
