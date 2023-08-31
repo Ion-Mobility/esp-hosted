@@ -33,6 +33,9 @@
 typedef struct {
     esp_mqtt_client_handle_t esp_client_handle;
     EventGroupHandle_t connect_req_event_group;
+    EventGroupHandle_t sub_req_event_group;
+    EventGroupHandle_t unsub_req_event_group;
+    EventGroupHandle_t pub_req_event_group;
     EventGroupHandle_t connect_status_event_group;
     QueueHandle_t recv_queue_handle;
 } mqtt_service_client_t;
@@ -51,6 +54,10 @@ static bool is_mqtt_service_initialized = false;
 
 #define MQTT_CONNECT_STATUS_CONNECTED_BIT BIT0
 #define MQTT_CONNECT_STATUS_NOT_CONNECTED_BIT BIT1
+
+#define MQTT_SUBSCRIBE_REQUEST_SUCCESS_BIT BIT0
+#define MQTT_UNSUBSCRIBE_REQUEST_SUCCESS_BIT BIT0
+#define MQTT_PUBLISH_REQUEST_SUCCESS_BIT BIT0
 
 static const ip_addr_t default_dns_server[] =
     {
@@ -84,6 +91,9 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
 //================================
 
 static uint32_t wait_for_connect_req_status(int client_index, uint32_t wait_ms);
+static uint32_t wait_for_subscribe_req_status(int client_index, uint32_t wait_ms);
+static uint32_t wait_for_unsubscribe_req_status(int client_index, uint32_t wait_ms);
+static uint32_t wait_for_publish_req_status(int client_index, uint32_t wait_ms);
 
 static uint32_t map_connect_ret_code_to_event_bits(
         esp_mqtt_connect_return_code_t connect_ret_code);
@@ -92,6 +102,9 @@ static esp_mqtt_connect_return_code_t map_event_bit_to_connect_ret_code(
 static void announce_connect_request_success(int client_index);
 static void announce_connect_request_fail(int client_index,
     esp_mqtt_connect_return_code_t connect_req_ret_code);
+static void announce_subscribe_request_success(int client_index);
+static void announce_unsubscribe_request_success(int client_index);
+static void announce_publish_request_success(int client_index);
 static void change_connection_status(int client_index, 
     mqtt_client_connection_status_t status_to_change);
 
@@ -183,6 +196,24 @@ mqtt_service_status_t mqtt_service_init()
         if (service_client_handle->connect_req_event_group == NULL)
         {
             AT_STACK_LOGE("No more memory for creating connect request event group");
+            goto init_err;
+        }
+        service_client_handle->sub_req_event_group = xEventGroupCreate();
+        if (service_client_handle->sub_req_event_group == NULL)
+        {
+            AT_STACK_LOGE("No more memory for creating subscribe request event group");
+            goto init_err;
+        }
+        service_client_handle->unsub_req_event_group = xEventGroupCreate();
+        if (service_client_handle->unsub_req_event_group == NULL)
+        {
+            AT_STACK_LOGE("No more memory for creating unsubcribe request event group");
+            goto init_err;
+        }
+        service_client_handle->pub_req_event_group = xEventGroupCreate();
+        if (service_client_handle->pub_req_event_group == NULL)
+        {
+            AT_STACK_LOGE("No more memory for creating publish request event group");
             goto init_err;
         }
         AT_STACK_LOGD("Create event group for connect request successfully");
@@ -305,14 +336,20 @@ mqtt_service_pkt_status_t mqtt_service_subscribe(int client_index,
     esp_mqtt_client_handle_t client = 
         mqtt_service_clients_table[client_index].esp_client_handle;
     if (esp_mqtt_client_subscribe(client, topic, (int) qos) == -1)
-    {
-        AT_STACK_LOGE("Client #%d subscribe to topic '%s', qos %u FAILED!",
-            client_index, topic, qos);
-        return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
-    }
+        goto failed_sub;
+
+    uint32_t req_status = wait_for_subscribe_req_status(client_index, 
+        DEFAULT_PACKET_TIMEOUT_s * 1000);
+    if (req_status != MQTT_SUBSCRIBE_REQUEST_SUCCESS_BIT)
+        goto failed_sub;
+
     AT_STACK_LOGI("Client #%d subscribe to topic '%s', qos %u SUCCESS",
         client_index, topic, qos);
     return MQTT_SERVICE_PACKET_STATUS_OK;
+failed_sub:
+        AT_STACK_LOGE("Client #%d subscribe to topic '%s', qos %u FAILED!",
+            client_index, topic, qos);
+        return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND; 
 }
 
 mqtt_service_pkt_status_t mqtt_service_unsubscribe(int client_index,
@@ -327,13 +364,20 @@ mqtt_service_pkt_status_t mqtt_service_unsubscribe(int client_index,
     esp_mqtt_client_handle_t client = 
         mqtt_service_clients_table[client_index].esp_client_handle;
     if (esp_mqtt_client_unsubscribe(client, topic) == -1)
-    {
-        AT_STACK_LOGE("Client #%d unsubscribe to topic '%s' FAILED", client_index, topic);
-        return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
-    }
-    AT_STACK_LOGI("Client #%d unsubscribe to topic '%s' SUCCESS", 
+        goto failed_unsub;
+
+    uint32_t req_status = wait_for_unsubscribe_req_status(client_index, 
+        DEFAULT_PACKET_TIMEOUT_s * 1000);
+    if (req_status != MQTT_UNSUBSCRIBE_REQUEST_SUCCESS_BIT)
+        goto failed_unsub;
+
+    AT_STACK_LOGI("Client #%d unsubscribe from topic '%s'SUCCESS",
         client_index, topic);
     return MQTT_SERVICE_PACKET_STATUS_OK;
+failed_unsub:
+        AT_STACK_LOGE("Client #%d unsubscribe from topic '%s' FAILED!",
+            client_index, topic);
+        return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND; 
 }
 
 mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
@@ -351,17 +395,22 @@ mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
         mqtt_service_clients_table[client_index].esp_client_handle;
     if (esp_mqtt_client_publish(client, topic, msg, strlen(msg), qos, 
         is_retain) == -1)
-    {
-        AT_STACK_LOGE("Client #%d publish to topic '%s', msg '%s', qos %u, retain '%d' FAILED", 
-            client_index, topic, msg, qos, 
-            is_retain);
-        return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND;
-    }
-    
+        goto failed_pub;
+
+    uint32_t req_status = wait_for_publish_req_status(client_index, 
+        DEFAULT_PACKET_TIMEOUT_s * 1000);
+    if (req_status != MQTT_PUBLISH_REQUEST_SUCCESS_BIT)
+        goto failed_pub;
+
     AT_STACK_LOGI("Client #%d publish to topic '%s', msg '%s', qos %u, retain '%d' SUCCESS", 
         client_index, topic, msg, qos, 
         is_retain);
     return MQTT_SERVICE_PACKET_STATUS_OK;
+failed_pub:
+    AT_STACK_LOGE("Client #%d publish to topic '%s', msg '%s', qos %u, retain '%d' FAILED", 
+            client_index, topic, msg, qos, 
+            is_retain);
+    return MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND; 
 }
 
 mqtt_service_status_t mqtt_service_disconnect(int client_index)
@@ -498,9 +547,19 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         change_connection_status(client_idx, 
             MQTT_CONNECTION_STATUS_NOT_CONNECTED);
         break;
-
+    case MQTT_EVENT_SUBSCRIBED:
+        AT_STACK_LOGI("Client %d has subcribed to topic '%s', msgid=%d!", client_idx,
+            event->data, event->msg_id);
+        announce_subscribe_request_success(client_idx);
+        break;
+    case MQTT_EVENT_UNSUBSCRIBED:
+        AT_STACK_LOGI("Client %d has unsubcribed!", client_idx);
+        announce_unsubscribe_request_success(client_idx);
+        break;
     case MQTT_EVENT_PUBLISHED:
-        AT_STACK_LOGI("Client %d published a data", client_idx);
+        AT_STACK_LOGI("Client %d has published a data, msgid=%d", client_idx,
+            event->msg_id);
+        announce_publish_request_success(client_idx);
         break;
 
     case MQTT_EVENT_DATA:
@@ -569,6 +628,57 @@ static uint32_t wait_for_connect_req_status(int client_index, uint32_t wait_ms)
     xEventGroupSetBits(service_client_handle->connect_status_event_group, 
         MQTT_CONNECT_STATUS_NOT_CONNECTED_BIT);
     return xEventGroupWaitBits(service_client_handle->connect_req_event_group,
+        total_bits_to_wait,
+        pdFALSE,
+        pdFALSE,
+        ticks_to_wait
+        );
+}
+
+static uint32_t wait_for_subscribe_req_status(int client_index, uint32_t wait_ms)
+{
+    uint32_t ticks_to_wait = pdMS_TO_TICKS(wait_ms);
+    uint32_t total_bits_to_wait = MQTT_SUBSCRIBE_REQUEST_SUCCESS_BIT;
+    
+    mqtt_service_client_t *service_client_handle = 
+        &mqtt_service_clients_table[client_index];
+    xEventGroupClearBits(service_client_handle->sub_req_event_group, 
+        total_bits_to_wait);
+    return xEventGroupWaitBits(service_client_handle->sub_req_event_group,
+        total_bits_to_wait,
+        pdFALSE,
+        pdFALSE,
+        ticks_to_wait
+        );
+}
+
+static uint32_t wait_for_unsubscribe_req_status(int client_index, uint32_t wait_ms)
+{
+    uint32_t ticks_to_wait = pdMS_TO_TICKS(wait_ms);
+    uint32_t total_bits_to_wait = MQTT_UNSUBSCRIBE_REQUEST_SUCCESS_BIT;
+    
+    mqtt_service_client_t *service_client_handle = 
+        &mqtt_service_clients_table[client_index];
+    xEventGroupClearBits(service_client_handle->unsub_req_event_group, 
+        total_bits_to_wait);
+    return xEventGroupWaitBits(service_client_handle->unsub_req_event_group,
+        total_bits_to_wait,
+        pdFALSE,
+        pdFALSE,
+        ticks_to_wait
+        );
+}
+
+static uint32_t wait_for_publish_req_status(int client_index, uint32_t wait_ms)
+{
+    uint32_t ticks_to_wait = pdMS_TO_TICKS(wait_ms);
+    uint32_t total_bits_to_wait = MQTT_PUBLISH_REQUEST_SUCCESS_BIT;
+    
+    mqtt_service_client_t *service_client_handle = 
+        &mqtt_service_clients_table[client_index];
+    xEventGroupClearBits(service_client_handle->pub_req_event_group, 
+        total_bits_to_wait);
+    return xEventGroupWaitBits(service_client_handle->pub_req_event_group,
         total_bits_to_wait,
         pdFALSE,
         pdFALSE,
@@ -648,6 +758,30 @@ static void announce_connect_request_fail(int client_index,
         connect_req_bit);
     change_connection_status(client_index, 
         MQTT_CONNECTION_STATUS_NOT_CONNECTED);
+}
+
+static void announce_subscribe_request_success(int client_index)
+{
+    mqtt_service_client_t *service_client_handle = 
+        &mqtt_service_clients_table[client_index];
+    xEventGroupSetBits(service_client_handle->sub_req_event_group, 
+        MQTT_SUBSCRIBE_REQUEST_SUCCESS_BIT);
+}
+
+static void announce_unsubscribe_request_success(int client_index)
+{
+    mqtt_service_client_t *service_client_handle = 
+        &mqtt_service_clients_table[client_index];
+    xEventGroupSetBits(service_client_handle->unsub_req_event_group, 
+        MQTT_UNSUBSCRIBE_REQUEST_SUCCESS_BIT);
+}
+
+static void announce_publish_request_success(int client_index)
+{
+    mqtt_service_client_t *service_client_handle = 
+        &mqtt_service_clients_table[client_index];
+    xEventGroupSetBits(service_client_handle->pub_req_event_group, 
+        MQTT_PUBLISH_REQUEST_SUCCESS_BIT);
 }
 
 static int find_index_from_client_handle(esp_mqtt_client_handle_t client)
@@ -891,6 +1025,12 @@ static void mqtt_service_deinit_internal()
             esp_mqtt_client_destroy(service_client_handle->esp_client_handle);
         if (service_client_handle->connect_req_event_group)
             vEventGroupDelete(service_client_handle->connect_req_event_group);
+        if (service_client_handle->sub_req_event_group)
+            vEventGroupDelete(service_client_handle->sub_req_event_group);
+        if (service_client_handle->unsub_req_event_group)
+            vEventGroupDelete(service_client_handle->unsub_req_event_group);
+        if (service_client_handle->pub_req_event_group)
+            vEventGroupDelete(service_client_handle->pub_req_event_group);
         if (service_client_handle->connect_status_event_group)
             vEventGroupDelete(service_client_handle->connect_status_event_group);
         if (service_client_handle->recv_queue_handle)
