@@ -335,8 +335,12 @@ mqtt_service_pkt_status_t mqtt_service_subscribe(int client_index,
         MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND);
     esp_mqtt_client_handle_t client = 
         mqtt_service_clients_table[client_index].esp_client_handle;
-    if (esp_mqtt_client_subscribe(client, topic, (int) qos) == -1)
+
+    int msg_id = esp_mqtt_client_subscribe(client, topic, (int) qos);
+    if (msg_id == -1)
         goto failed_sub;
+    AT_STACK_LOGD("Client #%d subscribe MQTT packet has msgid=%d", client_index,
+        msg_id);
 
     uint32_t req_status = wait_for_subscribe_req_status(client_index, 
         DEFAULT_PACKET_TIMEOUT_s * 1000);
@@ -363,8 +367,12 @@ mqtt_service_pkt_status_t mqtt_service_unsubscribe(int client_index,
         MQTT_SERVICE_PACKET_STATUS_FAILED_TO_SEND);
     esp_mqtt_client_handle_t client = 
         mqtt_service_clients_table[client_index].esp_client_handle;
-    if (esp_mqtt_client_unsubscribe(client, topic) == -1)
+
+    int msg_id = esp_mqtt_client_unsubscribe(client, topic);
+    if (msg_id == -1)
         goto failed_unsub;
+    AT_STACK_LOGD("Client #%d unsubscribe MQTT packet has msgid=%d", client_index,
+        msg_id);
 
     uint32_t req_status = wait_for_unsubscribe_req_status(client_index, 
         DEFAULT_PACKET_TIMEOUT_s * 1000);
@@ -393,10 +401,14 @@ mqtt_service_pkt_status_t mqtt_service_publish(int client_index,
 
     esp_mqtt_client_handle_t client = 
         mqtt_service_clients_table[client_index].esp_client_handle;
-    if (esp_mqtt_client_publish(client, topic, msg, strlen(msg), qos, 
-        is_retain) == -1)
+
+    int msg_id = esp_mqtt_client_publish(client, topic, msg, strlen(msg), qos, 
+        is_retain);
+    if (msg_id == -1)
         goto failed_pub;
 
+    AT_STACK_LOGD("Client #%d publish MQTT packet has msgid=%d", client_index,
+        msg_id);
     uint32_t req_status = wait_for_publish_req_status(client_index, 
         DEFAULT_PACKET_TIMEOUT_s * 1000);
     if (req_status != MQTT_PUBLISH_REQUEST_SUCCESS_BIT)
@@ -563,7 +575,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         break;
 
     case MQTT_EVENT_DATA:
-        AT_STACK_LOGI("Client %d got a data", client_idx);
+        AT_STACK_LOGI("Client %d got a data, QoS=%d, retain=%d", client_idx, 
+            event->qos, event->retain);
         result = push_new_sub_data_to_recv_buff_queue(client_idx, 
             event->topic, (uint16_t) event->topic_len, event->data, 
             (uint32_t)event->data_len);
@@ -838,6 +851,8 @@ static int push_new_sub_data_to_recv_buff_queue(int client_idx,
     recv_buff_to_push.msg = sys_mem_calloc(msg_len + 1, 1);
     memcpy(recv_buff_to_push.msg, msg, msg_len);
     recv_buff_to_push.msg_len = msg_len;
+    AT_STACK_LOGD("The received data is: topic='%s', msg='%s'", 
+        recv_buff_to_push.topic, recv_buff_to_push.msg);
 
     if (xQueueSend(service_client_handle->recv_queue_handle, &recv_buff_to_push,
         pdMS_TO_TICKS(RECEIVE_BUFF_QUEUE_WAIT_TIME_ms)) != pdTRUE)
