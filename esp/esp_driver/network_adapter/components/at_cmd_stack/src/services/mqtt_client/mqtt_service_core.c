@@ -109,7 +109,8 @@ static void change_connection_status(int client_index,
     mqtt_client_connection_status_t status_to_change);
 
 static int push_new_sub_data_to_recv_buff_queue(int client_idx, 
-    const char *topic, uint16_t topic_len, const char *msg, uint32_t msg_len);
+    const char *topic, uint16_t topic_len, const char *msg, uint32_t msg_offset,
+    uint32_t msg_len, uint32_t msg_total_len);
 
 static bool is_ion_broker(const char *hostname);
 
@@ -579,7 +580,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             event->qos, event->retain);
         result = push_new_sub_data_to_recv_buff_queue(client_idx, 
             event->topic, (uint16_t) event->topic_len, event->data, 
-            (uint32_t)event->data_len);
+            (uint32_t) event->current_data_offset, (uint32_t)event->data_len,
+            (uint32_t)event->total_data_len);
         if (result)
         {
             AT_STACK_LOGI("Push new subscribed data FAILED for some reason!");
@@ -831,36 +833,80 @@ static void change_connection_status(int client_index,
 }
 
 static int push_new_sub_data_to_recv_buff_queue(int client_idx, 
-    const char *topic, uint16_t topic_len, const char *msg, uint32_t msg_len)
+    const char *topic, uint16_t topic_len, const char *msg, uint32_t msg_offset,
+    uint32_t msg_len, uint32_t msg_total_len)
 {
+    // Since esp_mqtt_task will try to forward all fragments of the same 
+    // messages at once, it's safe to define only one static recv_buff_to_push to store
+    // just one pending message then push to local queue
+    static recv_buffer_t *recv_buff_to_push = NULL;
+    if ((msg_offset > 0) && (NULL == recv_buff_to_push))
+    {
+        AT_STACK_LOGE("Not found first data fragment due to NULL receive buff to push but offset is larger than 0!");
+        return -1;
+    }
+    if ((recv_buff_to_push) && (msg_offset != recv_buff_to_push->msg_len))
+    {
+        AT_STACK_LOGE("Data offset (offset=%u) does not match the current message length (len=%u)",
+            msg_offset, recv_buff_to_push->msg_len);
+        sys_mem_free(recv_buff_to_push);
+        return -1;
+    }
+
+    if (msg_offset > 0)
+    {
+        AT_STACK_LOGD("Receive new data fragment, append to existing fragments! current_topic='%s', current msg='%s', fragment len=%u, offset=%u", 
+            recv_buff_to_push->topic, recv_buff_to_push->msg, msg_len, msg_offset);
+        memcpy(recv_buff_to_push->msg + msg_offset, msg, msg_len);
+        recv_buff_to_push->msg_len += msg_len;
+    }
     mqtt_service_client_t *service_client_handle = 
-        &mqtt_service_clients_table[client_idx];
-    uint8_t client_num_of_empty_recv_buff = 
-        uxQueueSpacesAvailable(service_client_handle->recv_queue_handle);
-    if (!client_num_of_empty_recv_buff)
-    {
-        AT_STACK_LOGE("No more empty recv buffer. Discard this data!");
-        return -1;
-    }
-    recv_buffer_t recv_buff_to_push;
-    
-    recv_buff_to_push.topic = sys_mem_calloc(topic_len + 1, 1);
-    memcpy(recv_buff_to_push.topic, topic, topic_len);
-    recv_buff_to_push.topic_len = topic_len;
+    &mqtt_service_clients_table[client_idx];
 
-    recv_buff_to_push.msg = sys_mem_calloc(msg_len + 1, 1);
-    memcpy(recv_buff_to_push.msg, msg, msg_len);
-    recv_buff_to_push.msg_len = msg_len;
-    AT_STACK_LOGD("The received data is: topic='%s', msg='%s'", 
-        recv_buff_to_push.topic, recv_buff_to_push.msg);
-
-    if (xQueueSend(service_client_handle->recv_queue_handle, &recv_buff_to_push,
-        pdMS_TO_TICKS(RECEIVE_BUFF_QUEUE_WAIT_TIME_ms)) != pdTRUE)
+    if (msg_offset == 0)
     {
-        AT_STACK_LOGE("Cannot push to client recv buff queue. Discard this data!");
-        return -1;
+        uint8_t client_num_of_empty_recv_buff = 
+            uxQueueSpacesAvailable(service_client_handle->recv_queue_handle);
+        if (!client_num_of_empty_recv_buff)
+        {
+            AT_STACK_LOGE("No more empty recv buffer. Discard this data!");
+            return -1;
+        }
+        recv_buff_to_push = sys_mem_calloc(sizeof(recv_buffer_t), 1);
+        recv_buff_to_push->topic = sys_mem_calloc(topic_len + 1, 1);
+        memcpy(recv_buff_to_push->topic, topic, topic_len);
+        recv_buff_to_push->topic_len = topic_len;
+
+        recv_buff_to_push->msg = sys_mem_calloc(msg_total_len + 1, 1);
+        memcpy(recv_buff_to_push->msg, msg, msg_len);
+        recv_buff_to_push->msg_len = msg_len;
+        AT_STACK_LOGD("Receive first data fragment! topic='%s', msg='%s', msg_len=%u, msg_total_len=%u", 
+            recv_buff_to_push->topic, recv_buff_to_push->msg,
+            recv_buff_to_push->msg_len, msg_total_len);
     }
 
+    if (recv_buff_to_push->msg_len > msg_total_len)
+    {
+        AT_STACK_LOGE("Size of assembled message (len=%u) is larger than total length receiving message (total_len=%u)! Not good!",
+            recv_buff_to_push->msg_len, msg_total_len);
+        sys_mem_free(recv_buff_to_push);
+        return -1;
+    }
+
+    if (recv_buff_to_push->msg_len == msg_total_len)
+    {
+        AT_STACK_LOGD("Finish assembling all fragments of message (total_len=%u bytes). Send to MQTT service receive buffer now...", 
+            recv_buff_to_push->msg_len);
+        AT_STACK_LOGD("Sending: topic='%s', msg='%s", recv_buff_to_push->topic, recv_buff_to_push->msg);
+        if (xQueueSend(service_client_handle->recv_queue_handle, recv_buff_to_push,
+            pdMS_TO_TICKS(RECEIVE_BUFF_QUEUE_WAIT_TIME_ms)) != pdTRUE)
+        {
+            AT_STACK_LOGE("Cannot push to client recv buff queue. Discard this data!");
+            sys_mem_free(recv_buff_to_push);
+            return -1;
+        }
+        sys_mem_free(recv_buff_to_push);
+    }
     return 0;
 }
 
