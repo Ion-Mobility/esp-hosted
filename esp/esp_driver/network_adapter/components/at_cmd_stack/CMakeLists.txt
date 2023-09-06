@@ -19,9 +19,12 @@ set(PARSE_AND_EXEC_SRCS
     "src/parse_and_exec/parse_and_exec_constants.c"
     "src/parse_and_exec/parse_and_exec_core.c"
     "src/parse_and_exec/parse_and_exec_cmd_handlers_list.c"
-    "src/parse_and_exec/parse_and_exec_helpers.c"
     "src/parse_and_exec/parse_and_exec_tmp_buff.c"
     ${CMD_HANDLERS_SRCS}
+)
+
+set(COMMON_SRCS
+    "src/common/string_handling.c"
 )
 
 set(SERVICES_SRCS
@@ -39,6 +42,7 @@ set(COMPONENT_SRCS
     ${PARSE_AND_EXEC_SRCS}
     ${SERVICES_SRCS}
     ${QUECTEL_HELPERS_SRCS}
+    ${COMMON_SRCS}
 )
 set(COMPONENT_ADD_INCLUDEDIRS 
     "include"

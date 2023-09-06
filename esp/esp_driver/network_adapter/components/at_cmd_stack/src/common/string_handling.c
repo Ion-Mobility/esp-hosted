@@ -1,5 +1,7 @@
-#include "parse_and_exec_helpers.h"
+#include "string_handling.h"
+#include "common_helpers.h"
 #include <string.h>
+#include <stdbool.h>
 
 
 int convert_and_validate(const char* str, 

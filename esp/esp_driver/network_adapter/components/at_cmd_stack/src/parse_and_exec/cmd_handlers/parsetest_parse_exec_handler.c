@@ -1,5 +1,7 @@
 #include "parsetest_parse_exec_handler.h"
 #include "../parse_and_exec_helpers.h"
+#include "string_handling.h"
+#include "../parse_and_exec_tmp_buff.h"
 #include "mqtt_service.h"
 
 #define APPEND_TO_RESP_IF_NOT_NULL(string, tmp_resp_buff, resp) do { \

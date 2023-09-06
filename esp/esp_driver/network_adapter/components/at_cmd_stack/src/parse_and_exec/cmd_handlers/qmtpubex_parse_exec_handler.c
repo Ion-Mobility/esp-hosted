@@ -1,5 +1,7 @@
 #include "qmtpubex_parse_exec_handler.h"
 #include "../parse_and_exec_helpers.h"
+#include "string_handling.h"
+#include "../parse_and_exec_tmp_buff.h"
 #include "mqtt_service.h"
 
 

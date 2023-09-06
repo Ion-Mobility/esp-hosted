@@ -2,6 +2,8 @@
 #include "at_cmd_stack_types.h"
 #include "../parse_and_exec_types.h"
 #include "../parse_and_exec_helpers.h"
+#include "string_handling.h"
+#include "../parse_and_exec_tmp_buff.h"
 #include "mqtt_service_configs.h"
 #include <stdbool.h>
 

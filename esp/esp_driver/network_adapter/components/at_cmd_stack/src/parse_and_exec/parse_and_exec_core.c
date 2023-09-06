@@ -1,6 +1,8 @@
 #include "at_cmd_parse_and_exec.h"
 #include <stdbool.h>
 #include "parse_and_exec_helpers.h"
+#include "string_handling.h"
+#include <stddef.h>
 #include "parse_and_exec_cmd_handlers_list.h"
 
 
