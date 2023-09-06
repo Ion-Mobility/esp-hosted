@@ -10,6 +10,7 @@
 #include "esp_crt_bundle.h"
 #include "nvs_flash.h"
 #include "sdkconfig.h"
+#include "app_and_service.h"
 
 #define RECEIVE_BUFF_QUEUE_WAIT_TIME_ms 5
 
@@ -898,6 +899,14 @@ static int push_new_sub_data_to_recv_buff_queue(int client_idx,
         AT_STACK_LOGD("Finish assembling all fragments of message (total_len=%u bytes). Send to MQTT service receive buffer now...", 
             recv_buff_to_push->msg_len);
         AT_STACK_LOGD("Sending: topic='%s', msg='%s", recv_buff_to_push->topic, recv_buff_to_push->msg);
+
+        if (!can_app_accept_incoming_recv_buff(client_idx, recv_buff_to_push))
+        {
+            AT_STACK_LOGE("Cannot push to client recv buff queue due to upper application will not accept it. Discard this data!");
+            sys_mem_free(recv_buff_to_push);
+            return -1;
+        }
+
         if (xQueueSend(service_client_handle->recv_queue_handle, recv_buff_to_push,
             pdMS_TO_TICKS(RECEIVE_BUFF_QUEUE_WAIT_TIME_ms)) != pdTRUE)
         {

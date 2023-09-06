@@ -24,6 +24,7 @@ set(PARSE_AND_EXEC_SRCS
 )
 
 set(COMMON_SRCS
+    "src/common/app_and_service.c"
     "src/common/string_handling.c"
 )
 
