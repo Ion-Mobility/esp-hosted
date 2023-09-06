@@ -33,9 +33,9 @@
     } \
 } while (0)
 
-static const char *ion_broker_username = "9b5766d8-8766-492c-ace8-a80f191e47e6";
-static const char *ion_broker_password = "0caabff1-dd1e-49da-a3a3-9a00d4ff2cb6";
-static const char *ion_allowed_topic = "channels/ccb53e96-8628-4ac0-9e3f-95185f38733a/messages";
+static const char *ion_broker_username = "3786adb4-aa93-4157-b2f6-bb775420d936";
+static const char *ion_broker_password = "7c736ace-7845-4a0d-ae8e-9b5c203b61c0";
+static const char *ion_allowed_topic = "channels/644b90af-346e-4727-9abe-212f7491ba7e/messages";
 
 
 typedef struct {
