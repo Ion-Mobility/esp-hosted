@@ -144,17 +144,22 @@ esp_err_t crypto_init(void) {
     // read bike identity key from NVS
     {
         size_t required_size = 0;  // value will default to 0, if not set yet in NVS
-        err = nvs_get_blob(my_handle, "bike_identity", NULL, &required_size);
+        err = nvs_get_blob(my_handle, "bike_id", NULL, &required_size);
         if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
             ESP_LOGE(CRYPTO_TAG, "No bike's identity key founded in flash or data is corrupted");
             goto init_exit;
         }
         // Read previously saved blob if available
         if (required_size == sizeof(keypair_t)) {
-            err = nvs_get_blob(my_handle, "bike_identity", &bike.identity, &required_size);
+            err = nvs_get_blob(my_handle, "bike_id", &bike.identity, &required_size);
             if (err != ESP_OK) {
                 ESP_LOGE(CRYPTO_TAG, "Failed to read bike's identity key from flash...");
                 goto init_exit;
+            } else {
+                ESP_LOGI(CRYPTO_TAG, "Bike Identity SK:");
+                esp_log_buffer_hex(CRYPTO_TAG, bike.identity.sk, KEY_LEN);
+                ESP_LOGI(CRYPTO_TAG, "Bike Identity PK:");
+                esp_log_buffer_hex(CRYPTO_TAG, bike.identity.pk, KEY_LEN);
             }
         } else {
             ESP_LOGE(CRYPTO_TAG, "bike's identity key size is not correct, the stored key is corrupted");
@@ -165,17 +170,20 @@ esp_err_t crypto_init(void) {
     // read server key from NVS
     {
         size_t required_size = 0;  // value will default to 0, if not set yet in NVS
-        err = nvs_get_blob(my_handle, "server_identity", NULL, &required_size);
+        err = nvs_get_blob(my_handle, "server_id", NULL, &required_size);
         if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
             ESP_LOGE(CRYPTO_TAG, "No server's identity key founded in flash or data is corrupted");
             goto init_exit;
         }
         // Read previously saved blob if available
         if (required_size == KEY_LEN) {
-            err = nvs_get_blob(my_handle, "server_identity", server.identity_pk, &required_size);
+            err = nvs_get_blob(my_handle, "server_id", server.identity_pk, &required_size);
             if (err != ESP_OK) {
                 ESP_LOGE(CRYPTO_TAG, "Failed to read server's identity key from flash...");
                 goto init_exit;
+            } else {
+                ESP_LOGI(CRYPTO_TAG, "Server Identity PK:");
+                esp_log_buffer_hex(CRYPTO_TAG, server.identity_pk, KEY_LEN);
             }
         } else {
             ESP_LOGE(CRYPTO_TAG, "server's identity key size is not correct, the stored key is corrupted");

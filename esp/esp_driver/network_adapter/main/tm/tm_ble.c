@@ -32,6 +32,9 @@ static void ble_task(void *arg)
     charge_t charge = {0};
     battery_t battery = {0};
     trip_t trip = {0};
+    //signature + phone pairing key + bike pairing key
+    uint8_t response[32+32+64];
+    size_t res_len;
 
     uint8_t mac[16];    /* Message authentication code */
 
@@ -65,13 +68,15 @@ static void ble_task(void *arg)
                 if (pair_status == UNPAIRED) {
                     ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_PAIRING");
                     esp_log_buffer_hex(ION_BLE_TAG, to_ble_msg.data, to_ble_msg.len);
-                    //todo: verify pairing request
-
+                    //verify pairing request
+                    int pairing_result = pairing_request(to_ble_msg.data, to_ble_msg.len, response, &res_len);
                     //verified
-                    pair_status = PAIRED;
+                    if (pairing_result == ESP_OK) {
+                        pair_status = PAIRED;
+                    } else {
+                        tm_ble_gatts_kill_connection();
+                    }
                     stop_oneshot_timer();
-                    //todo: response to phone
-
                 }
                 break;
 
@@ -217,6 +222,7 @@ static void ble_task(void *arg)
 
 void tm_ble_init(void)
 {
+    crypto_init();
     tm_ble_gatts_server_init();
     ble_queue = xQueueCreate(20, sizeof(ble_msg_t));
 
