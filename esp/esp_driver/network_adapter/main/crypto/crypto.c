@@ -129,6 +129,7 @@ static void cleanup_paired_storage(nvs_handle_t *my_handle);
 bike_t bike                 = {0};
 server_t server             = {0};
 uint8_t empty_key[KEY_LEN]  = {0};
+keypair_t bike_pair         = {0};
 
 esp_err_t crypto_init(void) {
     nvs_handle_t my_handle;
@@ -160,6 +161,32 @@ esp_err_t crypto_init(void) {
                 esp_log_buffer_hex(CRYPTO_TAG, bike.identity.sk, KEY_LEN);
                 ESP_LOGI(CRYPTO_TAG, "Bike Identity PK:");
                 esp_log_buffer_hex(CRYPTO_TAG, bike.identity.pk, KEY_LEN);
+            }
+        } else {
+            ESP_LOGE(CRYPTO_TAG, "bike's identity key size is not correct, the stored key is corrupted");
+            goto init_exit;
+        }
+    }
+
+    // read bike pairing key from NVS
+    {
+        size_t required_size = 0;  // value will default to 0, if not set yet in NVS
+        err = nvs_get_blob(my_handle, "bike_pair", NULL, &required_size);
+        if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
+            ESP_LOGE(CRYPTO_TAG, "No bike's pairing key founded in flash or data is corrupted");
+            goto init_exit;
+        }
+        // Read previously saved blob if available
+        if (required_size == sizeof(keypair_t)) {
+            err = nvs_get_blob(my_handle, "bike_pair", &bike_pair, &required_size);
+            if (err != ESP_OK) {
+                ESP_LOGE(CRYPTO_TAG, "Failed to read bike's pairing key from flash...");
+                goto init_exit;
+            } else {
+                ESP_LOGI(CRYPTO_TAG, "Bike pairing SK:");
+                esp_log_buffer_hex(CRYPTO_TAG, bike_pair.sk, KEY_LEN);
+                ESP_LOGI(CRYPTO_TAG, "Bike pairing PK:");
+                esp_log_buffer_hex(CRYPTO_TAG, bike_pair.pk, KEY_LEN);
             }
         } else {
             ESP_LOGE(CRYPTO_TAG, "bike's identity key size is not correct, the stored key is corrupted");

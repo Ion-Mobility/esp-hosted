@@ -73,6 +73,10 @@ static void ble_task(void *arg)
                     //verified
                     if (pairing_result == ESP_OK) {
                         pair_status = PAIRED;
+                        to_phone_msg.msg_id = PHONE_BLE_PAIRING;
+                        to_phone_msg.len = res_len;
+                        memcpy(to_phone_msg.data, response, res_len);
+                        send_to_phone(&to_phone_msg);
                     } else {
                         tm_ble_gatts_kill_connection();
                     }
