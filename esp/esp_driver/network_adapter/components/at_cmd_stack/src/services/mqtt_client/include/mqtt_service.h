@@ -9,7 +9,8 @@
 
 typedef enum {
     MQTT_SERVICE_STATUS_OK = 0,
-    MQTT_SERVICE_STATUS_ERROR
+    MQTT_SERVICE_STATUS_ERROR,
+    MQTT_SERVICE_STATUS_CLEAR_BUFF_ERROR,
 } mqtt_service_status_t;
 
 
@@ -170,10 +171,14 @@ extern mqtt_service_status_t mqtt_service_read_current_filled_recv_buff(
  * @brief Clear current filled receiver buffer of specified client.
  * 
  * @param client_index index of MQTT client [in]
- * @retval MQTT_SERVICE_STATUS_OK if get receive buffer successfully 
+ * @param clear_unread if 1, force MQTT service to clear unread buffer [in]
+ * @retval MQTT_SERVICE_STATUS_OK if clear receive buffer successfully or no
+ * filled receive buffer is found
  * @retval MQTT_SERVICE_STATUS_ERROR if MQTT service is not initialized
+ * @retval MQTT_SERVICE_STATUS_CLEAR_BUFF_ERROR if clear_unread == 0 and the current
+ * filled buffer is not read
  */
 extern mqtt_service_status_t mqtt_service_clear_current_filled_recv_buff(
-    int client_index);
+    int client_index, int clear_unread);
 
 #endif

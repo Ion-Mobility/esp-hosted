@@ -225,7 +225,7 @@ static void clear_recv_buff_group(int client_index)
     while (num_of_filled_recv_buffs)
     {
         service_status = mqtt_service_clear_current_filled_recv_buff(
-            client_index);
+            client_index, 1);
         TEST_ASSERT_EQUAL_UINT_MESSAGE(MQTT_SERVICE_PACKET_STATUS_OK, 
             service_status, "Failed to clear curent filled recv buff");
         service_status = mqtt_service_get_num_of_filled_recv_buffs(

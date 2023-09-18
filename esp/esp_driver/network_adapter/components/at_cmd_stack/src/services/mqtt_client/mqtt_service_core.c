@@ -31,6 +31,11 @@
     buff_group.current_empty_buff_index = 0; \
 } while (0)
 
+typedef enum {
+    RECV_MESSAGE_UNREAD,
+    RECV_MESSAGE_READ
+} recv_message_status_t;
+
 typedef struct {
     esp_mqtt_client_handle_t esp_client_handle;
     EventGroupHandle_t connect_req_event_group;
@@ -39,6 +44,7 @@ typedef struct {
     EventGroupHandle_t pub_req_event_group;
     EventGroupHandle_t connect_status_event_group;
     QueueHandle_t recv_queue_handle;
+    recv_message_status_t current_recv_buff_status;
 } mqtt_service_client_t;
 
 static bool is_mqtt_service_initialized = false;
@@ -232,6 +238,9 @@ mqtt_service_status_t mqtt_service_init()
         // Create client's receive queue
         service_client_handle->recv_queue_handle = 
             xQueueCreate(MAX_NUM_OF_RECV_BUFFER, sizeof(recv_buffer_t));
+
+        // Set current recv buff to be unread
+        service_client_handle->current_recv_buff_status = RECV_MESSAGE_UNREAD;
     }
     /*  Initialize NVS. This is necessary because we don't know if NVS flash
         is initialized before by caller of this fuction. Moreover, if NVS flash
@@ -489,32 +498,41 @@ mqtt_service_status_t mqtt_service_read_current_filled_recv_buff(
     {
         AT_STACK_LOGI("Read recv buff of client #%d SUCCESS", 
             client_index);
+        service_client_handle->current_recv_buff_status = RECV_MESSAGE_READ;
     }
 
     return MQTT_SERVICE_PACKET_STATUS_OK;
 }
 
 mqtt_service_status_t mqtt_service_clear_current_filled_recv_buff(
-    int client_index)
+    int client_index, int clear_unread)
 {
     mqtt_service_client_t *service_client_handle = 
             &mqtt_service_clients_table[client_index];
     MUST_BE_CORRECT_OR_EXIT(is_mqtt_service_initialized, 
         MQTT_SERVICE_STATUS_ERROR);
 
-    // Simply copy local buffer group to output buffer group
     recv_buffer_t dummy_recv_buff;
     if (xQueueReceive(service_client_handle->recv_queue_handle,
         &dummy_recv_buff, pdMS_TO_TICKS(RECEIVE_BUFF_QUEUE_WAIT_TIME_ms))
         != pdTRUE)
     {
-        AT_STACK_LOGI("Clear recv buff of client #%d FAILED",
+        AT_STACK_LOGI("Clear recv buff of client #%d SUCCESS due to no filled buffer is found",
             client_index);
     }
     else
     {
+        // Check for 
+        if ((!clear_unread) && 
+            (RECV_MESSAGE_UNREAD == service_client_handle->current_recv_buff_status))
+        {
+            AT_STACK_LOGI("Clear recv buff of client #%d FAILED due to unread buffer and clear_unread=%d",
+                client_index, clear_unread);
+            return MQTT_SERVICE_STATUS_CLEAR_BUFF_ERROR;
+        }
         AT_STACK_LOGI("Clear recv buff of client #%d SUCCESS", 
             client_index);
+        service_client_handle->current_recv_buff_status = RECV_MESSAGE_UNREAD;
     }
 
     return MQTT_SERVICE_PACKET_STATUS_OK;
