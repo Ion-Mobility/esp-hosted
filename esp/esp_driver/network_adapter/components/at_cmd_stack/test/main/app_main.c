@@ -41,6 +41,7 @@ static const char *test_description_table[] =
     "Test AT command with multiple publishes AT+QMTPUBEX",
     "Test AT command with AT+QMTRECV that has quote characters in message and topic",
     "Test AT command with AT+PUBEX that has wrong format quote character in message and topic",
+    "Test AT command with AT+QMTRECV without preceding AT+QMTCONN",
 };
 
 
@@ -146,5 +147,6 @@ static void parse_and_exec_option(char *option)
     CHECK_MQTT_TEST_OPTION_AND_RUN("12", 2, TestCase_QmtMultiplePublishes);
     CHECK_MQTT_TEST_OPTION_AND_RUN("13", 2, TestCase_QmtRecvSpecialCharacters);
     CHECK_MQTT_TEST_OPTION_AND_RUN("14", 2, TestCase_QmtPubexWrongQuote);
+    CHECK_MQTT_TEST_OPTION_AND_RUN("15", 2, TestCase_QmtRecvwithoutConn);
     printf("Not found such option. Please try again\n");
 }

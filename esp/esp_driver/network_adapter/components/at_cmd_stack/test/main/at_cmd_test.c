@@ -178,6 +178,39 @@ static const test_step_t test_suite_qmt_wrong_quote[] =
     },
 };
 
+static const test_step_t test_suite_qmt_recv_before_conn[] =
+{
+    {
+        .at_cmd = "AT+QMTRECV=0",
+        .expected_resp = "+QMTRECV:\r\n0",
+    },
+    {
+        .at_cmd = "AT+QMTCONN=0,\"mqtt://broker.hivemq.com\",1883,\"esp32-wifi\"",
+        .expected_resp = "OK\r\n\r\n+QMTCONN: 0,0,0"
+    },
+    {
+        .at_cmd = "AT+QMTSUB=0,\"8r88fh838f12hj1scqbb\",2",
+        .expected_resp = "OK\r\n+QMTSUB: 0,0"
+    },
+    {
+        .at_cmd = "AT+QMTPUBEX=0,2,0,\"8r88fh838f12hj1scqbb\",\"bdfsf123re\"",
+        .expected_resp = "OK\r\n+QMTPUBEX: 0,0"
+    },
+    {
+        .at_cmd = "AT+QMTRECV=0",
+        .expected_resp = "+QMTRECV:\r\n0,\"8r88fh838f12hj1scqbb\",\"bdfsf123re\"",
+        .delay_before_send_cmd_ms = 1000,
+    },
+    {
+        .at_cmd = "AT+QMTUNS=0,\"8r88fh838f12hj1scqbb\",",
+        .expected_resp = "OK\r\n+QMTUNS: 0,0",
+    },
+    {
+        .at_cmd = "AT+QMTDISC=0",
+        .expected_resp = "OK\r\n+QMTDISC: 0,0"
+    },
+};
+
 
 void TestCase_QmtMultiplePublishes()
 {
@@ -195,6 +228,12 @@ void TestCase_QmtPubexWrongQuote()
 {
     perform_at_cmd_test_suite(test_suite_qmt_wrong_quote,
         TOTAL_STEPS_OF_TEST_SUITE(test_suite_qmt_wrong_quote));
+}
+
+void TestCase_QmtRecvwithoutConn()
+{
+    perform_at_cmd_test_suite(test_suite_qmt_recv_before_conn,
+        TOTAL_STEPS_OF_TEST_SUITE(test_suite_qmt_recv_before_conn));
 }
 
 static int send_at_response_callback_for_test_app(
