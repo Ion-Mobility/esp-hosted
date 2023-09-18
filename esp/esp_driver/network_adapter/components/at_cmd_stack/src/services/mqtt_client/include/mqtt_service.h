@@ -147,8 +147,7 @@ extern mqtt_service_status_t mqtt_service_disconnect(int client_index);
  * [out]
  * 
  * @retval MQTT_SERVICE_STATUS_OK if get number of receive buffers successfully
- * @retval MQTT_SERVICE_STATUS_ERROR if MQTT service is not initialized or
- * no connection to MQTT broker
+ * @retval MQTT_SERVICE_STATUS_ERROR if MQTT service is not initialized
  */
 extern mqtt_service_status_t mqtt_service_get_num_of_filled_recv_buffs(
     int client_index, unsigned int *num_of_filled_recv_buffs);
@@ -162,8 +161,7 @@ extern mqtt_service_status_t mqtt_service_get_num_of_filled_recv_buffs(
  * @param out_recv_buff pointer to output receive buffer. Fields '.topic' and 
  * '.msg' will be NULL if no filled received buffer is found [out]
  * @retval MQTT_SERVICE_STATUS_OK if get receive buffer successfully 
- * @retval MQTT_SERVICE_STATUS_ERROR if MQTT service is not initialized or
- * no connection to MQTT broker
+ * @retval MQTT_SERVICE_STATUS_ERROR if MQTT service is not initialized
  */
 extern mqtt_service_status_t mqtt_service_read_current_filled_recv_buff(
     int client_index, recv_buffer_t *out_recv_buff);
@@ -173,8 +171,7 @@ extern mqtt_service_status_t mqtt_service_read_current_filled_recv_buff(
  * 
  * @param client_index index of MQTT client [in]
  * @retval MQTT_SERVICE_STATUS_OK if get receive buffer successfully 
- * @retval MQTT_SERVICE_STATUS_ERROR if MQTT service is not initialized or
- * no connection to MQTT broker
+ * @retval MQTT_SERVICE_STATUS_ERROR if MQTT service is not initialized
  */
 extern mqtt_service_status_t mqtt_service_clear_current_filled_recv_buff(
     int client_index);

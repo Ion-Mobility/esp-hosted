@@ -458,12 +458,6 @@ mqtt_service_status_t mqtt_service_get_num_of_filled_recv_buffs(
             &mqtt_service_clients_table[client_index];
     MUST_BE_CORRECT_OR_EXIT(is_mqtt_service_initialized, 
         MQTT_SERVICE_STATUS_ERROR);
-    mqtt_client_connection_status_t connection_status = 
-        mqtt_service_get_connection_status(client_index);
-    bool is_client_connected = 
-        (connection_status == MQTT_CONNECTION_STATUS_CONNECTED);
-    MUST_BE_CORRECT_OR_EXIT(is_client_connected, 
-        MQTT_SERVICE_STATUS_ERROR);
 
     *num_of_filled_recv_buffs = MAX_NUM_OF_RECV_BUFFER 
         - uxQueueSpacesAvailable(service_client_handle->recv_queue_handle);
@@ -479,12 +473,6 @@ mqtt_service_status_t mqtt_service_read_current_filled_recv_buff(
     mqtt_service_client_t *service_client_handle = 
             &mqtt_service_clients_table[client_index];
     MUST_BE_CORRECT_OR_EXIT(is_mqtt_service_initialized, 
-        MQTT_SERVICE_STATUS_ERROR);
-    mqtt_client_connection_status_t connection_status = 
-        mqtt_service_get_connection_status(client_index);
-    bool is_client_connected = 
-        (connection_status == MQTT_CONNECTION_STATUS_CONNECTED);
-    MUST_BE_CORRECT_OR_EXIT(is_client_connected, 
         MQTT_SERVICE_STATUS_ERROR);
 
     // Simply copy local buffer group to output buffer group
@@ -512,12 +500,6 @@ mqtt_service_status_t mqtt_service_clear_current_filled_recv_buff(
     mqtt_service_client_t *service_client_handle = 
             &mqtt_service_clients_table[client_index];
     MUST_BE_CORRECT_OR_EXIT(is_mqtt_service_initialized, 
-        MQTT_SERVICE_STATUS_ERROR);
-    mqtt_client_connection_status_t connection_status = 
-        mqtt_service_get_connection_status(client_index);
-    bool is_client_connected = 
-        (connection_status == MQTT_CONNECTION_STATUS_CONNECTED);
-    MUST_BE_CORRECT_OR_EXIT(is_client_connected, 
         MQTT_SERVICE_STATUS_ERROR);
 
     // Simply copy local buffer group to output buffer group

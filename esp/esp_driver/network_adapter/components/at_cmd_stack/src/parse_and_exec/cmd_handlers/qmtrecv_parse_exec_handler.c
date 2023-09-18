@@ -58,12 +58,6 @@ AT_BUFF_SIZE_T qmtrecv_read_cmd_parse_exec_handler(const char *arg,
 
         sprintf(handler_tmp_buff->tmp_resp_buff, "%s",at_resp);
         sprintf(at_resp, "%s%d",handler_tmp_buff->tmp_resp_buff, client_idx);
-        if (service_status == MQTT_SERVICE_STATUS_ERROR)
-        {
-            sprintf(handler_tmp_buff->tmp_resp_buff, "%s",at_resp);
-            sprintf(at_resp, "%s,NO_CONN",handler_tmp_buff->tmp_resp_buff);
-            continue;
-        }
         sprintf(handler_tmp_buff->tmp_resp_buff, "%s",at_resp);
         sprintf(at_resp, "%s,%d",handler_tmp_buff->tmp_resp_buff, 
             get_num_of_filled_recv_buffs? 1 : 0);
