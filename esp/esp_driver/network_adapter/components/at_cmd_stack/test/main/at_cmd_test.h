@@ -5,5 +5,6 @@ extern void TestCase_QmtMultiplePublishes();
 extern void TestCase_QmtRecvSpecialCharacters();
 extern void TestCase_QmtPubexWrongQuote();
 extern void TestCase_QmtRecvwithoutConn();
+extern void TestCase_QmtClear();
 
 #endif
