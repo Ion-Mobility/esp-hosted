@@ -4,7 +4,7 @@
 #include "parse_and_exec_types.h"
 #include "at_cmd_stack_types.h"
 
-#define MAX_NUMBER_OF_SUPPORTED_AT_COMMANDS 10
+#define MAX_NUMBER_OF_SUPPORTED_AT_COMMANDS 11
 
 typedef struct {
     const char *at_command_family;

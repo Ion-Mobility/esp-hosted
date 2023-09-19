@@ -99,9 +99,6 @@ AT_BUFF_SIZE_T qmtrecv_write_cmd_parse_exec_handler(const char *arg,
         sys_mem_free(read_recv_buff.topic);
         sys_mem_free(read_recv_buff.msg);
         AT_STACK_LOGD("done free topic and msg buffer");
-        if (mqtt_service_clear_current_filled_recv_buff(client_index, 0) != 
-            MQTT_SERVICE_STATUS_OK)
-            break;
     }
     free_handler_tmp_buff(handler_tmp_buff);
     return strlen(at_resp);

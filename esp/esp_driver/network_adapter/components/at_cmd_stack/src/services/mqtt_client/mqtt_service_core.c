@@ -483,11 +483,16 @@ mqtt_service_status_t mqtt_service_read_current_filled_recv_buff(
             &mqtt_service_clients_table[client_index];
     MUST_BE_CORRECT_OR_EXIT(is_mqtt_service_initialized, 
         MQTT_SERVICE_STATUS_ERROR);
+    recv_buffer_t current_recv_buff;
 
-    // Simply copy local buffer group to output buffer group
-    // NOTE: caller is responsible for free allocated buffer of topic and message
+    // Due to the need to keep current receive buff until next 
+    // mqtt_service_clear_current_filled_recv_buff, out_recv_buff->topic and 
+    // out_recv_buff->msg will be dynamically allocated and be copied from 
+    // current_recv_buff
+    // NOTE: caller is responsible for free newly allocated buffer of
+    // out_recv_buff->topic and out_recv_buff->msg
     if (xQueuePeek(service_client_handle->recv_queue_handle,
-        out_recv_buff, pdMS_TO_TICKS(RECEIVE_BUFF_QUEUE_WAIT_TIME_ms))
+        &current_recv_buff, pdMS_TO_TICKS(RECEIVE_BUFF_QUEUE_WAIT_TIME_ms))
         != pdTRUE)
     {
         AT_STACK_LOGI("Read recv buff of client #%d FAILED",
@@ -498,6 +503,16 @@ mqtt_service_status_t mqtt_service_read_current_filled_recv_buff(
     {
         AT_STACK_LOGI("Read recv buff of client #%d SUCCESS", 
             client_index);
+        out_recv_buff->topic = 
+            sys_mem_calloc(current_recv_buff.topic_len + 1, 1);
+        out_recv_buff->topic_len = current_recv_buff.topic_len;
+        memcpy(out_recv_buff->topic, current_recv_buff.topic, 
+            current_recv_buff.topic_len);
+        out_recv_buff->msg = 
+            sys_mem_calloc(current_recv_buff.msg_len + 1, 1);
+        out_recv_buff->msg_len = current_recv_buff.msg_len;
+        memcpy(out_recv_buff->msg, current_recv_buff.msg, 
+            current_recv_buff.msg_len);
         service_client_handle->current_recv_buff_status = RECV_MESSAGE_READ;
     }
 
@@ -512,9 +527,9 @@ mqtt_service_status_t mqtt_service_clear_current_filled_recv_buff(
     MUST_BE_CORRECT_OR_EXIT(is_mqtt_service_initialized, 
         MQTT_SERVICE_STATUS_ERROR);
 
-    recv_buffer_t dummy_recv_buff;
-    if (xQueueReceive(service_client_handle->recv_queue_handle,
-        &dummy_recv_buff, pdMS_TO_TICKS(RECEIVE_BUFF_QUEUE_WAIT_TIME_ms))
+    recv_buffer_t current_recv_buff;
+    if (xQueuePeek(service_client_handle->recv_queue_handle,
+        &current_recv_buff, pdMS_TO_TICKS(RECEIVE_BUFF_QUEUE_WAIT_TIME_ms))
         != pdTRUE)
     {
         AT_STACK_LOGI("Clear recv buff of client #%d SUCCESS due to no filled buffer is found",
@@ -522,7 +537,7 @@ mqtt_service_status_t mqtt_service_clear_current_filled_recv_buff(
     }
     else
     {
-        // Check for 
+        // Check if receive buff is not read
         if ((!clear_unread) && 
             (RECV_MESSAGE_UNREAD == service_client_handle->current_recv_buff_status))
         {
@@ -530,6 +545,12 @@ mqtt_service_status_t mqtt_service_clear_current_filled_recv_buff(
                 client_index, clear_unread);
             return MQTT_SERVICE_STATUS_CLEAR_BUFF_ERROR;
         }
+
+        // Receive from queue again to get to the next receive buffer
+        xQueueReceive(service_client_handle->recv_queue_handle,
+            &current_recv_buff, pdMS_TO_TICKS(RECEIVE_BUFF_QUEUE_WAIT_TIME_ms));
+        sys_mem_free(current_recv_buff.topic);
+        sys_mem_free(current_recv_buff.msg);
         AT_STACK_LOGI("Clear recv buff of client #%d SUCCESS", 
             client_index);
         service_client_handle->current_recv_buff_status = RECV_MESSAGE_UNREAD;

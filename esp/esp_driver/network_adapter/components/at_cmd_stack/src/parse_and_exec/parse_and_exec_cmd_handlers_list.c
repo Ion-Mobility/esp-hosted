@@ -7,6 +7,7 @@
 #include "cmd_handlers/qmtdisc_parse_exec_handler.h"
 #include "cmd_handlers/qmtpubex_parse_exec_handler.h"
 #include "cmd_handlers/qmtrecv_parse_exec_handler.h"
+#include "cmd_handlers/qmtclear_parse_exec_handler.h"
 #include "cmd_handlers/qmtdump_parse_exec_handler.h"
 #include "cmd_handlers/parsetest_parse_exec_handler.h"
 
@@ -53,6 +54,11 @@ const parse_exec_handler_entry_t parse_exec_handlers_table
         .test_cmd_parse_exec_handler = qmtrecv_test_cmd_parse_exec_handler,
         .read_cmd_parse_exec_handler = qmtrecv_read_cmd_parse_exec_handler,
         .write_cmd_parse_exec_handler = qmtrecv_write_cmd_parse_exec_handler,
+    },
+    {
+        .at_command_family = "AT+QMTCLEAR",
+        .test_cmd_parse_exec_handler = qmtclear_test_cmd_parse_exec_handler,
+        .write_cmd_parse_exec_handler = qmtclear_write_cmd_parse_exec_handler,
     },
     {
         .at_command_family = "AT+QMTDUMP",
