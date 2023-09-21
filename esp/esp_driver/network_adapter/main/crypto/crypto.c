@@ -145,14 +145,14 @@ esp_err_t crypto_init(void) {
     // read bike identity key from NVS
     {
         size_t required_size = 0;  // value will default to 0, if not set yet in NVS
-        err = nvs_get_blob(my_handle, "bike_id", NULL, &required_size);
+        err = nvs_get_blob(my_handle, "bike", NULL, &required_size);
         if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
             ESP_LOGE(CRYPTO_TAG, "No bike's identity key founded in flash or data is corrupted");
             goto init_exit;
         }
         // Read previously saved blob if available
         if (required_size == sizeof(keypair_t)) {
-            err = nvs_get_blob(my_handle, "bike_id", &bike.identity, &required_size);
+            err = nvs_get_blob(my_handle, "bike", &bike.identity, &required_size);
             if (err != ESP_OK) {
                 ESP_LOGE(CRYPTO_TAG, "Failed to read bike's identity key from flash...");
                 goto init_exit;
@@ -171,14 +171,14 @@ esp_err_t crypto_init(void) {
     // read bike pairing key from NVS
     {
         size_t required_size = 0;  // value will default to 0, if not set yet in NVS
-        err = nvs_get_blob(my_handle, "bike_pair", NULL, &required_size);
+        err = nvs_get_blob(my_handle, "pair", NULL, &required_size);
         if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
             ESP_LOGE(CRYPTO_TAG, "No bike's pairing key founded in flash or data is corrupted");
             goto init_exit;
         }
         // Read previously saved blob if available
         if (required_size == sizeof(keypair_t)) {
-            err = nvs_get_blob(my_handle, "bike_pair", &bike_pair, &required_size);
+            err = nvs_get_blob(my_handle, "pair", &bike_pair, &required_size);
             if (err != ESP_OK) {
                 ESP_LOGE(CRYPTO_TAG, "Failed to read bike's pairing key from flash...");
                 goto init_exit;
@@ -197,14 +197,14 @@ esp_err_t crypto_init(void) {
     // read server key from NVS
     {
         size_t required_size = 0;  // value will default to 0, if not set yet in NVS
-        err = nvs_get_blob(my_handle, "server_id", NULL, &required_size);
+        err = nvs_get_blob(my_handle, "server", NULL, &required_size);
         if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
             ESP_LOGE(CRYPTO_TAG, "No server's identity key founded in flash or data is corrupted");
             goto init_exit;
         }
         // Read previously saved blob if available
         if (required_size == KEY_LEN) {
-            err = nvs_get_blob(my_handle, "server_id", server.identity_pk, &required_size);
+            err = nvs_get_blob(my_handle, "server", server.identity_pk, &required_size);
             if (err != ESP_OK) {
                 ESP_LOGE(CRYPTO_TAG, "Failed to read server's identity key from flash...");
                 goto init_exit;
