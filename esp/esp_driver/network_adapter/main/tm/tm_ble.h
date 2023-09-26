@@ -13,25 +13,35 @@ typedef enum {
 
 typedef enum {
     // between phone & ble
-    PHONE_BLE_PAIRING           =0,
-    PHONE_BLE_SESSION           =1,
-    PHONE_BLE_GENERAL           =2,
-    PHONE_BLE_BATTERY           =3,
-    PHONE_BLE_CHARGE            =4,
-    PHONE_BLE_LAST_TRIP         =5,
+    PHONE_BLE_PAIRING           = 0x00,
+    PHONE_BLE_SESSION           = 0x01,
+    PHONE_BLE_BATTERY           = 0x02,
+    PHONE_BLE_CHARGE            = 0x03,
+    PHONE_BLE_LAST_TRIP         = 0x04,
+    PHONE_BLE_STEERING_LOCK     = 0x05,
+    PHONE_BLE_STEERING_UNLOCK   = 0x06,
+    PHONE_BLE_PING_BIKE         = 0x07,
+    PHONE_BLE_OPEN_SEAT         = 0x08,
+    PHONE_BLE_DIAG              = 0x09,
+
     // between tm & ble
-    TM_BLE_GENERAL              =6,
-    TM_BLE_BATTERY              =7,
-    TM_BLE_CHARGE               =8,
-    TM_BLE_LAST_TRIP            =9,
-    TM_BLE_LOCK                 =10,
-    TM_BLE_UNLOCK               =11,
+    TM_BLE_BATTERY              = 0x50,
+    TM_BLE_CHARGE               = 0x51,
+    TM_BLE_LAST_TRIP            = 0x52,
+    TM_BLE_STEERING_LOCK        = 0x53,
+    TM_BLE_STEERING_UNLOCK      = 0x54,
+    TM_BLE_PING_BIKE            = 0x55,
+    TM_BLE_OPEN_SEAT            = 0x56,
+    TM_BLE_DIAG                 = 0x57,
+    TM_BLE_PAIRING              = 0x58,
+    TM_BLE_PAIRED               = 0x59,
+    TM_BLE_DISCONNECT           = 0x5A,
+    // add new msg here
+    TM_BLE_INVALID              = 0x5B,
 
-    BLE_START_ADVERTISE         =12,
-    BLE_DISCONNECT              =13,
-    BLE_CONNECT                 =14,
-
-    BLE_INVALID_MSG             =15
+    BLE_START_ADVERTISE         = 0xA0,
+    BLE_DISCONNECT              = 0xA1,
+    BLE_CONNECT                 = 0xA2
 } ble_msg_id_t;
 
 typedef struct {

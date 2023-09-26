@@ -557,6 +557,5 @@ void app_main()
 		ESP_LOGI(TAG, "boot to tm");
 		tm_ble_init();
 		tm_atcmd_tasks_init();
-		tm_ble_start_advertise();
 	}
 }

@@ -413,7 +413,6 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                         memcpy(&len, &param->write.value[sizeof(int)], sizeof(int));
                         send_to_ble_queue(msg_id, &param->write.value[sizeof(int) + sizeof(int)], len);
                     }
-                    //todo: replace this by data from 148
                     if( xSemaphoreTake( xBinarySemaphore, ( TickType_t ) (5000 / portTICK_PERIOD_MS) ) == pdTRUE ) {
                         if (tx_value_len > 0)
                             esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, ion_handle_table[IDX_CHAR_VAL_TX],
@@ -583,10 +582,10 @@ void tm_ble_gatts_server_init(void)
     xBinarySemaphore = xSemaphoreCreateBinary();
 }
 
-void tm_ble_gatts_start_advertise(void)
+void ble_gatts_start_advertise(void)
 {
-    if (ready_to_advertise)
-        esp_ble_gap_start_advertising(&adv_params);
+    while (!ready_to_advertise);
+    esp_ble_gap_start_advertising(&adv_params);
 }
 
 void tm_ble_gatts_send_to_phone(uint8_t *data, int len)
@@ -625,9 +624,6 @@ static void send_to_ble_queue(int msg_id, uint8_t *data, int len) {
             to_ble_msg.msg_id = PHONE_BLE_SESSION;
             // memcpy(to_ble_msg.data, data, len);
             break;
-        case PHONE_BLE_GENERAL:
-            to_ble_msg.msg_id = PHONE_BLE_GENERAL;
-            break;
         case PHONE_BLE_BATTERY:
             to_ble_msg.msg_id = PHONE_BLE_BATTERY;
             break;
@@ -636,6 +632,21 @@ static void send_to_ble_queue(int msg_id, uint8_t *data, int len) {
             break;
         case PHONE_BLE_LAST_TRIP:
             to_ble_msg.msg_id = PHONE_BLE_LAST_TRIP;
+            break;
+        case PHONE_BLE_STEERING_LOCK:
+            to_ble_msg.msg_id = PHONE_BLE_STEERING_LOCK;
+            break;
+        case PHONE_BLE_STEERING_UNLOCK:
+            to_ble_msg.msg_id = PHONE_BLE_STEERING_UNLOCK;
+            break;
+        case PHONE_BLE_PING_BIKE:
+            to_ble_msg.msg_id = PHONE_BLE_PING_BIKE;
+            break;
+        case PHONE_BLE_OPEN_SEAT:
+            to_ble_msg.msg_id = PHONE_BLE_OPEN_SEAT;
+            break;
+        case PHONE_BLE_DIAG:
+            to_ble_msg.msg_id = PHONE_BLE_DIAG;
             break;
         default:
             return;
