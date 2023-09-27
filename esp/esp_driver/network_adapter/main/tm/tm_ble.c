@@ -16,7 +16,7 @@
 #define BLE_PAIRING_TIMEOUT     10  //10s
 
 QueueHandle_t ble_queue;
-static uint8_t pair_status = UNPAIRED;
+static uint8_t connection_state = UNPAIRED;
 static esp_timer_handle_t oneshot_timer;
 static void send_to_phone(ble_msg_t *pble_msg);
 static void oneshot_timer_callback(void* arg);
@@ -48,49 +48,60 @@ static void ble_task(void *arg)
             case BLE_START_ADVERTISE:
                 ESP_LOGI(ION_BLE_TAG, "BLE_START_ADVERTISE");
                 ble_gatts_start_advertise();
-                pair_status = UNPAIRED;
+                connection_state = UNPAIRED;
                 break;
 
             case BLE_DISCONNECT:
                 ESP_LOGI(ION_BLE_TAG, "BLE_DISCONNECT");
                 send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
                 ble_gatts_start_advertise();
-                pair_status = UNPAIRED;
+                connection_state = UNPAIRED;
                 client_disconnect();
                 break;
 
             case BLE_CONNECT:
                 ESP_LOGI(ION_BLE_TAG, "BLE_CONNECT");
                 // start_oneshot_timer(BLE_PAIRING_TIMEOUT);
-                pair_status = UNPAIRED;
+                connection_state = UNPAIRED;
                 break;
 
             case PHONE_BLE_PAIRING:
-                if (pair_status == UNPAIRED) {
+                if (connection_state == UNPAIRED) {
                     ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_PAIRING");
                     send_to_tm_queue(TM_BLE_PAIRING, NULL, 0);
                     esp_log_buffer_hex(ION_BLE_TAG, to_ble_msg.data, to_ble_msg.len);
                     //verify pairing request
-                    // int pairing_result = pairing_request(to_ble_msg.data, to_ble_msg.len, response, &res_len);
-                    //verified
-                    // if (pairing_result == ESP_OK) {
-                        pair_status = PAIRED;
-                    //     to_phone_msg.msg_id = PHONE_BLE_PAIRING;
-                    //     to_phone_msg.len = res_len;
-                    //     memcpy(to_phone_msg.data, response, res_len);
-                    //     send_to_phone(&to_phone_msg);
-                    // } else {
-                    //     tm_ble_gatts_kill_connection();
-                    // }
+                    int pairing_result = pairing_request(to_ble_msg.data, to_ble_msg.len, response, &res_len);
+                    if (pairing_result == ESP_OK) {
+                        connection_state = PAIRED;
+                        to_phone_msg.msg_id = PHONE_BLE_PAIRING;
+                        to_phone_msg.len = res_len;
+                        memcpy(to_phone_msg.data, response, res_len);
+                        send_to_phone(&to_phone_msg);
+                        ESP_LOGI(ION_BLE_TAG, "Pair OK");
+                    } else {
+                        tm_ble_gatts_kill_connection();
+                        ESP_LOGE(ION_BLE_TAG, "Pair fails");
+                    }
                     // stop_oneshot_timer();
                 }
                 break;
 
             case PHONE_BLE_SESSION:
                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_SESSION");
-                if (pair_status == PAIRED) {
-                    //todo: verify this msg
-                    pair_status = SESSION_CREATED;
+                if (connection_state == PAIRED) {
+                    int session_result = session_request(to_ble_msg.data, to_ble_msg.len, response, &res_len);
+                    if (session_result == ESP_OK) {
+                        connection_state = SESSION_CREATED;
+                        to_phone_msg.msg_id = PHONE_BLE_SESSION;
+                        to_phone_msg.len = res_len;
+                        memcpy(to_phone_msg.data, response, res_len);
+                        send_to_phone(&to_phone_msg);
+                        ESP_LOGI(ION_BLE_TAG, "Session created");
+                    } else {
+                        ESP_LOGE(ION_BLE_TAG, "Failed to create session");
+                    }
+                    // connection_state = SESSION_CREATED;
                     send_to_tm_queue(TM_BLE_PAIRED, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "phone not pair yet, kill this connection");
@@ -100,7 +111,7 @@ static void ble_task(void *arg)
 
             case PHONE_BLE_BATTERY:
                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_BATTERY");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     send_to_tm_queue(TM_BLE_BATTERY, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
@@ -110,7 +121,7 @@ static void ble_task(void *arg)
 
             case PHONE_BLE_CHARGE:
                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_CHARGE");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     send_to_tm_queue(TM_BLE_CHARGE, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
@@ -121,7 +132,7 @@ static void ble_task(void *arg)
 
             case PHONE_BLE_LAST_TRIP:
                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_LAST_TRIP");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     send_to_tm_queue(TM_BLE_LAST_TRIP, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
@@ -131,7 +142,7 @@ static void ble_task(void *arg)
 
             case PHONE_BLE_STEERING_LOCK:
                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_STEERING_LOCK");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     send_to_tm_queue(TM_BLE_STEERING_LOCK, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
@@ -141,7 +152,7 @@ static void ble_task(void *arg)
 
             case PHONE_BLE_STEERING_UNLOCK:
                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_STEERING_UNLOCK");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     send_to_tm_queue(TM_BLE_STEERING_UNLOCK, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
@@ -151,7 +162,7 @@ static void ble_task(void *arg)
 
             case PHONE_BLE_PING_BIKE:
                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_PING_BIKE");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     send_to_tm_queue(TM_BLE_PING_BIKE, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
@@ -161,7 +172,7 @@ static void ble_task(void *arg)
 
             case PHONE_BLE_OPEN_SEAT:
                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_OPEN_SEAT");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     send_to_tm_queue(TM_BLE_OPEN_SEAT, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
@@ -171,7 +182,7 @@ static void ble_task(void *arg)
 
             case PHONE_BLE_DIAG:
                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_DIAG");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     send_to_tm_queue(TM_BLE_DIAG, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
@@ -181,7 +192,7 @@ static void ble_task(void *arg)
 
             case TM_BLE_CHARGE:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_CHARGE");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     //todo: debug only, remove later
                     memset(&charge, 0, sizeof(charge_t));
                     memcpy(&charge, to_ble_msg.data, sizeof(charge_t));
@@ -201,7 +212,7 @@ static void ble_task(void *arg)
 
             case TM_BLE_BATTERY:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_BATTERY");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     //todo: debug only, remove later
                     memset(&battery, 0, sizeof(battery_t));
                     memcpy(&battery, to_ble_msg.data, sizeof(battery_t));
@@ -218,7 +229,7 @@ static void ble_task(void *arg)
 
             case TM_BLE_LAST_TRIP:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_LAST_TRIP");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     //todo: debug only, remove later
                     memset(&trip, 0, sizeof(trip_t));
                     memcpy(&trip, to_ble_msg.data, sizeof(trip_t));
@@ -237,7 +248,7 @@ static void ble_task(void *arg)
 
             case TM_BLE_STEERING_LOCK:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_STEERING_LOCK");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     to_phone_msg.len = 0;
                     to_phone_msg.msg_id = PHONE_BLE_STEERING_LOCK;
                     send_to_phone(&to_phone_msg);
@@ -246,7 +257,7 @@ static void ble_task(void *arg)
 
             case TM_BLE_STEERING_UNLOCK:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_STEERING_UNLOCK");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     to_phone_msg.len = 0;
                     to_phone_msg.msg_id = PHONE_BLE_STEERING_UNLOCK;
                     send_to_phone(&to_phone_msg);
@@ -255,7 +266,7 @@ static void ble_task(void *arg)
 
             case TM_BLE_PING_BIKE:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_PING_BIKE");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     to_phone_msg.len = 0;
                     to_phone_msg.msg_id = PHONE_BLE_PING_BIKE;
                     send_to_phone(&to_phone_msg);
@@ -264,7 +275,7 @@ static void ble_task(void *arg)
 
             case TM_BLE_OPEN_SEAT:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_OPEN_SEAT");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     to_phone_msg.len = 0;
                     to_phone_msg.msg_id = PHONE_BLE_OPEN_SEAT;
                     send_to_phone(&to_phone_msg);
@@ -273,7 +284,7 @@ static void ble_task(void *arg)
 
             case TM_BLE_DIAG:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_DIAG");
-                if (pair_status == SESSION_CREATED) {
+                if (connection_state == SESSION_CREATED) {
                     to_phone_msg.len = 0;
                     to_phone_msg.msg_id = PHONE_BLE_DIAG;
                     send_to_phone(&to_phone_msg);
@@ -312,7 +323,7 @@ static void send_to_phone(ble_msg_t *pble_msg) {
 
 static void oneshot_timer_callback(void* arg)
 {
-    if (pair_status < PAIRED) {
+    if (connection_state < PAIRED) {
         ESP_LOGW(ION_BLE_TAG, "pairing timeout, terminate the connection");
         tm_ble_gatts_kill_connection();
     }
