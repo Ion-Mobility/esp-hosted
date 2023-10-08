@@ -3,7 +3,7 @@
 #include <string.h>
 #include "freertos/queue.h"
 
-#define BLE_MSG_MAX_LEN         504
+#define BLE_MSG_MAX_LEN         235
 
 typedef enum {
     UNPAIRED            = 0,

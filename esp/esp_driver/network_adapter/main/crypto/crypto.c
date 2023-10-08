@@ -285,8 +285,10 @@ int session_request(uint8_t* request, size_t req_len, uint8_t* response, size_t 
 
 int pairing_request(uint8_t* request, size_t req_len, uint8_t* response, size_t *res_len)
 {
-    if (req_len != sizeof(pair_request_t))
+    if (req_len != sizeof(pair_request_t)) {
+        ESP_LOGE(CRYPTO_TAG, "pairing_request req_len %d",req_len);
         return -1;
+    }
 
     pair_request_t *pair_request = (pair_request_t*)request;
     int pair_result = pair(pair_request, (pair_response_t*)response);
@@ -412,7 +414,15 @@ static int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
     }
 
     // Verify that the message was actually signed by the server
-    int verify_server_signature = crypto_eddsa_check(pair_request->signature, server.identity_pk, (uint8_t*)&pair_request->contents, sizeof(pair_request_content_t));
+    // int verify_server_signature = crypto_eddsa_check(pair_request->signature, server.identity_pk, (uint8_t*)&pair_request->contents, sizeof(pair_request_content_t));
+    ESP_LOGE(CRYPTO_TAG, "signature:");
+    esp_log_buffer_hex(CRYPTO_TAG, pair_request->signature, SIGNATURE_LEN);
+    ESP_LOGE(CRYPTO_TAG, "server.identity_pk:");
+    esp_log_buffer_hex(CRYPTO_TAG, server.identity_pk, KEY_LEN);
+    ESP_LOGE(CRYPTO_TAG, "conntent:");
+    esp_log_buffer_hex(CRYPTO_TAG, (uint8_t*)&pair_request->contents, sizeof(pair_request_content_t));
+
+    int verify_server_signature = crypto_ed25519_check(pair_request->signature, server.identity_pk, (uint8_t*)&pair_request->contents, sizeof(pair_request_content_t));
     if (verify_server_signature != 0) {
         ESP_LOGE(CRYPTO_TAG, "failed to verify server signature");
         return verify_server_signature;

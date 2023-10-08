@@ -15,6 +15,8 @@
 #define ION_BLE_TAG             "TM_BLE"
 #define BLE_PAIRING_TIMEOUT     10  //10s
 
+#define FOR_IMOS                1
+
 QueueHandle_t ble_queue;
 static uint8_t connection_state = UNPAIRED;
 static esp_timer_handle_t oneshot_timer;
@@ -73,13 +75,22 @@ static void ble_task(void *arg)
                     //verify pairing request
                     int pairing_result = pairing_request(to_ble_msg.data, to_ble_msg.len, response, &res_len);
                     if (pairing_result == ESP_OK) {
-                        connection_state = PAIRED;
                         to_phone_msg.msg_id = PHONE_BLE_PAIRING;
+#if (FOR_IMOS)
+                        connection_state = SESSION_CREATED;
+                        to_phone_msg.len = 1;
+                        to_phone_msg.data[0] = 1;
+                        // connection_state = SESSION_CREATED;
+                        send_to_tm_queue(TM_BLE_PAIRED, NULL, 0);
+#else
+                        connection_state = PAIRED;
                         to_phone_msg.len = res_len;
                         memcpy(to_phone_msg.data, response, res_len);
+#endif
                         send_to_phone(&to_phone_msg);
                         ESP_LOGI(ION_BLE_TAG, "Pair OK");
                     } else {
+                        send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
                         tm_ble_gatts_kill_connection();
                         ESP_LOGE(ION_BLE_TAG, "Pair fails");
                     }
@@ -105,6 +116,7 @@ static void ble_task(void *arg)
                     send_to_tm_queue(TM_BLE_PAIRED, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "phone not pair yet, kill this connection");
+                    send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
                     tm_ble_gatts_kill_connection();
                 }
                 break;
@@ -115,6 +127,7 @@ static void ble_task(void *arg)
                     send_to_tm_queue(TM_BLE_BATTERY, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
+                    send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
                     tm_ble_gatts_kill_connection();
                 }
                 break;
@@ -125,6 +138,7 @@ static void ble_task(void *arg)
                     send_to_tm_queue(TM_BLE_CHARGE, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
+                    send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
                     tm_ble_gatts_kill_connection();
                 }
                 break;
@@ -136,6 +150,7 @@ static void ble_task(void *arg)
                     send_to_tm_queue(TM_BLE_LAST_TRIP, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
+                    send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
                     tm_ble_gatts_kill_connection();
                 }
                 break;
@@ -146,6 +161,7 @@ static void ble_task(void *arg)
                     send_to_tm_queue(TM_BLE_STEERING_LOCK, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
+                    send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
                     tm_ble_gatts_kill_connection();
                 }
                 break;
@@ -156,6 +172,7 @@ static void ble_task(void *arg)
                     send_to_tm_queue(TM_BLE_STEERING_UNLOCK, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
+                    send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
                     tm_ble_gatts_kill_connection();
                 }
                 break;
@@ -166,6 +183,7 @@ static void ble_task(void *arg)
                     send_to_tm_queue(TM_BLE_PING_BIKE, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
+                    send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
                     tm_ble_gatts_kill_connection();
                 }
                 break;
@@ -176,6 +194,7 @@ static void ble_task(void *arg)
                     send_to_tm_queue(TM_BLE_OPEN_SEAT, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
+                    send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
                     tm_ble_gatts_kill_connection();
                 }
                 break;
@@ -186,6 +205,7 @@ static void ble_task(void *arg)
                     send_to_tm_queue(TM_BLE_DIAG, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
+                    send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
                     tm_ble_gatts_kill_connection();
                 }
                 break;
@@ -196,13 +216,31 @@ static void ble_task(void *arg)
                     //todo: debug only, remove later
                     memset(&charge, 0, sizeof(charge_t));
                     memcpy(&charge, to_ble_msg.data, sizeof(charge_t));
+#if (FOR_IMOS)
+                    charge.state = 0;
+                    charge.vol = 500;
+                    charge.cur = 700;
+                    charge.cycle = 400;
+                    charge.time_to_full = 360;
+                    to_phone_msg.len = sizeof(charge.state) + sizeof(charge.vol) +
+                                       sizeof(charge.cur) + sizeof(charge.cycle) +
+                                       sizeof(charge.time_to_full);
+                    memcpy(&to_phone_msg.data[0], &charge.state, sizeof(charge.state));
+                    memcpy(&to_phone_msg.data[0+sizeof(charge.state)], &charge.vol, sizeof(charge.vol));
+                    memcpy(&to_phone_msg.data[0+sizeof(charge.state)+sizeof(charge.vol)], &charge.cur, sizeof(charge.cur));
+                    memcpy(&to_phone_msg.data[0+sizeof(charge.state)+sizeof(charge.vol)+sizeof(charge.cur)], &charge.cycle, sizeof(charge.cycle));
+                    memcpy(&to_phone_msg.data[0+sizeof(charge.state)+sizeof(charge.vol)+sizeof(charge.cur)+sizeof(charge.cycle)], &charge.time_to_full, sizeof(charge.time_to_full));
+                    esp_log_buffer_hex(ION_BLE_TAG, to_phone_msg.data, to_phone_msg.len);
+#else
+                    //encrypt data & send to phone
+                    message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, mac, to_ble_msg.data, to_ble_msg.len);
+#endif
                     ESP_LOGI(ION_BLE_TAG, "charge state            %d",charge.state);
                     ESP_LOGI(ION_BLE_TAG, "charge vol              %d",charge.vol);
                     ESP_LOGI(ION_BLE_TAG, "charge cur              %d",charge.cur);
                     ESP_LOGI(ION_BLE_TAG, "charge cycle            %d",charge.cycle);
                     ESP_LOGI(ION_BLE_TAG, "charge time_to_full     %d",charge.time_to_full);
-                    //encrypt data & send to phone
-                    message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, mac, to_ble_msg.data, to_ble_msg.len);
+
                     if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
                         to_phone_msg.msg_id = PHONE_BLE_CHARGE;
                         send_to_phone(&to_phone_msg);
@@ -216,10 +254,20 @@ static void ble_task(void *arg)
                     //todo: debug only, remove later
                     memset(&battery, 0, sizeof(battery_t));
                     memcpy(&battery, to_ble_msg.data, sizeof(battery_t));
-                    ESP_LOGI(ION_BLE_TAG, "battery level           %d",battery.level);
-                    ESP_LOGI(ION_BLE_TAG, "estimate range vol      %d",battery.estimate_range);
+#if (FOR_IMOS)
+                    battery.level = 80;
+                    battery.estimate_range = 145;
+                    to_phone_msg.len = sizeof(battery.level) + sizeof(battery.estimate_range);
+                    to_phone_msg.data[0] = battery.level;
+                    memcpy(&to_phone_msg.data[1], &battery.estimate_range, sizeof(battery.estimate_range));
+                    esp_log_buffer_hex(ION_BLE_TAG, to_phone_msg.data, to_phone_msg.len);
+#else
                     //encrypt data & send to phone
                     message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, mac, to_ble_msg.data, to_ble_msg.len);
+#endif
+                    ESP_LOGI(ION_BLE_TAG, "battery level           %d",battery.level);
+                    ESP_LOGI(ION_BLE_TAG, "estimate range vol      %d",battery.estimate_range);
+
                     if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
                         to_phone_msg.msg_id = PHONE_BLE_BATTERY;
                         send_to_phone(&to_phone_msg);
@@ -233,12 +281,23 @@ static void ble_task(void *arg)
                     //todo: debug only, remove later
                     memset(&trip, 0, sizeof(trip_t));
                     memcpy(&trip, to_ble_msg.data, sizeof(trip_t));
-                    // todo: encrypt these data before sending to phone
+#if (FOR_IMOS)
+                    trip.distance = 40;
+                    trip.ride_time = 35;
+                    trip.elec_used = 45;
+                    to_phone_msg.len = sizeof(trip.distance) + sizeof(trip.ride_time) + sizeof(trip.elec_used);
+                    memcpy(&to_phone_msg.data[0], &trip.distance, sizeof(trip.distance));
+                    memcpy(&to_phone_msg.data[0+sizeof(trip.distance)], &trip.ride_time, sizeof(trip.ride_time));
+                    memcpy(&to_phone_msg.data[0+sizeof(trip.distance)+sizeof(trip.ride_time)], &trip.elec_used, sizeof(trip.elec_used));
+                    esp_log_buffer_hex(ION_BLE_TAG, to_phone_msg.data, to_phone_msg.len);
+#else
+                    //encrypt data & send to phone
+                    message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, mac, to_ble_msg.data, to_ble_msg.len);
+#endif
                     ESP_LOGI(ION_BLE_TAG, "last trip distance      %d",trip.distance);
                     ESP_LOGI(ION_BLE_TAG, "last trip ride time     %d",trip.ride_time);
                     ESP_LOGI(ION_BLE_TAG, "last trip electric used %d",trip.elec_used);
-                    //encrypt data & send to phone
-                    message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, mac, to_ble_msg.data, to_ble_msg.len);
+
                     if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
                         to_phone_msg.msg_id = PHONE_BLE_LAST_TRIP;
                         send_to_phone(&to_phone_msg);
@@ -266,20 +325,28 @@ static void ble_task(void *arg)
 
             case TM_BLE_PING_BIKE:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_PING_BIKE");
+#if (FOR_IMOS)
+                ESP_LOGI(ION_BLE_TAG, "148-ble ping bike");
+#else
                 if (connection_state == SESSION_CREATED) {
                     to_phone_msg.len = 0;
                     to_phone_msg.msg_id = PHONE_BLE_PING_BIKE;
                     send_to_phone(&to_phone_msg);
                 }
+#endif
                 break;
 
             case TM_BLE_OPEN_SEAT:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_OPEN_SEAT");
+#if (FOR_IMOS)
+                ESP_LOGI(ION_BLE_TAG, "148-ble open seat");
+#else
                 if (connection_state == SESSION_CREATED) {
                     to_phone_msg.len = 0;
                     to_phone_msg.msg_id = PHONE_BLE_OPEN_SEAT;
                     send_to_phone(&to_phone_msg);
                 }
+#endif
                 break;
 
             case TM_BLE_DIAG:
@@ -325,6 +392,7 @@ static void oneshot_timer_callback(void* arg)
 {
     if (connection_state < PAIRED) {
         ESP_LOGW(ION_BLE_TAG, "pairing timeout, terminate the connection");
+        send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
         tm_ble_gatts_kill_connection();
     }
 }

@@ -24,6 +24,7 @@
 #define SAMPLE_DEVICE_NAME          "ION_BIKE"
 #define SVC_INST_ID                 0
 #define DEFAULT_MTU_TRUNCATED_SIZE  22
+#define MAC_LEN                     6
 
 /* The max length of characteristic value. When the GATT client performs a write or prepare write operation,
 *  the data length must be less than GATTS_ION_CHAR_VAL_LEN_MAX.
@@ -71,8 +72,8 @@ static uint8_t raw_adv_data[] = {
         0x02, 0x0a, 0xeb,
         /* service uuid */
         0x03, 0x03, 0x00, 0xFF,
-        /* device id */
-        0x0B, 0x01, 0x00, 0x01, 0x0e, 0x00, 0x03, 0x00, 0x15, 0x00, 0x10, 0x4d,
+        /* manufacturing data */
+        0x09, 0xFF, 0x4F, 0x4E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         /* device name */
         0x04, 0x09, 'I', 'O', 'N',
 };
@@ -342,6 +343,8 @@ void example_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble
 
 static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
+    esp_err_t ret = ESP_OK;
+    uint8_t mac[MAC_LEN] = {0};
     switch (event) {
         case ESP_GATTS_REG_EVT:{
             esp_err_t set_dev_name_ret = esp_ble_gap_set_device_name(SAMPLE_DEVICE_NAME);
@@ -349,6 +352,12 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                 ESP_LOGE(GATTS_TABLE_TAG, "set device name failed, error code = %x", set_dev_name_ret);
             }
     #ifdef CONFIG_SET_RAW_ADV_DATA
+            ret = esp_read_mac(mac, ESP_MAC_BT);
+            if (ret) {
+                ESP_LOGE(GATTS_TABLE_TAG,"Failed to read BT Mac addr, advertise default all 0x00 address\n");
+            } else {
+                memcpy(&raw_adv_data[14], mac, sizeof(mac));
+            }
             esp_err_t raw_adv_ret = esp_ble_gap_config_adv_data_raw(raw_adv_data, sizeof(raw_adv_data));
             if (raw_adv_ret){
                 ESP_LOGE(GATTS_TABLE_TAG, "config raw adv data failed, error code = %x ", raw_adv_ret);
@@ -403,14 +412,24 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                 } else {
                     int msg_id;
                     int len;
+                    int little_id;
+                    int little_len;
                     memset(tx_value, 0, sizeof(tx_value));
                     tx_value_len = -1;
                     if (param->write.len <= sizeof(int) + sizeof(int)) {
-                        memcpy(&msg_id, &param->write.value[0], sizeof(int));
+                        memcpy(&little_id, &param->write.value[0], sizeof(int));
+                        int msg_id = ((little_id>>24)&0xff) | // move byte 3 to byte 0
+                        ((little_id<<8)&0xff0000) | // move byte 1 to byte 2
+                        ((little_id>>8)&0xff00) | // move byte 2 to byte 1
+                        ((little_id<<24)&0xff000000); // byte 0 to byte 3
                         send_to_ble_queue(msg_id, NULL, 0);
                     } else {
                         memcpy(&msg_id, &param->write.value[0], sizeof(int));
-                        memcpy(&len, &param->write.value[sizeof(int)], sizeof(int));
+                        memcpy(&little_len, &param->write.value[sizeof(int)], sizeof(int));
+                        int len = ((little_len>>24)&0xff) | // move byte 3 to byte 0
+                        ((little_len<<8)&0xff0000) | // move byte 1 to byte 2
+                        ((little_len>>8)&0xff00) | // move byte 2 to byte 1
+                        ((little_len<<24)&0xff000000); // byte 0 to byte 3
                         send_to_ble_queue(msg_id, &param->write.value[sizeof(int) + sizeof(int)], len);
                     }
                     if( xSemaphoreTake( xBinarySemaphore, ( TickType_t ) (5000 / portTICK_PERIOD_MS) ) == pdTRUE ) {
@@ -616,13 +635,13 @@ static void send_to_ble_queue(int msg_id, uint8_t *data, int len) {
             to_ble_msg.msg_id = PHONE_BLE_PAIRING;
             if (len > BLE_MSG_MAX_LEN)
                 return;
-            // memcpy(to_ble_msg.data, data, len);
+            memcpy(to_ble_msg.data, data, len);
             break;
         case PHONE_BLE_SESSION:
             if (len > BLE_MSG_MAX_LEN)
                 return;
             to_ble_msg.msg_id = PHONE_BLE_SESSION;
-            // memcpy(to_ble_msg.data, data, len);
+            memcpy(to_ble_msg.data, data, len);
             break;
         case PHONE_BLE_BATTERY:
             to_ble_msg.msg_id = PHONE_BLE_BATTERY;
@@ -641,9 +660,11 @@ static void send_to_ble_queue(int msg_id, uint8_t *data, int len) {
             break;
         case PHONE_BLE_PING_BIKE:
             to_ble_msg.msg_id = PHONE_BLE_PING_BIKE;
+            xSemaphoreGive(xBinarySemaphore);
             break;
         case PHONE_BLE_OPEN_SEAT:
             to_ble_msg.msg_id = PHONE_BLE_OPEN_SEAT;
+            xSemaphoreGive(xBinarySemaphore);
             break;
         case PHONE_BLE_DIAG:
             to_ble_msg.msg_id = PHONE_BLE_DIAG;
@@ -658,5 +679,5 @@ static void send_to_ble_queue(int msg_id, uint8_t *data, int len) {
 
 void tm_ble_gatts_kill_connection(void)
 {
-    esp_ble_gatts_close(ion_profile_tab[PROFILE_APP_IDX].gatts_if, ion_profile_tab[PROFILE_APP_IDX].conn_id);
+    // esp_ble_gatts_close(ion_profile_tab[PROFILE_APP_IDX].gatts_if, ion_profile_tab[PROFILE_APP_IDX].conn_id);
 }
