@@ -387,7 +387,7 @@ static void station_event_handler(void *arg, esp_event_base_t event_base,
 				break;
 			does_esp32_wifi_has_ip = false;
     		ESP_LOGI(TAG, "ESP32 Lost Connection to WiFi");
-			send_event_to_host(CTRL_MSG_ID__Event_StationLosIP);
+			send_event_to_host(CTRL_MSG_ID__Event_StationLostIP);
 			break;
 	}
 

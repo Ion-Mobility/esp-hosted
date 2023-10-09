@@ -96,9 +96,10 @@ enum CtrlMsgId {
     Req_GetWifiCurrTxPower = 120;
 
     Req_ConfigHeartbeat = 121;
+    Req_ConfigSmartConnect = 122;
     /* Add new control path command response before Req_Max
      * and update Req_Max */
-    Req_Max = 122;
+    Req_Max = 123;
 
     /** Response Msgs **/
     Resp_Base = 200;
@@ -130,9 +131,10 @@ enum CtrlMsgId {
     Resp_GetWifiCurrTxPower = 220;
 
     Resp_ConfigHeartbeat = 221;
+    Resp_ConfigSmartConnect = 222;
     /* Add new control path command response before Resp_Max
      * and update Resp_Max */
-    Resp_Max = 222;
+    Resp_Max = 223;
 
     /** Event Msgs **/
     Event_Base = 300;
@@ -140,9 +142,12 @@ enum CtrlMsgId {
     Event_Heartbeat = 302;
     Event_StationDisconnectFromAP = 303;
     Event_StationDisconnectFromESPSoftAP = 304;
+    Event_StationConnectFromESPTOUCH = 305;
+    Event_StationGotIP = 306;
+    Event_StationLostIP = 307;
     /* Add new control path command notification before Event_Max
      * and update Event_Max */
-    Event_Max = 305;
+    Event_Max = 308;
 }
 
 /* internal supporting structures for CtrlMsg */
@@ -341,6 +346,15 @@ message CtrlMsg_Resp_ConfigHeartbeat {
     int32 resp = 1;
 }
 
+message CtrlMsg_Req_ConfigSmartConnect {
+    bool enable = 1;
+    int32 type = 2;
+}
+
+message CtrlMsg_Resp_ConfigSmartConnect {
+    int32 resp = 1;
+}
+
 /** Event structure **/
 message CtrlMsg_Event_ESPInit {
     bytes init_data = 1;
@@ -357,6 +371,21 @@ message CtrlMsg_Event_StationDisconnectFromAP {
 message CtrlMsg_Event_StationDisconnectFromESPSoftAP {
     int32 resp = 1;
     bytes mac = 2;
+}
+
+message CtrlMsg_Event_StationConnectFromESPTOUCH {
+    int32 resp = 1;
+    bytes info = 2;
+}
+
+message CtrlMsg_Event_GotIP {
+    bytes ipv4 = 1;
+    bytes netmask = 2;
+    bytes gw = 3;
+}
+
+message CtrlMsg_Event_LostIP {
+    int32 resp = 1;
 }
 
 message CtrlMsg {
@@ -395,6 +424,7 @@ message CtrlMsg {
         CtrlMsg_Req_SetWifiMaxTxPower req_set_wifi_max_tx_power = 119;
         CtrlMsg_Req_GetWifiCurrTxPower req_get_wifi_curr_tx_power = 120;
         CtrlMsg_Req_ConfigHeartbeat req_config_heartbeat = 121;
+        CtrlMsg_Req_ConfigSmartConnect req_config_smartconnect = 122;
 
         /** Responses **/
         CtrlMsg_Resp_GetMacAddress resp_get_mac_address = 201;
@@ -422,6 +452,7 @@ message CtrlMsg {
         CtrlMsg_Resp_SetWifiMaxTxPower resp_set_wifi_max_tx_power = 219;
         CtrlMsg_Resp_GetWifiCurrTxPower resp_get_wifi_curr_tx_power = 220;
         CtrlMsg_Resp_ConfigHeartbeat resp_config_heartbeat = 221;
+        CtrlMsg_Resp_ConfigSmartConnect resp_config_smartconnect = 222;
 
         /** Notifications **/
         CtrlMsg_Event_ESPInit event_esp_init = 301;
@@ -429,5 +460,7 @@ message CtrlMsg {
         CtrlMsg_Event_StationDisconnectFromAP event_station_disconnect_from_AP = 303;
         CtrlMsg_Event_StationDisconnectFromESPSoftAP event_station_disconnect_from_ESP_SoftAP = 304;
         CtrlMsg_Event_StationConnectFromESPTOUCH event_station_connect_from_ESPTOUCH = 305;
+        CtrlMsg_Event_GotIP event_station_got_ip = 306;
+        CtrlMsg_Event_LostIP event_station_lost_ip = 307;
     }
 }

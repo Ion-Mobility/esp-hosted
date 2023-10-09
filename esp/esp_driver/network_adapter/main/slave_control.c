@@ -2407,7 +2407,7 @@ static void esp_ctrl_msg_cleanup(CtrlMsg *resp)
 			mem_free(resp->event_station_connect_from_esptouch);
 			break;
 		} case (CTRL_MSG_ID__Event_StationGotIP) :
-		  case (CTRL_MSG_ID__Event_StationLosIP) :  {
+		  case (CTRL_MSG_ID__Event_StationLostIP) :  {
 			break;
 		} default: {
 			ESP_LOGE(TAG, "Unsupported CtrlMsg type[%u]",resp->msg_id);
@@ -2652,7 +2652,7 @@ esp_err_t ctrl_notify_handler(uint32_t session_id,const uint8_t *inbuf,
 			ESP_LOGI(TAG, "CTRL_MSG_ID__Event_StationGotIP\n");
 			ret = ctrl_ntfy_StationGotIP(&ntfy, inbuf, inlen);
 			break;
-		} case CTRL_MSG_ID__Event_StationLosIP: {
+		} case CTRL_MSG_ID__Event_StationLostIP: {
 			ESP_LOGI(TAG, "CTRL_MSG_ID__Event_StationLostIP\n");
 			ret = ctrl_ntfy_StationLostIP(&ntfy, inbuf, inlen);
 			break;
