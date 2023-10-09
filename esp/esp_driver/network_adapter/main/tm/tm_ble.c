@@ -217,28 +217,32 @@ static void ble_task(void *arg)
                     memset(&charge, 0, sizeof(charge_t));
                     memcpy(&charge, to_ble_msg.data, sizeof(charge_t));
 #if (FOR_IMOS)
-                    charge.state = 0;
-                    charge.vol = 500;
-                    charge.cur = 700;
-                    charge.cycle = 400;
-                    charge.time_to_full = 360;
-                    to_phone_msg.len = sizeof(charge.state) + sizeof(charge.vol) +
-                                       sizeof(charge.cur) + sizeof(charge.cycle) +
-                                       sizeof(charge.time_to_full);
+                    // charge.state = 0;
+                    // charge.vol = 500;
+                    // charge.cur = 700;
+                    // charge.cycle = 400;
+                    // charge.time_to_full = 360;
+                    to_phone_msg.len = sizeof(charge.state) + sizeof(charge.time_to_full);
+
+                    // to_phone_msg.len = sizeof(charge.state) + sizeof(charge.vol) +
+                    //                    sizeof(charge.cur) + sizeof(charge.cycle) +
+                    //                    sizeof(charge.time_to_full);
                     memcpy(&to_phone_msg.data[0], &charge.state, sizeof(charge.state));
-                    memcpy(&to_phone_msg.data[0+sizeof(charge.state)], &charge.vol, sizeof(charge.vol));
-                    memcpy(&to_phone_msg.data[0+sizeof(charge.state)+sizeof(charge.vol)], &charge.cur, sizeof(charge.cur));
-                    memcpy(&to_phone_msg.data[0+sizeof(charge.state)+sizeof(charge.vol)+sizeof(charge.cur)], &charge.cycle, sizeof(charge.cycle));
-                    memcpy(&to_phone_msg.data[0+sizeof(charge.state)+sizeof(charge.vol)+sizeof(charge.cur)+sizeof(charge.cycle)], &charge.time_to_full, sizeof(charge.time_to_full));
+                    // memcpy(&to_phone_msg.data[0+sizeof(charge.state)], &charge.vol, sizeof(charge.vol));
+                    // memcpy(&to_phone_msg.data[0+sizeof(charge.state)+sizeof(charge.vol)], &charge.cur, sizeof(charge.cur));
+                    // memcpy(&to_phone_msg.data[0+sizeof(charge.state)+sizeof(charge.vol)+sizeof(charge.cur)], &charge.cycle, sizeof(charge.cycle));
+                    // memcpy(&to_phone_msg.data[0+sizeof(charge.state)+sizeof(charge.vol)+sizeof(charge.cur)+sizeof(charge.cycle)], &charge.time_to_full, sizeof(charge.time_to_full));
+
+                    memcpy(&to_phone_msg.data[0+sizeof(charge.state)], &charge.time_to_full, sizeof(charge.time_to_full));
                     esp_log_buffer_hex(ION_BLE_TAG, to_phone_msg.data, to_phone_msg.len);
 #else
                     //encrypt data & send to phone
                     message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, mac, to_ble_msg.data, to_ble_msg.len);
 #endif
                     ESP_LOGI(ION_BLE_TAG, "charge state            %d",charge.state);
-                    ESP_LOGI(ION_BLE_TAG, "charge vol              %d",charge.vol);
-                    ESP_LOGI(ION_BLE_TAG, "charge cur              %d",charge.cur);
-                    ESP_LOGI(ION_BLE_TAG, "charge cycle            %d",charge.cycle);
+                    // ESP_LOGI(ION_BLE_TAG, "charge vol              %d",charge.vol);
+                    // ESP_LOGI(ION_BLE_TAG, "charge cur              %d",charge.cur);
+                    // ESP_LOGI(ION_BLE_TAG, "charge cycle            %d",charge.cycle);
                     ESP_LOGI(ION_BLE_TAG, "charge time_to_full     %d",charge.time_to_full);
 
                     if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
@@ -255,8 +259,8 @@ static void ble_task(void *arg)
                     memset(&battery, 0, sizeof(battery_t));
                     memcpy(&battery, to_ble_msg.data, sizeof(battery_t));
 #if (FOR_IMOS)
-                    battery.level = 80;
-                    battery.estimate_range = 145;
+                    // battery.level = 80;
+                    // battery.estimate_range = 145;
                     to_phone_msg.len = sizeof(battery.level) + sizeof(battery.estimate_range);
                     to_phone_msg.data[0] = battery.level;
                     memcpy(&to_phone_msg.data[1], &battery.estimate_range, sizeof(battery.estimate_range));
@@ -282,9 +286,9 @@ static void ble_task(void *arg)
                     memset(&trip, 0, sizeof(trip_t));
                     memcpy(&trip, to_ble_msg.data, sizeof(trip_t));
 #if (FOR_IMOS)
-                    trip.distance = 40;
-                    trip.ride_time = 35;
-                    trip.elec_used = 45;
+                    // trip.distance = 40;
+                    // trip.ride_time = 35;
+                    // trip.elec_used = 45;
                     to_phone_msg.len = sizeof(trip.distance) + sizeof(trip.ride_time) + sizeof(trip.elec_used);
                     memcpy(&to_phone_msg.data[0], &trip.distance, sizeof(trip.distance));
                     memcpy(&to_phone_msg.data[0+sizeof(trip.distance)], &trip.ride_time, sizeof(trip.ride_time));

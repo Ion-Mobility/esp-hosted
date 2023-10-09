@@ -224,10 +224,11 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len) {
             memset(&charge, 0, sizeof(charge_t));
             charge.state                = atoi(&cmd[10]);
             if (charge.state) {
-                charge.vol              = atoi(&cmd[12]);
-                charge.cur              = atoi(&cmd[18]);
-                charge.cycle            = atoi(&cmd[24]);
-                charge.time_to_full     = atoi(&cmd[30]);
+                charge.time_to_full        = atoi(&cmd[12]);
+                // charge.vol              = atoi(&cmd[12]);
+                // charge.cur              = atoi(&cmd[18]);
+                // charge.cycle            = atoi(&cmd[24]);
+                // charge.time_to_full     = atoi(&cmd[30]);
             }
             send_msg_to_ble(TM_BLE_CHARGE, (uint8_t*)&charge, sizeof(charge_t));
         }
