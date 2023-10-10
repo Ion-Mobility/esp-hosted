@@ -49,7 +49,7 @@ typedef struct {
 
 static bool is_mqtt_service_initialized = false;
 
-#define DEFAULT_PACKET_TIMEOUT_s 15
+#define DEFAULT_PACKET_TIMEOUT_s 23
 
 #define FROM_SEC_TO_MSEC(sec_value) sec_value * 1000
 #define MQTT_CONNECT_REQUEST_SUCCESS_BIT BIT0

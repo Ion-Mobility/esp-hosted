@@ -42,7 +42,7 @@ static void at_handling_task(void* pvParameters);
 void init_at_cmd_app()
 {
     at_cmd_queue = xQueueCreate(3, sizeof(at_cmd_handling_req_t));
-    assert(xTaskCreate(at_handling_task , "at_handling_task" , 4096 , NULL , 22 , NULL) == pdTRUE);
+    assert(xTaskCreate(at_handling_task , "at_handling_task" , 4096 , NULL , 23 , NULL) == pdTRUE);
 	
 
 	if (mqtt_service_init() != MQTT_SERVICE_STATUS_OK)
