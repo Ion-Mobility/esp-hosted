@@ -371,16 +371,19 @@ static void station_event_handler(void *arg, esp_event_base_t event_base,
                       int32_t event_id, void *event_data)
 {
 	static bool does_esp32_wifi_has_ip = false;
-	ip_event_got_ip_t *event;
+	ip_event_got_ip_t *ip_event_data;
 	switch (event_id)
 	{
 		case IP_EVENT_STA_GOT_IP:
 			if (does_esp32_wifi_has_ip)
 				break;
 			does_esp32_wifi_has_ip = true;
-			event = (ip_event_got_ip_t *)event_data;
-    		ESP_LOGI(TAG, "Got IPv4 event: Interface \"%s\" address: " IPSTR, esp_netif_get_desc(event->esp_netif), IP2STR(&event->ip_info.ip));
-			send_event_to_host(CTRL_MSG_ID__Event_StationGotIP);
+			ip_event_data = (ip_event_got_ip_t *)event_data;
+    		ESP_LOGI(TAG, "Got IPv4 event: Interface \"%s\" address: " IPSTR,
+				esp_netif_get_desc(ip_event_data->esp_netif),
+				IP2STR(&ip_event_data->ip_info.ip));
+			send_event_data_to_host(CTRL_MSG_ID__Event_StationGotIP,
+				ip_event_data, sizeof(ip_event_got_ip_t));
 			break;
 		case WIFI_EVENT_STA_DISCONNECTED:
 			if (!does_esp32_wifi_has_ip)

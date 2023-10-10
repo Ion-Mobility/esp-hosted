@@ -2603,8 +2603,30 @@ err:
 static esp_err_t ctrl_ntfy_StationGotIP(CtrlMsg *ntfy,
 		const uint8_t *data, ssize_t len)
 {
-	ESP_LOGI(TAG, "%s: data: %x, len: %d\n", __func__, (uint32_t)data, len);
+	ip_event_got_ip_t *ip_event_data = (ip_event_got_ip_t *)data;
+	ESP_LOGI(TAG, "%s: ip: 0x%08X, netmask: 0x%08X, gw: 0x%08X, len: %d\n",
+		__func__,
+		ip_event_data->ip_info.ip.addr,
+		ip_event_data->ip_info.netmask.addr,
+		ip_event_data->ip_info.gw.addr,
+		len);
+	
+	CtrlMsgEventGotIP *ntfy_payload = (CtrlMsgEventGotIP*)
+		calloc(1,sizeof(CtrlMsgEventGotIP));
+	if (!ntfy_payload) {
+		ESP_LOGE(TAG,"Failed to allocate memory");
+		return ESP_ERR_NO_MEM;
+	}
+	ctrl_msg__event__got_ip__init(ntfy_payload);
+
 	ntfy->payload_case = CTRL_MSG__PAYLOAD_EVENT_STATION_GOT_IP;
+	ntfy->event_station_got_ip = ntfy_payload;
+	ntfy_payload->ipv4.data = (uint8_t*) &ip_event_data->ip_info.ip;
+	ntfy_payload->ipv4.len = sizeof(ip_event_data->ip_info.ip);
+	ntfy_payload->netmask.data = (uint8_t*) &ip_event_data->ip_info.netmask;
+	ntfy_payload->netmask.len = sizeof(ip_event_data->ip_info.netmask);
+	ntfy_payload->gw.data = (uint8_t*) &ip_event_data->ip_info.gw;
+	ntfy_payload->gw.len = sizeof(ip_event_data->ip_info.gw);
 	return ESP_OK;
 }
 
