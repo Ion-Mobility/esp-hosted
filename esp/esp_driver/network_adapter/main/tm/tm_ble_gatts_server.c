@@ -411,7 +411,6 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                     }
                 } else {
                     int msg_id;
-                    int len;
                     int little_id;
                     int little_len;
                     memset(tx_value, 0, sizeof(tx_value));
@@ -432,7 +431,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                         ((little_len<<24)&0xff000000); // byte 0 to byte 3
                         send_to_ble_queue(msg_id, &param->write.value[sizeof(int) + sizeof(int)], len);
                     }
-                    if( xSemaphoreTake( xBinarySemaphore, ( TickType_t ) (5000 / portTICK_PERIOD_MS) ) == pdTRUE ) {
+                    if( xSemaphoreTake( xBinarySemaphore, ( TickType_t ) (2000 / portTICK_PERIOD_MS) ) == pdTRUE ) {
                         if (tx_value_len > 0)
                             esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, ion_handle_table[IDX_CHAR_VAL_TX],
                                     tx_value_len, tx_value, false);
@@ -679,5 +678,5 @@ static void send_to_ble_queue(int msg_id, uint8_t *data, int len) {
 
 void tm_ble_gatts_kill_connection(void)
 {
-    // esp_ble_gatts_close(ion_profile_tab[PROFILE_APP_IDX].gatts_if, ion_profile_tab[PROFILE_APP_IDX].conn_id);
+    esp_ble_gatts_close(ion_profile_tab[PROFILE_APP_IDX].gatts_if, ion_profile_tab[PROFILE_APP_IDX].conn_id);
 }
