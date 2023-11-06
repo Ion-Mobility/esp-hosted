@@ -52,7 +52,6 @@ enum
 
 static uint8_t adv_config_done      = 0;
 static bool ready_to_advertise      = false;
-SemaphoreHandle_t xBinarySemaphore = NULL;
 
 uint16_t ion_handle_table[ION_IDX_NB];
 
@@ -431,12 +430,6 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                         ((little_len<<24)&0xff000000); // byte 0 to byte 3
                         send_to_ble_queue(msg_id, &param->write.value[sizeof(int) + sizeof(int)], len);
                     }
-                    if( xSemaphoreTake( xBinarySemaphore, ( TickType_t ) (2000 / portTICK_PERIOD_MS) ) == pdTRUE ) {
-                        if (tx_value_len > 0)
-                            esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, ion_handle_table[IDX_CHAR_VAL_TX],
-                                    tx_value_len, tx_value, false);
-                    }
-                    tx_value_len = 0;
                 }
                 /* send response when param->write.need_rsp is true*/
                 if (param->write.need_rsp){
@@ -597,7 +590,6 @@ void tm_ble_gatts_server_init(void)
         ESP_LOGE(GATTS_TABLE_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
 
-    xBinarySemaphore = xSemaphoreCreateBinary();
 }
 
 void ble_gatts_start_advertise(void)
@@ -611,10 +603,10 @@ void tm_ble_gatts_send_to_phone(uint8_t *data, int len)
     if (len > GATTS_ION_CHAR_VAL_LEN_MAX)
         return;
     
-    if (tx_value_len == -1) {
+    if (ion_profile_tab[PROFILE_APP_IDX].gatts_if != ESP_GATT_IF_NONE) {
         memcpy(tx_value, data, len);
-        tx_value_len = len;
-        xSemaphoreGive(xBinarySemaphore);
+        esp_ble_gatts_send_indicate(ion_profile_tab[PROFILE_APP_IDX].gatts_if, ion_profile_tab[PROFILE_APP_IDX].conn_id, ion_handle_table[IDX_CHAR_VAL_TX],
+            len, tx_value, false);
     }
 }
 
@@ -659,11 +651,9 @@ static void send_to_ble_queue(int msg_id, uint8_t *data, int len) {
             break;
         case PHONE_BLE_PING_BIKE:
             to_ble_msg.msg_id = PHONE_BLE_PING_BIKE;
-            xSemaphoreGive(xBinarySemaphore);
             break;
         case PHONE_BLE_OPEN_SEAT:
             to_ble_msg.msg_id = PHONE_BLE_OPEN_SEAT;
-            xSemaphoreGive(xBinarySemaphore);
             break;
         case PHONE_BLE_DIAG:
             to_ble_msg.msg_id = PHONE_BLE_DIAG;
