@@ -55,7 +55,9 @@ typedef struct CtrlMsgRespGetWifiCurrTxPower CtrlMsgRespGetWifiCurrTxPower;
 typedef struct CtrlMsgReqConfigHeartbeat CtrlMsgReqConfigHeartbeat;
 typedef struct CtrlMsgRespConfigHeartbeat CtrlMsgRespConfigHeartbeat;
 typedef struct CtrlMsgReqConfigSmartConnect CtrlMsgReqConfigSmartConnect;
+typedef struct CtrlMsgReqConfigAPScan CtrlMsgReqConfigAPScan;
 typedef struct CtrlMsgRespConfigSmartConnect CtrlMsgRespConfigSmartConnect;
+typedef struct CtrlMsgRespConfigAPScan CtrlMsgRespConfigAPScan;
 typedef struct CtrlMsgEventESPInit CtrlMsgEventESPInit;
 typedef struct CtrlMsgEventHeartbeat CtrlMsgEventHeartbeat;
 typedef struct CtrlMsgEventStationDisconnectFromAP CtrlMsgEventStationDisconnectFromAP;
@@ -63,6 +65,7 @@ typedef struct CtrlMsgEventStationDisconnectFromESPSoftAP CtrlMsgEventStationDis
 typedef struct CtrlMsgEventStationConnectFromESPTOUCH CtrlMsgEventStationConnectFromESPTOUCH;
 typedef struct CtrlMsgEventGotIP CtrlMsgEventGotIP;
 typedef struct CtrlMsgEventLostIP CtrlMsgEventLostIP;
+typedef struct CtrlMsgEventAPUpdate CtrlMsgEventAPUpdate;
 typedef struct CtrlMsg CtrlMsg;
 
 
@@ -111,7 +114,8 @@ typedef enum _CtrlWifiSecProt {
   CTRL__WIFI_SEC_PROT__WPA_WPA2_PSK = 4,
   CTRL__WIFI_SEC_PROT__WPA2_ENTERPRISE = 5,
   CTRL__WIFI_SEC_PROT__WPA3_PSK = 6,
-  CTRL__WIFI_SEC_PROT__WPA2_WPA3_PSK = 7
+  CTRL__WIFI_SEC_PROT__WPA2_WPA3_PSK = 7,
+  CTRL__WIFI_SEC_PROT__WAPI_PSK = 8
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(CTRL__WIFI_SEC_PROT)
 } CtrlWifiSecProt;
 /*
@@ -162,11 +166,12 @@ typedef enum _CtrlMsgId {
   CTRL_MSG_ID__Req_GetWifiCurrTxPower = 120,
   CTRL_MSG_ID__Req_ConfigHeartbeat = 121,
   CTRL_MSG_ID__Req_ConfigSmartConnect = 122,
+  CTRL_MSG_ID__Req_ConfigAPScan = 123,
   /*
    * Add new control path command response before Req_Max
    * and update Req_Max 
    */
-  CTRL_MSG_ID__Req_Max = 123,
+  CTRL_MSG_ID__Req_Max = 124,
   /*
    ** Response Msgs *
    */
@@ -193,11 +198,12 @@ typedef enum _CtrlMsgId {
   CTRL_MSG_ID__Resp_GetWifiCurrTxPower = 220,
   CTRL_MSG_ID__Resp_ConfigHeartbeat = 221,
   CTRL_MSG_ID__Resp_ConfigSmartConnect = 222,
+  CTRL_MSG_ID__Resp_ConfigAPScan = 223,
   /*
    * Add new control path command response before Resp_Max
    * and update Resp_Max 
    */
-  CTRL_MSG_ID__Resp_Max = 223,
+  CTRL_MSG_ID__Resp_Max = 224,
   /*
    ** Event Msgs *
    */
@@ -209,11 +215,12 @@ typedef enum _CtrlMsgId {
   CTRL_MSG_ID__Event_StationConnectFromESPTOUCH = 305,
   CTRL_MSG_ID__Event_StationGotIP = 306,
   CTRL_MSG_ID__Event_StationLostIP = 307,
+  CTRL_MSG_ID__Event_UpdateAP = 308,
   /*
    * Add new control path command notification before Event_Max
    * and update Event_Max 
    */
-  CTRL_MSG_ID__Event_Max = 308
+  CTRL_MSG_ID__Event_Max = 309
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(CTRL_MSG_ID)
 } CtrlMsgId;
 
@@ -664,6 +671,19 @@ struct  CtrlMsgReqConfigSmartConnect
     , 0, 0 }
 
 
+struct  CtrlMsgReqConfigAPScan
+{
+  ProtobufCMessage base;
+  protobuf_c_boolean enable;
+  int32_t scan_interval_ms;
+  int32_t update_interval_ms;
+  int32_t num_of_records_per_update;
+};
+#define CTRL_MSG__REQ__CONFIG_APSCAN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&ctrl_msg__req__config_apscan__descriptor) \
+    , 0, 0, 0, 0 }
+
+
 struct  CtrlMsgRespConfigSmartConnect
 {
   ProtobufCMessage base;
@@ -671,6 +691,16 @@ struct  CtrlMsgRespConfigSmartConnect
 };
 #define CTRL_MSG__RESP__CONFIG_SMART_CONNECT__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&ctrl_msg__resp__config_smart_connect__descriptor) \
+    , 0 }
+
+
+struct  CtrlMsgRespConfigAPScan
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define CTRL_MSG__RESP__CONFIG_APSCAN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&ctrl_msg__resp__config_apscan__descriptor) \
     , 0 }
 
 
@@ -751,6 +781,17 @@ struct  CtrlMsgEventLostIP
     , 0 }
 
 
+struct  CtrlMsgEventAPUpdate
+{
+  ProtobufCMessage base;
+  size_t n_entries;
+  ScanResult **entries;
+};
+#define CTRL_MSG__EVENT__APUPDATE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&ctrl_msg__event__apupdate__descriptor) \
+    , 0,NULL }
+
+
 typedef enum {
   CTRL_MSG__PAYLOAD__NOT_SET = 0,
   CTRL_MSG__PAYLOAD_REQ_GET_MAC_ADDRESS = 101,
@@ -775,6 +816,7 @@ typedef enum {
   CTRL_MSG__PAYLOAD_REQ_GET_WIFI_CURR_TX_POWER = 120,
   CTRL_MSG__PAYLOAD_REQ_CONFIG_HEARTBEAT = 121,
   CTRL_MSG__PAYLOAD_REQ_CONFIG_SMARTCONNECT = 122,
+  CTRL_MSG__PAYLOAD_REQ_CONFIG_AP_SCAN = 123,
   CTRL_MSG__PAYLOAD_RESP_GET_MAC_ADDRESS = 201,
   CTRL_MSG__PAYLOAD_RESP_SET_MAC_ADDRESS = 202,
   CTRL_MSG__PAYLOAD_RESP_GET_WIFI_MODE = 203,
@@ -797,13 +839,15 @@ typedef enum {
   CTRL_MSG__PAYLOAD_RESP_GET_WIFI_CURR_TX_POWER = 220,
   CTRL_MSG__PAYLOAD_RESP_CONFIG_HEARTBEAT = 221,
   CTRL_MSG__PAYLOAD_RESP_CONFIG_SMARTCONNECT = 222,
+  CTRL_MSG__PAYLOAD_RESP_CONFIG_APSCAN = 223,
   CTRL_MSG__PAYLOAD_EVENT_ESP_INIT = 301,
   CTRL_MSG__PAYLOAD_EVENT_HEARTBEAT = 302,
   CTRL_MSG__PAYLOAD_EVENT_STATION_DISCONNECT_FROM__AP = 303,
   CTRL_MSG__PAYLOAD_EVENT_STATION_DISCONNECT_FROM__ESP__SOFT_AP = 304,
   CTRL_MSG__PAYLOAD_EVENT_STATION_CONNECT_FROM__ESPTOUCH = 305,
   CTRL_MSG__PAYLOAD_EVENT_STATION_GOT_IP = 306,
-  CTRL_MSG__PAYLOAD_EVENT_STATION_LOST_IP = 307
+  CTRL_MSG__PAYLOAD_EVENT_STATION_LOST_IP = 307,
+  CTRL_MSG__PAYLOAD_EVENT_AP_UPDATE = 308
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(CTRL_MSG__PAYLOAD__CASE)
 } CtrlMsg__PayloadCase;
 
@@ -845,6 +889,7 @@ struct  CtrlMsg
     CtrlMsgReqGetWifiCurrTxPower *req_get_wifi_curr_tx_power;
     CtrlMsgReqConfigHeartbeat *req_config_heartbeat;
     CtrlMsgReqConfigSmartConnect *req_config_smartconnect;
+    CtrlMsgReqConfigAPScan *req_config_ap_scan;
     /*
      ** Responses *
      */
@@ -870,6 +915,7 @@ struct  CtrlMsg
     CtrlMsgRespGetWifiCurrTxPower *resp_get_wifi_curr_tx_power;
     CtrlMsgRespConfigHeartbeat *resp_config_heartbeat;
     CtrlMsgRespConfigSmartConnect *resp_config_smartconnect;
+    CtrlMsgRespConfigAPScan *resp_config_apscan;
     /*
      ** Notifications *
      */
@@ -880,6 +926,7 @@ struct  CtrlMsg
     CtrlMsgEventStationConnectFromESPTOUCH *event_station_connect_from_esptouch;
     CtrlMsgEventGotIP *event_station_got_ip;
     CtrlMsgEventLostIP *event_station_lost_ip;
+    CtrlMsgEventAPUpdate *event_ap_update;
   };
 };
 #define CTRL_MSG__INIT \
@@ -1647,6 +1694,25 @@ CtrlMsgReqConfigSmartConnect *
 void   ctrl_msg__req__config_smart_connect__free_unpacked
                      (CtrlMsgReqConfigSmartConnect *message,
                       ProtobufCAllocator *allocator);
+/* CtrlMsgReqConfigAPScan methods */
+void   ctrl_msg__req__config_apscan__init
+                     (CtrlMsgReqConfigAPScan         *message);
+size_t ctrl_msg__req__config_apscan__get_packed_size
+                     (const CtrlMsgReqConfigAPScan   *message);
+size_t ctrl_msg__req__config_apscan__pack
+                     (const CtrlMsgReqConfigAPScan   *message,
+                      uint8_t             *out);
+size_t ctrl_msg__req__config_apscan__pack_to_buffer
+                     (const CtrlMsgReqConfigAPScan   *message,
+                      ProtobufCBuffer     *buffer);
+CtrlMsgReqConfigAPScan *
+       ctrl_msg__req__config_apscan__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   ctrl_msg__req__config_apscan__free_unpacked
+                     (CtrlMsgReqConfigAPScan *message,
+                      ProtobufCAllocator *allocator);
 /* CtrlMsgRespConfigSmartConnect methods */
 void   ctrl_msg__resp__config_smart_connect__init
                      (CtrlMsgRespConfigSmartConnect         *message);
@@ -1665,6 +1731,25 @@ CtrlMsgRespConfigSmartConnect *
                       const uint8_t       *data);
 void   ctrl_msg__resp__config_smart_connect__free_unpacked
                      (CtrlMsgRespConfigSmartConnect *message,
+                      ProtobufCAllocator *allocator);
+/* CtrlMsgRespConfigAPScan methods */
+void   ctrl_msg__resp__config_apscan__init
+                     (CtrlMsgRespConfigAPScan         *message);
+size_t ctrl_msg__resp__config_apscan__get_packed_size
+                     (const CtrlMsgRespConfigAPScan   *message);
+size_t ctrl_msg__resp__config_apscan__pack
+                     (const CtrlMsgRespConfigAPScan   *message,
+                      uint8_t             *out);
+size_t ctrl_msg__resp__config_apscan__pack_to_buffer
+                     (const CtrlMsgRespConfigAPScan   *message,
+                      ProtobufCBuffer     *buffer);
+CtrlMsgRespConfigAPScan *
+       ctrl_msg__resp__config_apscan__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   ctrl_msg__resp__config_apscan__free_unpacked
+                     (CtrlMsgRespConfigAPScan *message,
                       ProtobufCAllocator *allocator);
 /* CtrlMsgEventESPInit methods */
 void   ctrl_msg__event__espinit__init
@@ -1798,6 +1883,25 @@ CtrlMsgEventLostIP *
                       const uint8_t       *data);
 void   ctrl_msg__event__lost_ip__free_unpacked
                      (CtrlMsgEventLostIP *message,
+                      ProtobufCAllocator *allocator);
+/* CtrlMsgEventAPUpdate methods */
+void   ctrl_msg__event__apupdate__init
+                     (CtrlMsgEventAPUpdate         *message);
+size_t ctrl_msg__event__apupdate__get_packed_size
+                     (const CtrlMsgEventAPUpdate   *message);
+size_t ctrl_msg__event__apupdate__pack
+                     (const CtrlMsgEventAPUpdate   *message,
+                      uint8_t             *out);
+size_t ctrl_msg__event__apupdate__pack_to_buffer
+                     (const CtrlMsgEventAPUpdate   *message,
+                      ProtobufCBuffer     *buffer);
+CtrlMsgEventAPUpdate *
+       ctrl_msg__event__apupdate__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   ctrl_msg__event__apupdate__free_unpacked
+                     (CtrlMsgEventAPUpdate *message,
                       ProtobufCAllocator *allocator);
 /* CtrlMsg methods */
 void   ctrl_msg__init
@@ -1940,8 +2044,14 @@ typedef void (*CtrlMsgRespConfigHeartbeat_Closure)
 typedef void (*CtrlMsgReqConfigSmartConnect_Closure)
                  (const CtrlMsgReqConfigSmartConnect *message,
                   void *closure_data);
+typedef void (*CtrlMsgReqConfigAPScan_Closure)
+                 (const CtrlMsgReqConfigAPScan *message,
+                  void *closure_data);
 typedef void (*CtrlMsgRespConfigSmartConnect_Closure)
                  (const CtrlMsgRespConfigSmartConnect *message,
+                  void *closure_data);
+typedef void (*CtrlMsgRespConfigAPScan_Closure)
+                 (const CtrlMsgRespConfigAPScan *message,
                   void *closure_data);
 typedef void (*CtrlMsgEventESPInit_Closure)
                  (const CtrlMsgEventESPInit *message,
@@ -1963,6 +2073,9 @@ typedef void (*CtrlMsgEventGotIP_Closure)
                   void *closure_data);
 typedef void (*CtrlMsgEventLostIP_Closure)
                  (const CtrlMsgEventLostIP *message,
+                  void *closure_data);
+typedef void (*CtrlMsgEventAPUpdate_Closure)
+                 (const CtrlMsgEventAPUpdate *message,
                   void *closure_data);
 typedef void (*CtrlMsg_Closure)
                  (const CtrlMsg *message,
@@ -2022,7 +2135,9 @@ extern const ProtobufCMessageDescriptor ctrl_msg__resp__get_wifi_curr_tx_power__
 extern const ProtobufCMessageDescriptor ctrl_msg__req__config_heartbeat__descriptor;
 extern const ProtobufCMessageDescriptor ctrl_msg__resp__config_heartbeat__descriptor;
 extern const ProtobufCMessageDescriptor ctrl_msg__req__config_smart_connect__descriptor;
+extern const ProtobufCMessageDescriptor ctrl_msg__req__config_apscan__descriptor;
 extern const ProtobufCMessageDescriptor ctrl_msg__resp__config_smart_connect__descriptor;
+extern const ProtobufCMessageDescriptor ctrl_msg__resp__config_apscan__descriptor;
 extern const ProtobufCMessageDescriptor ctrl_msg__event__espinit__descriptor;
 extern const ProtobufCMessageDescriptor ctrl_msg__event__heartbeat__descriptor;
 extern const ProtobufCMessageDescriptor ctrl_msg__event__station_disconnect_from_ap__descriptor;
@@ -2030,6 +2145,7 @@ extern const ProtobufCMessageDescriptor ctrl_msg__event__station_disconnect_from
 extern const ProtobufCMessageDescriptor ctrl_msg__event__station_connect_from_esptouch__descriptor;
 extern const ProtobufCMessageDescriptor ctrl_msg__event__got_ip__descriptor;
 extern const ProtobufCMessageDescriptor ctrl_msg__event__lost_ip__descriptor;
+extern const ProtobufCMessageDescriptor ctrl_msg__event__apupdate__descriptor;
 extern const ProtobufCMessageDescriptor ctrl_msg__descriptor;
 
 PROTOBUF_C__END_DECLS

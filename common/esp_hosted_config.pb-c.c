@@ -1807,6 +1807,51 @@ void   ctrl_msg__req__config_smart_connect__free_unpacked
   assert(message->base.descriptor == &ctrl_msg__req__config_smart_connect__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
+void   ctrl_msg__req__config_apscan__init
+                     (CtrlMsgReqConfigAPScan         *message)
+{
+  static const CtrlMsgReqConfigAPScan init_value = CTRL_MSG__REQ__CONFIG_APSCAN__INIT;
+  *message = init_value;
+}
+size_t ctrl_msg__req__config_apscan__get_packed_size
+                     (const CtrlMsgReqConfigAPScan *message)
+{
+  assert(message->base.descriptor == &ctrl_msg__req__config_apscan__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t ctrl_msg__req__config_apscan__pack
+                     (const CtrlMsgReqConfigAPScan *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &ctrl_msg__req__config_apscan__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t ctrl_msg__req__config_apscan__pack_to_buffer
+                     (const CtrlMsgReqConfigAPScan *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &ctrl_msg__req__config_apscan__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+CtrlMsgReqConfigAPScan *
+       ctrl_msg__req__config_apscan__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (CtrlMsgReqConfigAPScan *)
+     protobuf_c_message_unpack (&ctrl_msg__req__config_apscan__descriptor,
+                                allocator, len, data);
+}
+void   ctrl_msg__req__config_apscan__free_unpacked
+                     (CtrlMsgReqConfigAPScan *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &ctrl_msg__req__config_apscan__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
 void   ctrl_msg__resp__config_smart_connect__init
                      (CtrlMsgRespConfigSmartConnect         *message)
 {
@@ -1850,6 +1895,51 @@ void   ctrl_msg__resp__config_smart_connect__free_unpacked
   if(!message)
     return;
   assert(message->base.descriptor == &ctrl_msg__resp__config_smart_connect__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   ctrl_msg__resp__config_apscan__init
+                     (CtrlMsgRespConfigAPScan         *message)
+{
+  static const CtrlMsgRespConfigAPScan init_value = CTRL_MSG__RESP__CONFIG_APSCAN__INIT;
+  *message = init_value;
+}
+size_t ctrl_msg__resp__config_apscan__get_packed_size
+                     (const CtrlMsgRespConfigAPScan *message)
+{
+  assert(message->base.descriptor == &ctrl_msg__resp__config_apscan__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t ctrl_msg__resp__config_apscan__pack
+                     (const CtrlMsgRespConfigAPScan *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &ctrl_msg__resp__config_apscan__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t ctrl_msg__resp__config_apscan__pack_to_buffer
+                     (const CtrlMsgRespConfigAPScan *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &ctrl_msg__resp__config_apscan__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+CtrlMsgRespConfigAPScan *
+       ctrl_msg__resp__config_apscan__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (CtrlMsgRespConfigAPScan *)
+     protobuf_c_message_unpack (&ctrl_msg__resp__config_apscan__descriptor,
+                                allocator, len, data);
+}
+void   ctrl_msg__resp__config_apscan__free_unpacked
+                     (CtrlMsgRespConfigAPScan *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &ctrl_msg__resp__config_apscan__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   ctrl_msg__event__espinit__init
@@ -2165,6 +2255,51 @@ void   ctrl_msg__event__lost_ip__free_unpacked
   if(!message)
     return;
   assert(message->base.descriptor == &ctrl_msg__event__lost_ip__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   ctrl_msg__event__apupdate__init
+                     (CtrlMsgEventAPUpdate         *message)
+{
+  static const CtrlMsgEventAPUpdate init_value = CTRL_MSG__EVENT__APUPDATE__INIT;
+  *message = init_value;
+}
+size_t ctrl_msg__event__apupdate__get_packed_size
+                     (const CtrlMsgEventAPUpdate *message)
+{
+  assert(message->base.descriptor == &ctrl_msg__event__apupdate__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t ctrl_msg__event__apupdate__pack
+                     (const CtrlMsgEventAPUpdate *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &ctrl_msg__event__apupdate__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t ctrl_msg__event__apupdate__pack_to_buffer
+                     (const CtrlMsgEventAPUpdate *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &ctrl_msg__event__apupdate__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+CtrlMsgEventAPUpdate *
+       ctrl_msg__event__apupdate__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (CtrlMsgEventAPUpdate *)
+     protobuf_c_message_unpack (&ctrl_msg__event__apupdate__descriptor,
+                                allocator, len, data);
+}
+void   ctrl_msg__event__apupdate__free_unpacked
+                     (CtrlMsgEventAPUpdate *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &ctrl_msg__event__apupdate__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   ctrl_msg__init
@@ -4150,6 +4285,83 @@ const ProtobufCMessageDescriptor ctrl_msg__req__config_smart_connect__descriptor
   (ProtobufCMessageInit) ctrl_msg__req__config_smart_connect__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
+static const ProtobufCFieldDescriptor ctrl_msg__req__config_apscan__field_descriptors[4] =
+{
+  {
+    "enable",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BOOL,
+    0,   /* quantifier_offset */
+    offsetof(CtrlMsgReqConfigAPScan, enable),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "scan_interval_ms",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(CtrlMsgReqConfigAPScan, scan_interval_ms),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "update_interval_ms",
+    3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(CtrlMsgReqConfigAPScan, update_interval_ms),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "num_of_records_per_update",
+    4,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(CtrlMsgReqConfigAPScan, num_of_records_per_update),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned ctrl_msg__req__config_apscan__field_indices_by_name[] = {
+  0,   /* field[0] = enable */
+  3,   /* field[3] = num_of_records_per_update */
+  1,   /* field[1] = scan_interval_ms */
+  2,   /* field[2] = update_interval_ms */
+};
+static const ProtobufCIntRange ctrl_msg__req__config_apscan__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 4 }
+};
+const ProtobufCMessageDescriptor ctrl_msg__req__config_apscan__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "CtrlMsg_Req_ConfigAPScan",
+  "CtrlMsgReqConfigAPScan",
+  "CtrlMsgReqConfigAPScan",
+  "",
+  sizeof(CtrlMsgReqConfigAPScan),
+  4,
+  ctrl_msg__req__config_apscan__field_descriptors,
+  ctrl_msg__req__config_apscan__field_indices_by_name,
+  1,  ctrl_msg__req__config_apscan__number_ranges,
+  (ProtobufCMessageInit) ctrl_msg__req__config_apscan__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
 static const ProtobufCFieldDescriptor ctrl_msg__resp__config_smart_connect__field_descriptors[1] =
 {
   {
@@ -4186,6 +4398,44 @@ const ProtobufCMessageDescriptor ctrl_msg__resp__config_smart_connect__descripto
   ctrl_msg__resp__config_smart_connect__field_indices_by_name,
   1,  ctrl_msg__resp__config_smart_connect__number_ranges,
   (ProtobufCMessageInit) ctrl_msg__resp__config_smart_connect__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor ctrl_msg__resp__config_apscan__field_descriptors[1] =
+{
+  {
+    "resp",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(CtrlMsgRespConfigAPScan, resp),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned ctrl_msg__resp__config_apscan__field_indices_by_name[] = {
+  0,   /* field[0] = resp */
+};
+static const ProtobufCIntRange ctrl_msg__resp__config_apscan__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 1 }
+};
+const ProtobufCMessageDescriptor ctrl_msg__resp__config_apscan__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "CtrlMsg_Resp_ConfigAPScan",
+  "CtrlMsgRespConfigAPScan",
+  "CtrlMsgRespConfigAPScan",
+  "",
+  sizeof(CtrlMsgRespConfigAPScan),
+  1,
+  ctrl_msg__resp__config_apscan__field_descriptors,
+  ctrl_msg__resp__config_apscan__field_indices_by_name,
+  1,  ctrl_msg__resp__config_apscan__number_ranges,
+  (ProtobufCMessageInit) ctrl_msg__resp__config_apscan__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
 static const ProtobufCFieldDescriptor ctrl_msg__event__espinit__field_descriptors[1] =
@@ -4506,7 +4756,45 @@ const ProtobufCMessageDescriptor ctrl_msg__event__lost_ip__descriptor =
   (ProtobufCMessageInit) ctrl_msg__event__lost_ip__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor ctrl_msg__field_descriptors[53] =
+static const ProtobufCFieldDescriptor ctrl_msg__event__apupdate__field_descriptors[1] =
+{
+  {
+    "entries",
+    2,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(CtrlMsgEventAPUpdate, n_entries),
+    offsetof(CtrlMsgEventAPUpdate, entries),
+    &scan_result__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned ctrl_msg__event__apupdate__field_indices_by_name[] = {
+  0,   /* field[0] = entries */
+};
+static const ProtobufCIntRange ctrl_msg__event__apupdate__number_ranges[1 + 1] =
+{
+  { 2, 0 },
+  { 0, 1 }
+};
+const ProtobufCMessageDescriptor ctrl_msg__event__apupdate__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "CtrlMsg_Event_APUpdate",
+  "CtrlMsgEventAPUpdate",
+  "CtrlMsgEventAPUpdate",
+  "",
+  sizeof(CtrlMsgEventAPUpdate),
+  1,
+  ctrl_msg__event__apupdate__field_descriptors,
+  ctrl_msg__event__apupdate__field_indices_by_name,
+  1,  ctrl_msg__event__apupdate__number_ranges,
+  (ProtobufCMessageInit) ctrl_msg__event__apupdate__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor ctrl_msg__field_descriptors[56] =
 {
   {
     "msg_type",
@@ -4797,6 +5085,18 @@ static const ProtobufCFieldDescriptor ctrl_msg__field_descriptors[53] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
+    "req_config_ap_scan",
+    123,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(CtrlMsg, payload_case),
+    offsetof(CtrlMsg, req_config_ap_scan),
+    &ctrl_msg__req__config_apscan__descriptor,
+    NULL,
+    0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
     "resp_get_mac_address",
     201,
     PROTOBUF_C_LABEL_NONE,
@@ -5061,6 +5361,18 @@ static const ProtobufCFieldDescriptor ctrl_msg__field_descriptors[53] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
+    "resp_config_apscan",
+    223,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(CtrlMsg, payload_case),
+    offsetof(CtrlMsg, resp_config_apscan),
+    &ctrl_msg__resp__config_apscan__descriptor,
+    NULL,
+    0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
     "event_esp_init",
     301,
     PROTOBUF_C_LABEL_NONE,
@@ -5144,17 +5456,31 @@ static const ProtobufCFieldDescriptor ctrl_msg__field_descriptors[53] =
     0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "event_ap_update",
+    308,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(CtrlMsg, payload_case),
+    offsetof(CtrlMsg, event_ap_update),
+    &ctrl_msg__event__apupdate__descriptor,
+    NULL,
+    0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned ctrl_msg__field_indices_by_name[] = {
-  46,   /* field[46] = event_esp_init */
-  47,   /* field[47] = event_heartbeat */
-  50,   /* field[50] = event_station_connect_from_ESPTOUCH */
-  48,   /* field[48] = event_station_disconnect_from_AP */
-  49,   /* field[49] = event_station_disconnect_from_ESP_SoftAP */
-  51,   /* field[51] = event_station_got_ip */
-  52,   /* field[52] = event_station_lost_ip */
+  55,   /* field[55] = event_ap_update */
+  48,   /* field[48] = event_esp_init */
+  49,   /* field[49] = event_heartbeat */
+  52,   /* field[52] = event_station_connect_from_ESPTOUCH */
+  50,   /* field[50] = event_station_disconnect_from_AP */
+  51,   /* field[51] = event_station_disconnect_from_ESP_SoftAP */
+  53,   /* field[53] = event_station_got_ip */
+  54,   /* field[54] = event_station_lost_ip */
   1,   /* field[1] = msg_id */
   0,   /* field[0] = msg_type */
+  24,   /* field[24] = req_config_ap_scan */
   22,   /* field[22] = req_config_heartbeat */
   23,   /* field[23] = req_config_smartconnect */
   8,   /* field[8] = req_connect_ap */
@@ -5177,36 +5503,37 @@ static const unsigned ctrl_msg__field_indices_by_name[] = {
   13,   /* field[13] = req_softap_connected_stas_list */
   12,   /* field[12] = req_start_softap */
   14,   /* field[14] = req_stop_softap */
-  44,   /* field[44] = resp_config_heartbeat */
-  45,   /* field[45] = resp_config_smartconnect */
-  30,   /* field[30] = resp_connect_ap */
-  31,   /* field[31] = resp_disconnect_ap */
-  29,   /* field[29] = resp_get_ap_config */
-  24,   /* field[24] = resp_get_mac_address */
-  38,   /* field[38] = resp_get_power_save_mode */
-  32,   /* field[32] = resp_get_softap_config */
-  43,   /* field[43] = resp_get_wifi_curr_tx_power */
-  26,   /* field[26] = resp_get_wifi_mode */
-  39,   /* field[39] = resp_ota_begin */
-  41,   /* field[41] = resp_ota_end */
-  40,   /* field[40] = resp_ota_write */
-  28,   /* field[28] = resp_scan_ap_list */
-  25,   /* field[25] = resp_set_mac_address */
-  37,   /* field[37] = resp_set_power_save_mode */
-  33,   /* field[33] = resp_set_softap_vendor_specific_ie */
-  42,   /* field[42] = resp_set_wifi_max_tx_power */
-  27,   /* field[27] = resp_set_wifi_mode */
-  35,   /* field[35] = resp_softap_connected_stas_list */
-  34,   /* field[34] = resp_start_softap */
-  36,   /* field[36] = resp_stop_softap */
+  47,   /* field[47] = resp_config_apscan */
+  45,   /* field[45] = resp_config_heartbeat */
+  46,   /* field[46] = resp_config_smartconnect */
+  31,   /* field[31] = resp_connect_ap */
+  32,   /* field[32] = resp_disconnect_ap */
+  30,   /* field[30] = resp_get_ap_config */
+  25,   /* field[25] = resp_get_mac_address */
+  39,   /* field[39] = resp_get_power_save_mode */
+  33,   /* field[33] = resp_get_softap_config */
+  44,   /* field[44] = resp_get_wifi_curr_tx_power */
+  27,   /* field[27] = resp_get_wifi_mode */
+  40,   /* field[40] = resp_ota_begin */
+  42,   /* field[42] = resp_ota_end */
+  41,   /* field[41] = resp_ota_write */
+  29,   /* field[29] = resp_scan_ap_list */
+  26,   /* field[26] = resp_set_mac_address */
+  38,   /* field[38] = resp_set_power_save_mode */
+  34,   /* field[34] = resp_set_softap_vendor_specific_ie */
+  43,   /* field[43] = resp_set_wifi_max_tx_power */
+  28,   /* field[28] = resp_set_wifi_mode */
+  36,   /* field[36] = resp_softap_connected_stas_list */
+  35,   /* field[35] = resp_start_softap */
+  37,   /* field[37] = resp_stop_softap */
 };
 static const ProtobufCIntRange ctrl_msg__number_ranges[4 + 1] =
 {
   { 1, 0 },
   { 101, 2 },
-  { 201, 24 },
-  { 301, 46 },
-  { 0, 53 }
+  { 201, 25 },
+  { 301, 48 },
+  { 0, 56 }
 };
 const ProtobufCMessageDescriptor ctrl_msg__descriptor =
 {
@@ -5216,7 +5543,7 @@ const ProtobufCMessageDescriptor ctrl_msg__descriptor =
   "CtrlMsg",
   "",
   sizeof(CtrlMsg),
-  53,
+  56,
   ctrl_msg__field_descriptors,
   ctrl_msg__field_indices_by_name,
   4,  ctrl_msg__number_ranges,
@@ -5377,7 +5704,7 @@ const ProtobufCEnumDescriptor ctrl__wifi_power_save__descriptor =
   ctrl__wifi_power_save__value_ranges,
   NULL,NULL,NULL,NULL   /* reserved[1234] */
 };
-static const ProtobufCEnumValue ctrl__wifi_sec_prot__enum_values_by_number[8] =
+static const ProtobufCEnumValue ctrl__wifi_sec_prot__enum_values_by_number[9] =
 {
   { "Open", "CTRL__WIFI_SEC_PROT__Open", 0 },
   { "WEP", "CTRL__WIFI_SEC_PROT__WEP", 1 },
@@ -5387,13 +5714,15 @@ static const ProtobufCEnumValue ctrl__wifi_sec_prot__enum_values_by_number[8] =
   { "WPA2_ENTERPRISE", "CTRL__WIFI_SEC_PROT__WPA2_ENTERPRISE", 5 },
   { "WPA3_PSK", "CTRL__WIFI_SEC_PROT__WPA3_PSK", 6 },
   { "WPA2_WPA3_PSK", "CTRL__WIFI_SEC_PROT__WPA2_WPA3_PSK", 7 },
+  { "WAPI_PSK", "CTRL__WIFI_SEC_PROT__WAPI_PSK", 8 },
 };
 static const ProtobufCIntRange ctrl__wifi_sec_prot__value_ranges[] = {
-{0, 0},{0, 8}
+{0, 0},{0, 9}
 };
-static const ProtobufCEnumValueIndex ctrl__wifi_sec_prot__enum_values_by_name[8] =
+static const ProtobufCEnumValueIndex ctrl__wifi_sec_prot__enum_values_by_name[9] =
 {
   { "Open", 0 },
+  { "WAPI_PSK", 8 },
   { "WEP", 1 },
   { "WPA2_ENTERPRISE", 5 },
   { "WPA2_PSK", 3 },
@@ -5409,9 +5738,9 @@ const ProtobufCEnumDescriptor ctrl__wifi_sec_prot__descriptor =
   "Ctrl_WifiSecProt",
   "CtrlWifiSecProt",
   "",
-  8,
+  9,
   ctrl__wifi_sec_prot__enum_values_by_number,
-  8,
+  9,
   ctrl__wifi_sec_prot__enum_values_by_name,
   1,
   ctrl__wifi_sec_prot__value_ranges,
@@ -5487,7 +5816,7 @@ const ProtobufCEnumDescriptor ctrl_msg_type__descriptor =
   ctrl_msg_type__value_ranges,
   NULL,NULL,NULL,NULL   /* reserved[1234] */
 };
-static const ProtobufCEnumValue ctrl_msg_id__enum_values_by_number[58] =
+static const ProtobufCEnumValue ctrl_msg_id__enum_values_by_number[61] =
 {
   { "MsgId_Invalid", "CTRL_MSG_ID__MsgId_Invalid", 0 },
   { "Req_Base", "CTRL_MSG_ID__Req_Base", 100 },
@@ -5513,7 +5842,8 @@ static const ProtobufCEnumValue ctrl_msg_id__enum_values_by_number[58] =
   { "Req_GetWifiCurrTxPower", "CTRL_MSG_ID__Req_GetWifiCurrTxPower", 120 },
   { "Req_ConfigHeartbeat", "CTRL_MSG_ID__Req_ConfigHeartbeat", 121 },
   { "Req_ConfigSmartConnect", "CTRL_MSG_ID__Req_ConfigSmartConnect", 122 },
-  { "Req_Max", "CTRL_MSG_ID__Req_Max", 123 },
+  { "Req_ConfigAPScan", "CTRL_MSG_ID__Req_ConfigAPScan", 123 },
+  { "Req_Max", "CTRL_MSG_ID__Req_Max", 124 },
   { "Resp_Base", "CTRL_MSG_ID__Resp_Base", 200 },
   { "Resp_GetMACAddress", "CTRL_MSG_ID__Resp_GetMACAddress", 201 },
   { "Resp_SetMacAddress", "CTRL_MSG_ID__Resp_SetMacAddress", 202 },
@@ -5537,7 +5867,8 @@ static const ProtobufCEnumValue ctrl_msg_id__enum_values_by_number[58] =
   { "Resp_GetWifiCurrTxPower", "CTRL_MSG_ID__Resp_GetWifiCurrTxPower", 220 },
   { "Resp_ConfigHeartbeat", "CTRL_MSG_ID__Resp_ConfigHeartbeat", 221 },
   { "Resp_ConfigSmartConnect", "CTRL_MSG_ID__Resp_ConfigSmartConnect", 222 },
-  { "Resp_Max", "CTRL_MSG_ID__Resp_Max", 223 },
+  { "Resp_ConfigAPScan", "CTRL_MSG_ID__Resp_ConfigAPScan", 223 },
+  { "Resp_Max", "CTRL_MSG_ID__Resp_Max", 224 },
   { "Event_Base", "CTRL_MSG_ID__Event_Base", 300 },
   { "Event_ESPInit", "CTRL_MSG_ID__Event_ESPInit", 301 },
   { "Event_Heartbeat", "CTRL_MSG_ID__Event_Heartbeat", 302 },
@@ -5546,24 +5877,27 @@ static const ProtobufCEnumValue ctrl_msg_id__enum_values_by_number[58] =
   { "Event_StationConnectFromESPTOUCH", "CTRL_MSG_ID__Event_StationConnectFromESPTOUCH", 305 },
   { "Event_StationGotIP", "CTRL_MSG_ID__Event_StationGotIP", 306 },
   { "Event_StationLostIP", "CTRL_MSG_ID__Event_StationLostIP", 307 },
-  { "Event_Max", "CTRL_MSG_ID__Event_Max", 308 },
+  { "Event_UpdateAP", "CTRL_MSG_ID__Event_UpdateAP", 308 },
+  { "Event_Max", "CTRL_MSG_ID__Event_Max", 309 },
 };
 static const ProtobufCIntRange ctrl_msg_id__value_ranges[] = {
-{0, 0},{100, 1},{200, 25},{300, 49},{0, 58}
+{0, 0},{100, 1},{200, 26},{300, 51},{0, 61}
 };
-static const ProtobufCEnumValueIndex ctrl_msg_id__enum_values_by_name[58] =
+static const ProtobufCEnumValueIndex ctrl_msg_id__enum_values_by_name[61] =
 {
-  { "Event_Base", 49 },
-  { "Event_ESPInit", 50 },
-  { "Event_Heartbeat", 51 },
-  { "Event_Max", 57 },
-  { "Event_StationConnectFromESPTOUCH", 54 },
-  { "Event_StationDisconnectFromAP", 52 },
-  { "Event_StationDisconnectFromESPSoftAP", 53 },
-  { "Event_StationGotIP", 55 },
-  { "Event_StationLostIP", 56 },
+  { "Event_Base", 51 },
+  { "Event_ESPInit", 52 },
+  { "Event_Heartbeat", 53 },
+  { "Event_Max", 60 },
+  { "Event_StationConnectFromESPTOUCH", 56 },
+  { "Event_StationDisconnectFromAP", 54 },
+  { "Event_StationDisconnectFromESPSoftAP", 55 },
+  { "Event_StationGotIP", 57 },
+  { "Event_StationLostIP", 58 },
+  { "Event_UpdateAP", 59 },
   { "MsgId_Invalid", 0 },
   { "Req_Base", 1 },
+  { "Req_ConfigAPScan", 24 },
   { "Req_ConfigHeartbeat", 22 },
   { "Req_ConfigSmartConnect", 23 },
   { "Req_ConnectAP", 8 },
@@ -5576,7 +5910,7 @@ static const ProtobufCEnumValueIndex ctrl_msg_id__enum_values_by_name[58] =
   { "Req_GetSoftAPConnectedSTAList", 13 },
   { "Req_GetWifiCurrTxPower", 21 },
   { "Req_GetWifiMode", 4 },
-  { "Req_Max", 24 },
+  { "Req_Max", 25 },
   { "Req_OTABegin", 17 },
   { "Req_OTAEnd", 19 },
   { "Req_OTAWrite", 18 },
@@ -5587,30 +5921,31 @@ static const ProtobufCEnumValueIndex ctrl_msg_id__enum_values_by_name[58] =
   { "Req_SetWifiMode", 5 },
   { "Req_StartSoftAP", 12 },
   { "Req_StopSoftAP", 14 },
-  { "Resp_Base", 25 },
-  { "Resp_ConfigHeartbeat", 46 },
-  { "Resp_ConfigSmartConnect", 47 },
-  { "Resp_ConnectAP", 32 },
-  { "Resp_DisconnectAP", 33 },
-  { "Resp_GetAPConfig", 31 },
-  { "Resp_GetAPScanList", 30 },
-  { "Resp_GetMACAddress", 26 },
-  { "Resp_GetPowerSaveMode", 40 },
-  { "Resp_GetSoftAPConfig", 34 },
-  { "Resp_GetSoftAPConnectedSTAList", 37 },
-  { "Resp_GetWifiCurrTxPower", 45 },
-  { "Resp_GetWifiMode", 28 },
-  { "Resp_Max", 48 },
-  { "Resp_OTABegin", 41 },
-  { "Resp_OTAEnd", 43 },
-  { "Resp_OTAWrite", 42 },
-  { "Resp_SetMacAddress", 27 },
-  { "Resp_SetPowerSaveMode", 39 },
-  { "Resp_SetSoftAPVendorSpecificIE", 35 },
-  { "Resp_SetWifiMaxTxPower", 44 },
-  { "Resp_SetWifiMode", 29 },
-  { "Resp_StartSoftAP", 36 },
-  { "Resp_StopSoftAP", 38 },
+  { "Resp_Base", 26 },
+  { "Resp_ConfigAPScan", 49 },
+  { "Resp_ConfigHeartbeat", 47 },
+  { "Resp_ConfigSmartConnect", 48 },
+  { "Resp_ConnectAP", 33 },
+  { "Resp_DisconnectAP", 34 },
+  { "Resp_GetAPConfig", 32 },
+  { "Resp_GetAPScanList", 31 },
+  { "Resp_GetMACAddress", 27 },
+  { "Resp_GetPowerSaveMode", 41 },
+  { "Resp_GetSoftAPConfig", 35 },
+  { "Resp_GetSoftAPConnectedSTAList", 38 },
+  { "Resp_GetWifiCurrTxPower", 46 },
+  { "Resp_GetWifiMode", 29 },
+  { "Resp_Max", 50 },
+  { "Resp_OTABegin", 42 },
+  { "Resp_OTAEnd", 44 },
+  { "Resp_OTAWrite", 43 },
+  { "Resp_SetMacAddress", 28 },
+  { "Resp_SetPowerSaveMode", 40 },
+  { "Resp_SetSoftAPVendorSpecificIE", 36 },
+  { "Resp_SetWifiMaxTxPower", 45 },
+  { "Resp_SetWifiMode", 30 },
+  { "Resp_StartSoftAP", 37 },
+  { "Resp_StopSoftAP", 39 },
 };
 const ProtobufCEnumDescriptor ctrl_msg_id__descriptor =
 {
@@ -5619,9 +5954,9 @@ const ProtobufCEnumDescriptor ctrl_msg_id__descriptor =
   "CtrlMsgId",
   "CtrlMsgId",
   "",
-  58,
+  61,
   ctrl_msg_id__enum_values_by_number,
-  58,
+  61,
   ctrl_msg_id__enum_values_by_name,
   4,
   ctrl_msg_id__value_ranges,

@@ -5,6 +5,7 @@ set(COMPONENT_SRCS
     "app_main.c"
     "slave_bt.c"
     "mempool.c"
+    "event_service/ap_auto_scanner.c"
 )
 set(COMPONENT_ADD_INCLUDEDIRS "." "../../../../common/include")
 

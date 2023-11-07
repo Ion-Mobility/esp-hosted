@@ -42,6 +42,7 @@ enum Ctrl_WifiSecProt {
     WPA2_ENTERPRISE = 5;
     WPA3_PSK = 6;
     WPA2_WPA3_PSK = 7;
+    WAPI_PSK = 8;
 }
 
 /* enums for Control path */
@@ -97,9 +98,10 @@ enum CtrlMsgId {
 
     Req_ConfigHeartbeat = 121;
     Req_ConfigSmartConnect = 122;
+    Req_ConfigAPScan = 123;
     /* Add new control path command response before Req_Max
      * and update Req_Max */
-    Req_Max = 123;
+    Req_Max = 124;
 
     /** Response Msgs **/
     Resp_Base = 200;
@@ -132,9 +134,10 @@ enum CtrlMsgId {
 
     Resp_ConfigHeartbeat = 221;
     Resp_ConfigSmartConnect = 222;
+    Resp_ConfigAPScan = 223;
     /* Add new control path command response before Resp_Max
      * and update Resp_Max */
-    Resp_Max = 223;
+    Resp_Max = 224;
 
     /** Event Msgs **/
     Event_Base = 300;
@@ -145,9 +148,10 @@ enum CtrlMsgId {
     Event_StationConnectFromESPTOUCH = 305;
     Event_StationGotIP = 306;
     Event_StationLostIP = 307;
+    Event_UpdateAP = 308;
     /* Add new control path command notification before Event_Max
      * and update Event_Max */
-    Event_Max = 308;
+    Event_Max = 309;
 }
 
 /* internal supporting structures for CtrlMsg */
@@ -307,7 +311,7 @@ message CtrlMsg_Req_VendorIEData {
     int32 length = 2;
     bytes vendor_oui = 3;
     int32 vendor_oui_type = 4;
-    bytes payload = 5; 
+    bytes payload = 5;
 }
 
 message CtrlMsg_Req_SetSoftAPVendorSpecificIE {
@@ -351,7 +355,18 @@ message CtrlMsg_Req_ConfigSmartConnect {
     int32 type = 2;
 }
 
+message CtrlMsg_Req_ConfigAPScan {
+    bool enable = 1;
+    int32 scan_interval_ms = 2;
+    int32 update_interval_ms = 3;
+    int32 num_of_records_per_update = 4;
+}
+
 message CtrlMsg_Resp_ConfigSmartConnect {
+    int32 resp = 1;
+}
+
+message CtrlMsg_Resp_ConfigAPScan {
     int32 resp = 1;
 }
 
@@ -386,6 +401,10 @@ message CtrlMsg_Event_GotIP {
 
 message CtrlMsg_Event_LostIP {
     int32 resp = 1;
+}
+
+message CtrlMsg_Event_APUpdate {
+    repeated ScanResult entries = 2;
 }
 
 message CtrlMsg {
@@ -425,6 +444,7 @@ message CtrlMsg {
         CtrlMsg_Req_GetWifiCurrTxPower req_get_wifi_curr_tx_power = 120;
         CtrlMsg_Req_ConfigHeartbeat req_config_heartbeat = 121;
         CtrlMsg_Req_ConfigSmartConnect req_config_smartconnect = 122;
+        CtrlMsg_Req_ConfigAPScan req_config_ap_scan = 123;
 
         /** Responses **/
         CtrlMsg_Resp_GetMacAddress resp_get_mac_address = 201;
@@ -453,6 +473,7 @@ message CtrlMsg {
         CtrlMsg_Resp_GetWifiCurrTxPower resp_get_wifi_curr_tx_power = 220;
         CtrlMsg_Resp_ConfigHeartbeat resp_config_heartbeat = 221;
         CtrlMsg_Resp_ConfigSmartConnect resp_config_smartconnect = 222;
+        CtrlMsg_Resp_ConfigAPScan resp_config_apscan = 223;
 
         /** Notifications **/
         CtrlMsg_Event_ESPInit event_esp_init = 301;
@@ -462,5 +483,6 @@ message CtrlMsg {
         CtrlMsg_Event_StationConnectFromESPTOUCH event_station_connect_from_ESPTOUCH = 305;
         CtrlMsg_Event_GotIP event_station_got_ip = 306;
         CtrlMsg_Event_LostIP event_station_lost_ip = 307;
+        CtrlMsg_Event_APUpdate event_ap_update = 308;
     }
 }

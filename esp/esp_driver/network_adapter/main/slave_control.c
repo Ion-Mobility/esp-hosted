@@ -23,6 +23,7 @@
 #include "slave_control.h"
 #include "esp_hosted_config.pb-c.h"
 #include "esp_ota_ops.h"
+#include "event_service/ap_auto_scanner.h"
 
 #define MAC_STR_LEN                 17
 #define MAC2STR(a)                  (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
@@ -126,6 +127,7 @@ static bool scan_done = false;
 static esp_ota_handle_t handle;
 const esp_partition_t* update_partition = NULL;
 static int ota_msg = 0;
+static ap_auto_scanner_handle_t s_scanner = NULL;
 
 static void station_event_handler(void* arg, esp_event_base_t event_base,
 		int32_t event_id, void* event_data);
@@ -358,6 +360,12 @@ static void ap_scan_list_event_handler(void *arg, esp_event_base_t event_base,
 	if ((event_base == WIFI_EVENT) && (event_id == WIFI_EVENT_SCAN_DONE)) {
 		scan_done = true;
 	}
+}
+
+static void update_scan_result_callback(const scan_result_t *result,
+    void *param)
+{
+	send_event_data_to_host(CTRL_MSG_ID__Event_UpdateAP, result, sizeof(scan_result_t));
 }
 
 /* register station connect/disconnect events */
@@ -2113,6 +2121,40 @@ err:
 	resp_payload->resp = FAILURE;
 	return ESP_OK;
 }
+
+/* Function to config AP scan */
+static esp_err_t req_config_ap_scan(CtrlMsg *req,
+		CtrlMsg *resp, void *priv_data)
+{
+	esp_err_t ret = ESP_OK;
+	CtrlMsgRespConfigAPScan *resp_payload = (CtrlMsgRespConfigAPScan*)
+		calloc(1,sizeof(CtrlMsgRespConfigAPScan));
+	if (NULL == resp_payload) {
+		goto err;
+	}
+	if (NULL == s_scanner) {
+		s_scanner = ap_auto_scanner_new();
+	}
+	resp->payload_case = CTRL_MSG__PAYLOAD_RESP_CONFIG_APSCAN;
+	resp->resp_config_apscan = resp_payload;
+	ctrl_msg__resp__config_apscan__init(resp_payload);
+	if (req->req_config_ap_scan->enable) {
+		ap_auto_scanner_config_t config = {
+			.scan_interval_ms = req->req_config_ap_scan->scan_interval_ms,
+			.update_interval_ms = req->req_config_ap_scan->update_interval_ms,
+			.num_of_records_per_update = req->req_config_ap_scan->num_of_records_per_update
+		};
+		ap_auto_scanner_start(s_scanner, &config, update_scan_result_callback, NULL);
+	} else {
+		ap_auto_scanner_stop(s_scanner);
+	}
+	resp_payload->resp = SUCCESS;
+	return ESP_OK;
+err:
+	resp_payload->resp = FAILURE;
+	return ESP_OK;
+}
+
 /* Function to config heartbeat */
 // static esp_err_t req_config_smartconnect(CtrlMsg *req,
 // 		CtrlMsg *resp, void *priv_data)
@@ -2233,6 +2275,10 @@ static esp_ctrl_msg_req_t req_table[] = {
 	{
 		.req_num = CTRL_MSG_ID__Req_ConfigHeartbeat,
 		.command_handler = req_config_heartbeat
+	},
+	{
+		.req_num = CTRL_MSG_ID__Req_ConfigAPScan,
+		.command_handler = req_config_ap_scan
 	},
 	// {
 	// 	.req_num = CTRL_MSG_ID__Req_ConfigSmartConnect,
@@ -2387,6 +2433,9 @@ static void esp_ctrl_msg_cleanup(CtrlMsg *resp)
 			mem_free(resp->resp_get_wifi_curr_tx_power);
 			break;
 		} case (CTRL_MSG_ID__Resp_ConfigHeartbeat) : {
+			mem_free(resp->resp_config_apscan);
+			break;
+		} case (CTRL_MSG_ID__Resp_ConfigAPScan) : {
 			mem_free(resp->resp_config_heartbeat);
 			break;
 		// } case (CTRL_MSG_ID__Resp_ConfigSmartConnect) : {
@@ -2409,6 +2458,25 @@ static void esp_ctrl_msg_cleanup(CtrlMsg *resp)
 			break;
 		} case (CTRL_MSG_ID__Event_StationGotIP) :
 		  case (CTRL_MSG_ID__Event_StationLostIP) :  {
+			break;
+		} case (CTRL_MSG_ID__Event_UpdateAP) :  {
+			if (resp->event_ap_update) {
+				if (resp->event_ap_update->entries) {
+					for (int i=0 ; i<resp->event_ap_update->n_entries; i++) {
+						if (resp->event_ap_update->entries[i]) {
+							if (resp->event_ap_update->entries[i]->ssid.data) {
+								mem_free(resp->event_ap_update->entries[i]->ssid.data);
+							}
+							if (resp->event_ap_update->entries[i]->bssid.data) {
+								mem_free(resp->event_ap_update->entries[i]->bssid.data);
+							}
+							mem_free(resp->event_ap_update->entries[i]);
+						}
+				   }
+					mem_free(resp->event_ap_update->entries);
+				}
+				mem_free(resp->event_ap_update);
+			}
 			break;
 		} default: {
 			ESP_LOGE(TAG, "Unsupported CtrlMsg type[%u]",resp->msg_id);
@@ -2631,6 +2699,82 @@ static esp_err_t ctrl_ntfy_StationGotIP(CtrlMsg *ntfy,
 	return ESP_OK;
 }
 
+static esp_err_t ctrl_ntfy_UpdateScanAP(CtrlMsg *ntfy,
+		const uint8_t *data, ssize_t len)
+{
+	ESP_LOGI(TAG, "%s: data: %x, len: %d\n", __func__, (uint32_t)data, len);
+	CtrlMsgEventAPUpdate *ntfy_payload = (CtrlMsgEventAPUpdate*)
+		calloc(1, sizeof(CtrlMsgEventAPUpdate));
+	ctrl_msg__event__apupdate__init(ntfy_payload);
+	scan_result_t *scan_result = (scan_result_t *) data;
+
+	ntfy->payload_case = CTRL_MSG__PAYLOAD_EVENT_AP_UPDATE;
+	ntfy->event_ap_update = ntfy_payload;
+	ESP_LOGI(TAG, "New notification about AP Scan, count %d", scan_result->count);
+	ScanResult **pld_results = (ScanResult **)
+		calloc(scan_result->count, sizeof(ScanResult*));
+	if (NULL == pld_results)
+	{
+		ESP_LOGE(TAG, "Allocate memory for payload for FAILED");
+		goto err; 
+	}
+	ESP_LOGD(TAG, "Allocate memory for payload for SUCCESS");
+	ntfy_payload->entries = pld_results;
+	ntfy_payload->n_entries = scan_result->count;
+	for (int i = 0; i < scan_result->count; i++ ) {
+
+		pld_results[i] = (ScanResult *)calloc(1, sizeof(ScanResult));
+		if (!pld_results[i]) {
+			ESP_LOGE(TAG,"Allocate memory for scan result FAILED");
+			goto err;
+		}
+		ESP_LOGD(TAG, "Allocate memory for scan result SUCCESS");
+		scan_result__init(pld_results[i]);
+
+		// SSID
+		pld_results[i]->ssid.data = (uint8_t *)strndup((char *)scan_result->records[i].ssid,
+				SSID_LENGTH);
+		pld_results[i]->ssid.len = strnlen((char *)scan_result->records[i].ssid, SSID_LENGTH);
+
+		if (!pld_results[i]->ssid.data) {
+			ESP_LOGE(TAG,"Process scan result entry SSID FAILED");
+			mem_free(pld_results[i]);
+			goto err;
+		}
+		ESP_LOGD(TAG, "Process scan result entry SSID SUCCESS");
+
+		// BSSID
+		pld_results[i]->bssid.data = calloc(1, MAC_LEN);
+		if (!pld_results[i]->bssid.data) {
+			ESP_LOGE(TAG, "Allocate memory for BSSID field FAILED");
+			mem_free(pld_results[i]);
+			// goto err;
+		}
+		memcpy(pld_results[i]->bssid.data, scan_result->records[i].bssid, MAC_LEN);
+		pld_results[i]->bssid.len = MAC_LEN;
+		ESP_LOGD(TAG, "Process scan result entry BSSID SUCCESS");
+
+		// Channel
+		pld_results[i]->chnl = scan_result->records[i].primary;
+
+		// RSSI
+		pld_results[i]->rssi = scan_result->records[i].rssi;
+
+		// Encryption
+		pld_results[i]->sec_prot = scan_result->records[i].authmode;
+		vTaskDelay(1);
+		ESP_LOGI(TAG,"\nSend notification of entry: \nSSID      \t\t%s\nRSSI      \t\t%d\nChannel   \t\t%d\nBSSID     \t\t" MACSTR "\nAuth mode \t\t%d\n",
+				pld_results[i]->ssid.data, pld_results[i]->rssi, pld_results[i]->chnl,
+				MAC2STR(pld_results[i]->bssid.data), pld_results[i]->sec_prot);
+	}
+	ap_auto_scanner_notify_done_process_scan_result(s_scanner);
+	return ESP_OK;
+err:
+	ap_auto_scanner_notify_done_process_scan_result(s_scanner);
+	ESP_LOGE(TAG, "Fail the send notification!");
+	return ESP_FAIL;
+}
+
 static esp_err_t ctrl_ntfy_StationLostIP(CtrlMsg *ntfy,
 		const uint8_t *data, ssize_t len)
 {
@@ -2678,6 +2822,10 @@ esp_err_t ctrl_notify_handler(uint32_t session_id,const uint8_t *inbuf,
 		} case CTRL_MSG_ID__Event_StationLostIP: {
 			ESP_LOGI(TAG, "CTRL_MSG_ID__Event_StationLostIP\n");
 			ret = ctrl_ntfy_StationLostIP(&ntfy, inbuf, inlen);
+			break;
+		} case CTRL_MSG_ID__Event_UpdateAP: {
+			ESP_LOGI(TAG, "CTRL_MSG_ID__Event_UpdateAP\n");
+			ret = ctrl_ntfy_UpdateScanAP(&ntfy, inbuf, inlen);
 			break;
 		} default: {
 			ESP_LOGE(TAG, "Incorrect/unsupported Ctrl Notification[%u]\n",ntfy.msg_id);
