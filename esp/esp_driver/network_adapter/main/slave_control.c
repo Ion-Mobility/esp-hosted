@@ -657,16 +657,23 @@ static esp_err_t req_connect_ap_handler (CtrlMsg *req,
 		station_connected = false;
 	}
 
-	if (softap_started) {
-		ret = esp_wifi_set_mode(WIFI_MODE_APSTA);
-		ESP_LOGI(TAG,"softap+station mode set");
-	} else {
-		ret = esp_wifi_set_mode(WIFI_MODE_STA);
-		ESP_LOGI(TAG,"station mode set");
-	}
+	wifi_mode_t mode;
+	ret = esp_wifi_get_mode(&mode);
 	if (ret) {
-		ESP_LOGE(TAG,"Failed to set mode");
+		ESP_LOGE(TAG,"Failed to get mode");
 		goto err;
+	}
+
+	switch (mode)
+	{
+	case WIFI_MODE_NULL:
+		ESP_LOGE(TAG,"WiFi mode is not set!");
+		goto err;
+	case WIFI_MODE_AP:
+		ESP_LOGE(TAG,"Cannot connect to AP because WiFi is in softAP mode!");
+		goto err;
+	default:
+		break;
 	}
 
 	wifi_cfg = (wifi_config_t *)calloc(1,sizeof(wifi_config_t));
@@ -1114,16 +1121,23 @@ static esp_err_t req_start_softap_handler (CtrlMsg *req,
 		goto err;
 	}
 
-	if (station_connected) {
-		ret = esp_wifi_set_mode(WIFI_MODE_APSTA);
-		ESP_LOGI(TAG,"station+softap mode set");
-	} else {
-		ret = esp_wifi_set_mode(WIFI_MODE_AP);
-		ESP_LOGI(TAG,"softap mode set");
-	}
+	wifi_mode_t mode;
+	ret = esp_wifi_get_mode(&mode);
 	if (ret) {
-		ESP_LOGE(TAG,"Failed to set mode");
+		ESP_LOGE(TAG,"Failed to get mode");
 		goto err;
+	}
+
+	switch (mode)
+	{
+	case WIFI_MODE_NULL:
+		ESP_LOGE(TAG,"WiFi mode is not set!");
+		goto err;
+	case WIFI_MODE_STA:
+		ESP_LOGE(TAG,"Cannot start soft AP because WiFi is in station mode!");
+		goto err;
+	default:
+		break;
 	}
 
 	wifi_config->ap.authmode = req->req_start_softap->sec_prot;
@@ -1247,13 +1261,16 @@ static esp_err_t req_get_ap_scan_list_handler (CtrlMsg *req,
 		goto err;
 	}
 
-	if ((softap_started) &&
-	    ((mode != WIFI_MODE_STA) && (mode != WIFI_MODE_NULL))) {
-		ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
-		ESP_LOGI(TAG,"softap+station mode set in scan handler");
-	} else {
-		ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-		ESP_LOGI(TAG,"Station mode set in scan handler");
+	switch (mode)
+	{
+	case WIFI_MODE_NULL:
+		ESP_LOGE(TAG,"WiFi mode is not set!");
+		goto err;
+	case WIFI_MODE_AP:
+		ESP_LOGE(TAG,"Cannot scan AP because WiFi is in softAP mode!");
+		goto err;
+	default:
+		break;
 	}
 
 	ret = esp_wifi_scan_start(&scanConf, true);
@@ -1391,22 +1408,6 @@ static esp_err_t req_stop_softap_handler (CtrlMsg *req,
 
 	if (!softap_started) {
 		ESP_LOGI(TAG,"ESP32 softap is not started");
-		goto err;
-	}
-
-	ret = esp_wifi_get_mode(&mode);
-	if (ret) {
-		ESP_LOGE(TAG, "Failed to get wifi mode %d", ret);
-		goto err;
-	}
-
-	if (mode == WIFI_MODE_AP) {
-		ret = esp_wifi_set_mode(WIFI_MODE_NULL);
-	} else if (mode == WIFI_MODE_APSTA) {
-		ret = esp_wifi_set_mode(WIFI_MODE_STA);
-	}
-	if (ret) {
-		ESP_LOGE(TAG,"Failed to stop ESP softap");
 		goto err;
 	}
 
