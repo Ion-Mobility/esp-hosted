@@ -6,9 +6,6 @@
 
 typedef struct {
     bool state;
-    // uint16_t vol;    //mV
-    // uint16_t cur;    //mA
-    // uint16_t cycle;
     uint16_t time_to_full;
 } charge_t;
 

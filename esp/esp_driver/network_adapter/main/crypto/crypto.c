@@ -17,6 +17,8 @@
 #define PAIRING_RESPONSE_LEN    (64)
 #define MSG_AUTHN_CODE_LEN      (16)
 #define MAX_PAIRED_PHONE        (3)
+#define MES_AUTHEN_CODE_LEN     (16)    // Message Authentication Code
+#define NONCE_LEN               (24)    // Use only once per key
 
 #define STORAGE_NAMESPACE       "ble_keys"
 
@@ -98,30 +100,12 @@ typedef struct {
     session_request_content_t contents;
 } session_request_t;
 
-// message lock
-typedef struct {
-    uint8_t *mac;
-    uint8_t *plaintext;
-    size_t  plaintext_len;
-    uint8_t *ciphertext;
-    size_t  *ciphertext_len;
-} msg_lock_t;
-
-// message unlock
-typedef struct {
-    uint8_t *mac;
-    uint8_t *plaintext;
-    size_t  *plaintext_len;
-    uint8_t *ciphertext;
-    size_t  ciphertext_len;
-} msg_unlock_t;
-
 static void xed25519_sign(uint8_t signature[SIGNATURE_LEN], uint8_t secret_key[KEY_LEN], uint8_t *message, size_t message_size);
 static int xed25519_verify(uint8_t signature[SIGNATURE_LEN], uint8_t public_key[KEY_LEN], uint8_t *message, size_t message_size);
 static void random_generator(uint8_t *out, size_t len);
 static uint8_t update_paired_phone_table(pair_request_t *pair_request);
-static void message_lock(msg_lock_t *msg_lock);
-static void message_unlock(msg_unlock_t *msg_unlock);
+static void message_lock(uint8_t *ciphertext, size_t *res_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *plaintext, size_t plaintext_len);
+static void message_unlock(uint8_t *plaintext, size_t *plaintext_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *ciphertext, size_t ciphertext_len);
 static int pair(pair_request_t *pair_request, pair_response_t *pair_response);
 static int session(session_request_t *session_request, session_response_t *session_response);
 static void cleanup_paired_storage(nvs_handle_t *my_handle);
@@ -315,51 +299,47 @@ static void cleanup_paired_storage(nvs_handle_t *my_handle) {
     nvs_commit(*my_handle);
 }
 
-static void message_lock(msg_lock_t *msg_lock)
+static void message_lock(uint8_t *ciphertext, size_t *res_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *plaintext, size_t plaintext_len)
 {
-    crypto_aead_lock(msg_lock->ciphertext, msg_lock->mac,
-                bike.paired_phone[bike.cur_paired_phone_idx].derived_key,
-                bike.paired_phone[bike.cur_paired_phone_idx].session_id,
-                NULL, 0,
-                msg_lock->plaintext, msg_lock->plaintext_len);
-    *(msg_lock->ciphertext_len) = msg_lock->plaintext_len;
+    crypto_aead_lock(ciphertext, mac,                                                                                                           //cipher_text, mac,
+                     bike.paired_phone[bike.cur_paired_phone_idx].derived_key, nonce,                                                           //key, nonce
+                     bike.paired_phone[bike.cur_paired_phone_idx].session_id, sizeof(bike.paired_phone[bike.cur_paired_phone_idx].session_id),  //ad, ad_size
+                     plaintext, plaintext_len);                                                                                                 //plain_text, sizeof(plain_text)
+
+    *res_len = MES_AUTHEN_CODE_LEN + NONCE_LEN + plaintext_len;
 }
 
-static void message_unlock(msg_unlock_t *msg_unlock)
+static void message_unlock(uint8_t *plaintext, size_t *plaintext_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *ciphertext, size_t ciphertext_len)
 {
-    if (crypto_aead_unlock(msg_unlock->plaintext, msg_unlock->mac,
-                        bike.paired_phone[bike.cur_paired_phone_idx].derived_key,
-                        bike.paired_phone[bike.cur_paired_phone_idx].session_id,
-                        NULL, 0,
-                        msg_unlock->ciphertext, msg_unlock->ciphertext_len)) {
+    if (crypto_aead_unlock(plaintext, mac,                                                                                                              //plain_text, mac,
+                           bike.paired_phone[bike.cur_paired_phone_idx].derived_key, nonce,                                                             //key, nonce
+                           bike.paired_phone[bike.cur_paired_phone_idx].session_id, sizeof(bike.paired_phone[bike.cur_paired_phone_idx].session_id),    //ad, ad_size
+                           ciphertext, ciphertext_len))                                                                                                 //cipher_text, sizeof(cipher_text)
+    {
         ESP_LOGE(CRYPTO_TAG, "The message is corrupted");
     } else {
         ESP_LOGI(CRYPTO_TAG, "decrypted mes: ");
-        *(msg_unlock->plaintext_len) = msg_unlock->ciphertext_len;
-        ESP_LOG_BUFFER_CHAR(CRYPTO_TAG, msg_unlock->plaintext, *(msg_unlock->plaintext_len));
+        *plaintext_len = ciphertext_len;
+        ESP_LOG_BUFFER_CHAR(CRYPTO_TAG, plaintext, *plaintext_len);
     }
 }
 
-void message_encrypt(uint8_t *ciphertext, size_t *ciphertext_len, uint8_t *mac, uint8_t *plaintext, size_t plaintext_len)
+void message_encrypt(uint8_t *response, size_t *res_len, uint8_t *plaintext, size_t plaintext_len)
 {
-    msg_lock_t msg_lock;
-    msg_lock.plaintext = plaintext;
-    msg_lock.plaintext_len = plaintext_len;
-    msg_lock.ciphertext = ciphertext;
-    msg_lock.ciphertext_len = ciphertext_len;
-    msg_lock.mac = mac;
-    message_lock(&msg_lock);
+    uint8_t *mac = &response[0];
+    uint8_t *nonce = &response[MES_AUTHEN_CODE_LEN];
+    random_generator(nonce, NONCE_LEN);
+    uint8_t *ciphertext = &response[MES_AUTHEN_CODE_LEN + NONCE_LEN];
+    message_lock(ciphertext, res_len, mac, nonce, plaintext, plaintext_len);
 }
 
-void message_decrypt(uint8_t*plaintext, size_t *plaintext_len, uint8_t *mac, uint8_t *ciphertext, size_t ciphertext_len)
+void message_decrypt(uint8_t *plaintext, size_t *plaintext_len, uint8_t *request, size_t request_len)
 {
-    msg_unlock_t msg_unlock;
-    msg_unlock.plaintext = plaintext;
-    msg_unlock.plaintext_len = plaintext_len;
-    msg_unlock.ciphertext = ciphertext;
-    msg_unlock.ciphertext_len = ciphertext_len;
-    msg_unlock.mac = mac;
-    message_unlock(&msg_unlock);
+    uint8_t *mac = &request[0];
+    uint8_t *nonce = &request[MES_AUTHEN_CODE_LEN];
+    uint8_t *ciphertext = &request[MES_AUTHEN_CODE_LEN + NONCE_LEN];
+    size_t ciphertext_len = request_len - MES_AUTHEN_CODE_LEN - NONCE_LEN;
+    message_unlock(plaintext, plaintext_len, mac, nonce, ciphertext, ciphertext_len);
 }
 
 static void random_generator(uint8_t *out, size_t len) {
