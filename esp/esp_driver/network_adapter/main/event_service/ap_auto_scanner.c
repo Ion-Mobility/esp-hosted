@@ -75,7 +75,7 @@ void ap_auto_scanner_start(ap_auto_scanner_handle_t scanner,
         break;
     }
     scanner->config = *config;
-    esp_err_t status = xTaskCreate(ap_auto_scanner_task , "ap_auto_scanner" , 3096 , scanner , 22,
+    esp_err_t status = xTaskCreate(ap_auto_scanner_task , "ap_auto_scanner" , 3096 , scanner , 20,
         &scanner->scan_ap_task_handle);
     ESP_LOGD(TAG, "Task create with status %d", status);
 	if (pdPASS != status) {
