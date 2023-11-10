@@ -649,11 +649,11 @@ static void mqtt_client_setup_before_connect(int client_index)
 static uint32_t wait_for_connect_req_status(int client_index, uint32_t wait_ms)
 {
     uint32_t ticks_to_wait = pdMS_TO_TICKS(wait_ms);
-    uint32_t total_bits_to_wait = MQTT_CONNECT_REQUEST_SUCCESS_BIT || 
-        MQTT_CONNECT_REQUEST_FAILED_PROTOCOL_BIT || 
-        MQTT_CONNECT_REQUEST_FAILED_IDENTIFIER_BIT || 
-        MQTT_CONNECT_REQUEST_FAILED_SERVER_BIT ||
-        MQTT_CONNECT_REQUEST_FAILED_USERNAME_PASSWORD_BIT ||
+    uint32_t total_bits_to_wait = MQTT_CONNECT_REQUEST_SUCCESS_BIT | 
+        MQTT_CONNECT_REQUEST_FAILED_PROTOCOL_BIT | 
+        MQTT_CONNECT_REQUEST_FAILED_IDENTIFIER_BIT | 
+        MQTT_CONNECT_REQUEST_FAILED_SERVER_BIT |
+        MQTT_CONNECT_REQUEST_FAILED_USERNAME_PASSWORD_BIT |
         MQTT_CONNECT_REQUEST_FAILED_AUTHORIZE_BIT;
     
     mqtt_service_client_t *service_client_handle = 
