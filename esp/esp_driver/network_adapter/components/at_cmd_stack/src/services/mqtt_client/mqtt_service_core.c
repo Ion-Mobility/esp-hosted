@@ -37,6 +37,7 @@ typedef enum {
 } recv_message_status_t;
 
 typedef struct {
+    int is_in_make_conn_session;
     esp_mqtt_client_handle_t esp_client_handle;
     EventGroupHandle_t connect_req_event_group;
     EventGroupHandle_t sub_req_event_group;
@@ -241,6 +242,8 @@ mqtt_service_status_t mqtt_service_init()
 
         // Set current recv buff to be unread
         service_client_handle->current_recv_buff_status = RECV_MESSAGE_UNREAD;
+
+        service_client_handle->is_in_make_conn_session = 0;
     }
     /*  Initialize NVS. This is necessary because we don't know if NVS flash
         is initialized before by caller of this fuction. Moreover, if NVS flash
@@ -615,14 +618,32 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         break;
 
     case MQTT_EVENT_ERROR:
-        AT_STACK_LOGI("Client %d have error!", client_idx);
-        if (event->error_handle->error_type == 
-            MQTT_ERROR_TYPE_CONNECTION_REFUSED)
+        AT_STACK_LOGI("Client %d have error and error type %d",
+            client_idx, event->error_handle->error_type);
+        if (service_client_handle->is_in_make_conn_session)
         {
-            announce_connect_request_fail(client_idx, 
-                event->error_handle->connect_return_code);
-            AT_STACK_LOGI("MQTT connection refuse, ret code = %d!",
-                event->error_handle->connect_return_code);
+            switch (event->error_handle->error_type)
+            {
+            case MQTT_ERROR_TYPE_TCP_TRANSPORT:
+                // MQTT connection fails because of transport layer, probably
+                // because domain name cannot be resolved or various error.
+                // Return MQTT_CONNECTION_REFUSE_SERVER_UNAVAILABLE is a
+                // sounded option
+                announce_connect_request_fail(client_idx, 
+                    MQTT_CONNECTION_REFUSE_SERVER_UNAVAILABLE);
+                AT_STACK_LOGI("MQTT connection cannot be made because of transport layer error!");
+                break;
+            case MQTT_ERROR_TYPE_CONNECTION_REFUSED:
+                announce_connect_request_fail(client_idx, 
+                    event->error_handle->connect_return_code);
+                AT_STACK_LOGI("MQTT connection refuse, ret code = %d!",
+                    event->error_handle->connect_return_code);
+                break;
+            default:
+                AT_STACK_LOGW("Make connection request shouldn't have this error type %d",
+                    event->error_handle->error_type);
+                break;
+            }
         }
         break;
 
@@ -997,6 +1018,7 @@ static int  mqtt_client_configure_and_request_connect(int client_index,
         AT_STACK_LOGE("Cannot start MQTT");
         return -1;
     }
+    service_client_handle->is_in_make_conn_session = 1;
     AT_STACK_LOGD("Configure and connect done!");
     return 0;
 }
@@ -1005,6 +1027,8 @@ static mqtt_service_pkt_status_t mqtt_client_get_connect_req_status_timeout(
     int client_index, uint32_t timeout_ms,
     esp_mqtt_connect_return_code_t *connect_ret_code)
 {
+    mqtt_service_client_t *service_client_handle = 
+            &mqtt_service_clients_table[client_index];
     // It's safe to not lock client, since below codes only deal with 
     // event group, which by itself have mechanism to prevent race condition
     // (assume ESP-IDF doing it right :v )
@@ -1024,6 +1048,7 @@ static mqtt_service_pkt_status_t mqtt_client_get_connect_req_status_timeout(
 
     *connect_ret_code = 
         map_event_bit_to_connect_ret_code(get_event_bit);
+    service_client_handle->is_in_make_conn_session = 0;
     
     return ret_status;
 }
