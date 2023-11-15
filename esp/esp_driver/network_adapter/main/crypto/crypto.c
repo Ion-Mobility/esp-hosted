@@ -105,7 +105,7 @@ static int xed25519_verify(uint8_t signature[SIGNATURE_LEN], uint8_t public_key[
 static void random_generator(uint8_t *out, size_t len);
 static uint8_t update_paired_phone_table(pair_request_t *pair_request);
 static void message_lock(uint8_t *ciphertext, size_t *res_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *plaintext, size_t plaintext_len);
-static void message_unlock(uint8_t *plaintext, size_t *plaintext_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *ciphertext, size_t ciphertext_len);
+static int message_unlock(uint8_t *plaintext, size_t *plaintext_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *ciphertext, size_t ciphertext_len);
 static int pair(pair_request_t *pair_request, pair_response_t *pair_response);
 static int session(session_request_t *session_request, session_response_t *session_response);
 static void cleanup_paired_storage(nvs_handle_t *my_handle);
@@ -309,19 +309,20 @@ static void message_lock(uint8_t *ciphertext, size_t *res_len, uint8_t mac[MES_A
     *res_len = MES_AUTHEN_CODE_LEN + NONCE_LEN + plaintext_len;
 }
 
-static void message_unlock(uint8_t *plaintext, size_t *plaintext_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *ciphertext, size_t ciphertext_len)
+static int message_unlock(uint8_t *plaintext, size_t *plaintext_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *ciphertext, size_t ciphertext_len)
 {
-    if (crypto_aead_unlock(plaintext, mac,                                                                                                              //plain_text, mac,
-                           bike.paired_phone[bike.cur_paired_phone_idx].derived_key, nonce,                                                             //key, nonce
-                           bike.paired_phone[bike.cur_paired_phone_idx].session_id, sizeof(bike.paired_phone[bike.cur_paired_phone_idx].session_id),    //ad, ad_size
-                           ciphertext, ciphertext_len))                                                                                                 //cipher_text, sizeof(cipher_text)
-    {
+    int ret = crypto_aead_unlock(plaintext, mac,                                                                                                            //plain_text, mac,
+                           bike.paired_phone[bike.cur_paired_phone_idx].derived_key, nonce,                                                                 //key, nonce
+                           bike.paired_phone[bike.cur_paired_phone_idx].session_id, sizeof(bike.paired_phone[bike.cur_paired_phone_idx].session_id),        //ad, ad_size
+                           ciphertext, ciphertext_len);                                                                                                     //cipher_text, sizeof(cipher_text)
+    if (ret != 0) {
         ESP_LOGE(CRYPTO_TAG, "The message is corrupted");
     } else {
         ESP_LOGI(CRYPTO_TAG, "decrypted mes: ");
         *plaintext_len = ciphertext_len;
         ESP_LOG_BUFFER_CHAR(CRYPTO_TAG, plaintext, *plaintext_len);
     }
+    return ret;
 }
 
 void message_encrypt(uint8_t *response, size_t *res_len, uint8_t *plaintext, size_t plaintext_len)
@@ -333,13 +334,13 @@ void message_encrypt(uint8_t *response, size_t *res_len, uint8_t *plaintext, siz
     message_lock(ciphertext, res_len, mac, nonce, plaintext, plaintext_len);
 }
 
-void message_decrypt(uint8_t *plaintext, size_t *plaintext_len, uint8_t *request, size_t request_len)
+int message_decrypt(uint8_t *plaintext, size_t *plaintext_len, uint8_t *request, size_t request_len)
 {
     uint8_t *mac = &request[0];
     uint8_t *nonce = &request[MES_AUTHEN_CODE_LEN];
     uint8_t *ciphertext = &request[MES_AUTHEN_CODE_LEN + NONCE_LEN];
     size_t ciphertext_len = request_len - MES_AUTHEN_CODE_LEN - NONCE_LEN;
-    message_unlock(plaintext, plaintext_len, mac, nonce, ciphertext, ciphertext_len);
+    return message_unlock(plaintext, plaintext_len, mac, nonce, ciphertext, ciphertext_len);
 }
 
 static void random_generator(uint8_t *out, size_t len) {

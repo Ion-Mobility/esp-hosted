@@ -15,14 +15,17 @@ typedef enum {
     // between phone & ble
     PHONE_BLE_PAIRING           = 0x00,
     PHONE_BLE_SESSION           = 0x01,
-    PHONE_BLE_BATTERY           = 0x02,
-    PHONE_BLE_CHARGE            = 0x03,
-    PHONE_BLE_LAST_TRIP         = 0x04,
-    PHONE_BLE_STEERING_LOCK     = 0x05,
-    PHONE_BLE_STEERING_UNLOCK   = 0x06,
-    PHONE_BLE_PING_BIKE         = 0x07,
-    PHONE_BLE_OPEN_SEAT         = 0x08,
-    PHONE_BLE_DIAG              = 0x09,
+    //below commands only available after session is successfully created
+    PHONE_BLE_COMMAND           = 0x02,
+    PHONE_BLE_BATTERY           = 0x03,
+    PHONE_BLE_CHARGE            = 0x04,
+    PHONE_BLE_LAST_TRIP         = 0x05,
+    PHONE_BLE_STEERING_LOCK     = 0x06,
+    PHONE_BLE_STEERING_UNLOCK   = 0x07,
+    PHONE_BLE_PING_BIKE         = 0x08,
+    PHONE_BLE_OPEN_SEAT         = 0x09,
+    PHONE_BLE_DIAG              = 0x0A,
+    //add new command here
 
     // between tm & ble
     TM_BLE_BATTERY              = 0x50,
