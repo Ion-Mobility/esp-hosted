@@ -360,6 +360,7 @@ message CtrlMsg_Req_ConfigAPScan {
     int32 scan_interval_ms = 2;
     int32 update_interval_ms = 3;
     int32 num_of_records_per_update = 4;
+    int32 max_num_of_accepted_records = 5;
 }
 
 message CtrlMsg_Resp_ConfigSmartConnect {

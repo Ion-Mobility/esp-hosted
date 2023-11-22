@@ -4285,7 +4285,7 @@ const ProtobufCMessageDescriptor ctrl_msg__req__config_smart_connect__descriptor
   (ProtobufCMessageInit) ctrl_msg__req__config_smart_connect__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor ctrl_msg__req__config_apscan__field_descriptors[4] =
+static const ProtobufCFieldDescriptor ctrl_msg__req__config_apscan__field_descriptors[5] =
 {
   {
     "enable",
@@ -4335,9 +4335,22 @@ static const ProtobufCFieldDescriptor ctrl_msg__req__config_apscan__field_descri
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "max_num_of_accepted_records",
+    5,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(CtrlMsgReqConfigAPScan, max_num_of_accepted_records),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned ctrl_msg__req__config_apscan__field_indices_by_name[] = {
   0,   /* field[0] = enable */
+  4,   /* field[4] = max_num_of_accepted_records */
   3,   /* field[3] = num_of_records_per_update */
   1,   /* field[1] = scan_interval_ms */
   2,   /* field[2] = update_interval_ms */
@@ -4345,7 +4358,7 @@ static const unsigned ctrl_msg__req__config_apscan__field_indices_by_name[] = {
 static const ProtobufCIntRange ctrl_msg__req__config_apscan__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 4 }
+  { 0, 5 }
 };
 const ProtobufCMessageDescriptor ctrl_msg__req__config_apscan__descriptor =
 {
@@ -4355,7 +4368,7 @@ const ProtobufCMessageDescriptor ctrl_msg__req__config_apscan__descriptor =
   "CtrlMsgReqConfigAPScan",
   "",
   sizeof(CtrlMsgReqConfigAPScan),
-  4,
+  5,
   ctrl_msg__req__config_apscan__field_descriptors,
   ctrl_msg__req__config_apscan__field_indices_by_name,
   1,  ctrl_msg__req__config_apscan__number_ranges,

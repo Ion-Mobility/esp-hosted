@@ -9,6 +9,7 @@ typedef struct ap_auto_scanner_config_t {
     size_t scan_interval_ms;
     size_t update_interval_ms;
     size_t num_of_records_per_update;
+    size_t max_num_of_accepted_records;
 } ap_auto_scanner_config_t;
 
 typedef struct scan_result_t {

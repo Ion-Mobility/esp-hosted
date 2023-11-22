@@ -141,10 +141,15 @@ static void ap_auto_scanner_task(void * pvParameters) {
             ESP_LOGD(TAG, "BSSID: " MACSTR, MAC2STR(scanner->update_aps_list.records[i].bssid));
         }
         while (1) {
+            size_t actual_max_num_of_records =
+                scanner->update_aps_list.count <
+                scanner->config.max_num_of_accepted_records?
+                scanner->update_aps_list.count :
+                scanner->config.max_num_of_accepted_records;
             size_t next_index = 
                 current_index + scanner->config.num_of_records_per_update > 
-                scanner->update_aps_list.count?
-                scanner->update_aps_list.count:
+                actual_max_num_of_records?
+                actual_max_num_of_records:
                 current_index + scanner->config.num_of_records_per_update;
 
             size_t num_of_records_to_send = next_index - current_index;
@@ -161,8 +166,9 @@ static void ap_auto_scanner_task(void * pvParameters) {
             xEventGroupWaitBits(scanner->event_group, EVENT_DONE_PROCESSING_SCAN_RESULT_BIT, pdTRUE,
                 pdTRUE, portMAX_DELAY);
             ESP_LOGD(TAG, "Done sending %d records", num_of_records_to_send);
-            if (next_index >= scanner->update_aps_list.count) {
-                ESP_LOGD(TAG, "Done sending all records");
+            if (next_index >= actual_max_num_of_records) {
+                ESP_LOGD(TAG, "Done sending max %d of records",
+                    actual_max_num_of_records);
                 mem_free(scanner->update_aps_list.records);
                 scanner->update_aps_list.count = 0;
                 break;

@@ -2142,7 +2142,10 @@ static esp_err_t req_config_ap_scan(CtrlMsg *req,
 		ap_auto_scanner_config_t config = {
 			.scan_interval_ms = req->req_config_ap_scan->scan_interval_ms,
 			.update_interval_ms = req->req_config_ap_scan->update_interval_ms,
-			.num_of_records_per_update = req->req_config_ap_scan->num_of_records_per_update
+			.num_of_records_per_update =
+				req->req_config_ap_scan->num_of_records_per_update,
+			.max_num_of_accepted_records =
+				req->req_config_ap_scan->max_num_of_accepted_records
 		};
 		ap_auto_scanner_start(s_scanner, &config, update_scan_result_callback, NULL);
 	} else {

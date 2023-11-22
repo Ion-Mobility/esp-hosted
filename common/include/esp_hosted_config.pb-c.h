@@ -678,10 +678,11 @@ struct  CtrlMsgReqConfigAPScan
   int32_t scan_interval_ms;
   int32_t update_interval_ms;
   int32_t num_of_records_per_update;
+  int32_t max_num_of_accepted_records;
 };
 #define CTRL_MSG__REQ__CONFIG_APSCAN__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&ctrl_msg__req__config_apscan__descriptor) \
-    , 0, 0, 0, 0 }
+    , 0, 0, 0, 0, 0 }
 
 
 struct  CtrlMsgRespConfigSmartConnect
