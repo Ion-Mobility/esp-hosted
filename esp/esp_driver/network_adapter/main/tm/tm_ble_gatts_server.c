@@ -15,6 +15,7 @@
 
 #include "tm_ble_gatts_server.h"
 #include "tm_ble.h"
+#include "crypto.h"
 
 #define GATTS_TABLE_TAG "BLE_GATTS_SERVER"
 
@@ -152,7 +153,7 @@ struct gatts_profile_inst {
     esp_bt_uuid_t descr_uuid;
 };
 
-static void send_to_ble_queue(int msg_id, uint8_t *data, int len);
+static void send_to_ble_queue(uint8_t msg_id, uint8_t *data, int len);
 static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
 					esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 
@@ -178,7 +179,6 @@ static const uint8_t char_prop_rx                   = ESP_GATT_CHAR_PROP_BIT_WRI
 static uint8_t tx_value[GATTS_ION_CHAR_VAL_LEN_MAX] = {0};
 static uint8_t rx_value[GATTS_ION_CHAR_VAL_LEN_MAX] = {0};
 static const uint8_t ion_ccc[2]                     = {0x00, 0x00};
-static int tx_value_len = 0;
 
 /* Full Database Description - Used to add attributes into the database */
 static const esp_gatts_attr_db_t gatt_db[ION_IDX_NB] =
@@ -392,9 +392,11 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
        	    break;
         case ESP_GATTS_WRITE_EVT:
             if (!param->write.is_prep){
+#if(DEBUG)
                 // the data length of gattc write  must be less than GATTS_DEMO_CHAR_VAL_LEN_MAX.
                 ESP_LOGI(GATTS_TABLE_TAG, "GATT_WRITE_EVT, handle = %d, value len = %d, value :", param->write.handle, param->write.len);
                 esp_log_buffer_hex(GATTS_TABLE_TAG, param->write.value, param->write.len);
+#endif
                 if (ion_handle_table[IDX_CHAR_CFG_TX] == param->write.handle && param->write.len == 2){
                     uint16_t descr_value = param->write.value[1]<<8 | param->write.value[0];
                     if (descr_value == 0x0001){
@@ -409,25 +411,18 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                         esp_log_buffer_hex(GATTS_TABLE_TAG, param->write.value, param->write.len);
                     }
                 } else {
-                    int msg_id;
-                    int little_id;
-                    int little_len;
-                    memset(tx_value, 0, sizeof(tx_value));
-                    tx_value_len = -1;
-                    if (param->write.len <= sizeof(int) + sizeof(int)) {
-                        memcpy(&little_id, &param->write.value[0], sizeof(int));
-                        int msg_id = ((little_id>>24)&0xff) | // move byte 3 to byte 0
-                        ((little_id<<8)&0xff0000) | // move byte 1 to byte 2
-                        ((little_id>>8)&0xff00) | // move byte 2 to byte 1
-                        ((little_id<<24)&0xff000000); // byte 0 to byte 3
+                    uint8_t msg_id = param->write.value[3];
+                    int len = 0;
+                    memcpy(&len, &param->write.value[sizeof(int)], sizeof(int));
+                    len =   ((len>>24)&0xff) |         // move byte 3 to byte 0
+                            ((len<<8)&0xff0000) |      // move byte 1 to byte 2
+                            ((len>>8)&0xff00) |        // move byte 2 to byte 1
+                            ((len<<24)&0xff000000);    // byte 0 to byte 3
+
+                    if (param->write.len <= sizeof(int) + sizeof(int) && len == 0) {
+                        //for imos only, where phone can send command_id without encryption
                         send_to_ble_queue(msg_id, NULL, 0);
                     } else {
-                        memcpy(&msg_id, &param->write.value[0], sizeof(int));
-                        memcpy(&little_len, &param->write.value[sizeof(int)], sizeof(int));
-                        int len = ((little_len>>24)&0xff) | // move byte 3 to byte 0
-                        ((little_len<<8)&0xff0000) | // move byte 1 to byte 2
-                        ((little_len>>8)&0xff00) | // move byte 2 to byte 1
-                        ((little_len<<24)&0xff000000); // byte 0 to byte 3
                         send_to_ble_queue(msg_id, &param->write.value[sizeof(int) + sizeof(int)], len);
                     }
                 }
@@ -610,11 +605,14 @@ void tm_ble_gatts_send_to_phone(uint8_t *data, int len)
     }
 }
 
-static void send_to_ble_queue(int msg_id, uint8_t *data, int len) {
+static void send_to_ble_queue(uint8_t msg_id, uint8_t *data, int len) {
     if (len > BLE_MSG_MAX_LEN)
         return;
     ble_msg_t to_ble_msg = {0};
-
+#if(DEBUG)
+    ESP_LOGI(GATTS_TABLE_TAG, "send_to_ble_queue msg_id: = %d", msg_id);
+    esp_log_buffer_hex(GATTS_TABLE_TAG, data, len);
+#endif
     switch (msg_id) {
         case BLE_DISCONNECT:
             to_ble_msg.msg_id = BLE_DISCONNECT;
@@ -629,9 +627,9 @@ static void send_to_ble_queue(int msg_id, uint8_t *data, int len) {
             memcpy(to_ble_msg.data, data, len);
             break;
         case PHONE_BLE_SESSION:
+            to_ble_msg.msg_id = PHONE_BLE_SESSION;
             if (len > BLE_MSG_MAX_LEN)
                 return;
-            to_ble_msg.msg_id = PHONE_BLE_SESSION;
             memcpy(to_ble_msg.data, data, len);
             break;
         case PHONE_BLE_COMMAND:
@@ -674,5 +672,7 @@ static void send_to_ble_queue(int msg_id, uint8_t *data, int len) {
 
 void tm_ble_gatts_kill_connection(void)
 {
+#if(!DEBUG)
     esp_ble_gatts_close(ion_profile_tab[PROFILE_APP_IDX].gatts_if, ion_profile_tab[PROFILE_APP_IDX].conn_id);
+#endif
 }

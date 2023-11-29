@@ -64,15 +64,19 @@ static void ble_task(void *arg)
 
             case BLE_CONNECT:
                 ESP_LOGI(ION_BLE_TAG, "BLE_CONNECT");
+#if (!DEBUG)
                 start_oneshot_timer(BLE_PAIRING_TIMEOUT);
+#endif
                 connection_state = UNPAIRED;
                 break;
 
             case PHONE_BLE_PAIRING:
                 if (connection_state == UNPAIRED) {
                     ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_PAIRING");
+#if(DEBUG)
                     send_to_tm_queue(TM_BLE_PAIRING, NULL, 0);
                     esp_log_buffer_hex(ION_BLE_TAG, to_ble_msg.data, to_ble_msg.len);
+#endif
                     //verify pairing request
                     int pairing_result = pairing_request(to_ble_msg.data, to_ble_msg.len, buf, &buf_len);
                     if (pairing_result == ESP_OK) {
@@ -99,7 +103,9 @@ static void ble_task(void *arg)
                         tm_ble_gatts_kill_connection();
                         ESP_LOGE(ION_BLE_TAG, "Pair fails");
                     }
+#if(!DEBUG)
                     stop_oneshot_timer();
+#endif
                 }
                 break;
 
@@ -113,6 +119,7 @@ static void ble_task(void *arg)
                         to_phone_msg.len = buf_len;
                         memcpy(to_phone_msg.data, buf, buf_len);
                         send_to_phone(&to_phone_msg);
+                        vTaskDelay(50/portTICK_PERIOD_MS);
                         ESP_LOGI(ION_BLE_TAG, "Session created");
                     } else {
                         ESP_LOGE(ION_BLE_TAG, "Failed to create session");

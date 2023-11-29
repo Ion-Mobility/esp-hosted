@@ -376,6 +376,7 @@ static uint8_t update_paired_phone_table(pair_request_t *pair_request) {
             if (!memcmp(bike.paired_phone[index].phone_identity_pk, empty_key, KEY_LEN)) {
                 bike.cur_paired_phone_idx = index;
                 memcpy(&bike.paired_phone[bike.cur_paired_phone_idx].phone_identity_pk, pair_request->contents.phone_identity_pk, KEY_LEN);
+                memcpy(&bike.paired_phone[bike.cur_paired_phone_idx].phone_pairing_pk, pair_request->contents.phone_pairing_pk, KEY_LEN);
                 bike.paired_phone[bike.cur_paired_phone_idx].start_time = pair_request->contents.start_time;
                 bike.paired_phone[bike.cur_paired_phone_idx].expiry_time = pair_request->contents.expiry_time;
                 random_generator(bike.paired_phone[bike.cur_paired_phone_idx ].bike_pairing_key.sk, KEY_LEN);
@@ -396,13 +397,14 @@ static int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
 
     // Verify that the message was actually signed by the server
     // int verify_server_signature = crypto_eddsa_check(pair_request->signature, server.identity_pk, (uint8_t*)&pair_request->contents, sizeof(pair_request_content_t));
+#if(DEBUG)
     ESP_LOGE(CRYPTO_TAG, "signature:");
     esp_log_buffer_hex(CRYPTO_TAG, pair_request->signature, SIGNATURE_LEN);
     ESP_LOGE(CRYPTO_TAG, "server.identity_pk:");
     esp_log_buffer_hex(CRYPTO_TAG, server.identity_pk, KEY_LEN);
     ESP_LOGE(CRYPTO_TAG, "conntent:");
     esp_log_buffer_hex(CRYPTO_TAG, (uint8_t*)&pair_request->contents, sizeof(pair_request_content_t));
-
+#endif
     int verify_server_signature = crypto_ed25519_check(pair_request->signature, server.identity_pk, (uint8_t*)&pair_request->contents, sizeof(pair_request_content_t));
     if (verify_server_signature != 0) {
         ESP_LOGE(CRYPTO_TAG, "failed to verify server signature");
@@ -414,7 +416,7 @@ static int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
     // Create the response and sign it
     memcpy(pair_response->contents.phone_pairing_pk, pair_request->contents.phone_pairing_pk, KEY_LEN);
     memcpy(pair_response->contents.bike_pairing_pk, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.pk, KEY_LEN);
-    xed25519_sign(pair_response->signature, bike.identity.sk, (uint8_t*)&pair_response->contents, sizeof(pair_request_content_t));
+    xed25519_sign(pair_response->signature, bike.identity.sk, (uint8_t*)&pair_response->contents, sizeof(pair_response_content_t));
 
     return 0;
 }
@@ -426,8 +428,14 @@ static int session(session_request_t *session_request, session_response_t *sessi
         return -1;
     }
 
-    if (!memcmp(bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.pk, session_request->contents.bike_pairing_pk, KEY_LEN)) {
+    if (memcmp(bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.pk, session_request->contents.bike_pairing_pk, KEY_LEN)) {
         ESP_LOGE(CRYPTO_TAG, "invalid pairing key...");
+#if(DEBUG)
+        ESP_LOGE(CRYPTO_TAG, "Bike pairing key...");
+        esp_log_buffer_hex(CRYPTO_TAG, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.pk, KEY_LEN);
+        ESP_LOGE(CRYPTO_TAG, "Received Bike pairing key...");
+        esp_log_buffer_hex(CRYPTO_TAG, session_request->contents.bike_pairing_pk, KEY_LEN);
+#endif
         return -1;
     }
 
@@ -441,13 +449,28 @@ static int session(session_request_t *session_request, session_response_t *sessi
 
     uint8_t dh1[KEY_LEN];
     crypto_x25519(dh1, bike.identity.sk, bike.paired_phone[bike.cur_paired_phone_idx].phone_identity_pk);
-
+#if (DEBUG)
+    ESP_LOGE(CRYPTO_TAG, "bike.identity.sk...");
+    esp_log_buffer_hex(CRYPTO_TAG, bike.identity.sk, KEY_LEN);
+    ESP_LOGE(CRYPTO_TAG, "phone_identity_pk...");
+    esp_log_buffer_hex(CRYPTO_TAG, bike.paired_phone[bike.cur_paired_phone_idx].phone_identity_pk, KEY_LEN);
+#endif
     uint8_t dh2[KEY_LEN];
     crypto_x25519(dh2, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.sk, bike.paired_phone[bike.cur_paired_phone_idx].phone_pairing_pk);
-
+#if (DEBUG)
+    ESP_LOGE(CRYPTO_TAG, "bike_pairing_key.sk...");
+    esp_log_buffer_hex(CRYPTO_TAG, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.sk, KEY_LEN);
+    ESP_LOGE(CRYPTO_TAG, "bike_pairing_key.pk...");
+    esp_log_buffer_hex(CRYPTO_TAG, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.pk, KEY_LEN);
+    ESP_LOGE(CRYPTO_TAG, "phone_pairing_pk...");
+    esp_log_buffer_hex(CRYPTO_TAG, bike.paired_phone[bike.cur_paired_phone_idx].phone_pairing_pk, KEY_LEN);
+#endif
     uint8_t dh3[KEY_LEN];
     crypto_x25519(dh3, bike.identity.sk, session_request->contents.ephemeral_pk);
-
+#if (DEBUG)
+    ESP_LOGE(CRYPTO_TAG, "ephemeral_pk...");
+    esp_log_buffer_hex(CRYPTO_TAG, session_request->contents.ephemeral_pk, KEY_LEN);
+#endif
     uint8_t dh4[KEY_LEN];
     crypto_x25519(dh4, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.sk, session_request->contents.ephemeral_pk);
 
@@ -460,14 +483,18 @@ static int session(session_request_t *session_request, session_response_t *sessi
     crypto_blake2b_update(&ctx, dh4, KEY_LEN);
     crypto_blake2b_final(&ctx, sk);
     memcpy(bike.paired_phone[bike.cur_paired_phone_idx].derived_key, sk, KEY_LEN);
+#if (DEBUG)
     ESP_LOGI(CRYPTO_TAG, "bike derived key");
     esp_log_buffer_hex(CRYPTO_TAG, bike.paired_phone[bike.cur_paired_phone_idx].derived_key, KEY_LEN);
-
+#endif
     // generate random session id
     random_generator(bike.paired_phone[bike.cur_paired_phone_idx].session_id, KEY_LEN);
     memcpy(session_response->contents.session_id, bike.paired_phone[bike.cur_paired_phone_idx].session_id, KEY_LEN);
     memcpy(session_response->contents.ephemeral_pk, session_request->contents.ephemeral_pk, KEY_LEN);
-
+#if (DEBUG)
+    ESP_LOGI(CRYPTO_TAG, "ephemeral_pk:");
+    esp_log_buffer_hex(CRYPTO_TAG, session_response->contents.ephemeral_pk, KEY_LEN);
+#endif
     uint8_t random[SIGNATURE_LEN];
     random_generator(random, SIGNATURE_LEN);
     xed25519_sign(session_response->signature,
@@ -495,7 +522,12 @@ static void xed25519_sign(uint8_t signature[SIGNATURE_LEN],
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 	};
-
+#if (DEBUG)
+    ESP_LOGI(CRYPTO_TAG, "xed25519_sign()-secret_key:");
+    esp_log_buffer_hex(CRYPTO_TAG, secret_key, KEY_LEN);
+    ESP_LOGI(CRYPTO_TAG, "xed25519_sign()-message:");
+    esp_log_buffer_hex(CRYPTO_TAG, message, message_size);
+#endif
 	/* Key pair (a, A) */
 	uint8_t A[KEY_LEN];  /* XEdDSA public key  */
 	uint8_t a[KEY_LEN];  /* XEdDSA private key */
@@ -541,6 +573,10 @@ static void xed25519_sign(uint8_t signature[SIGNATURE_LEN],
 	/* Wipe secrets (A, R, and H are not secret) */
 	crypto_wipe(a, KEY_LEN);
 	crypto_wipe(r, KEY_LEN);
+#if (DEBUG)
+    ESP_LOGI(CRYPTO_TAG, "xed25519_sign()-signature:");
+    esp_log_buffer_hex(CRYPTO_TAG, signature, SIGNATURE_LEN);
+#endif
 }
 
 static int xed25519_verify(uint8_t signature[SIGNATURE_LEN],

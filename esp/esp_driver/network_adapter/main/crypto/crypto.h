@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#define DEBUG                   (0)
 
 extern esp_err_t crypto_init(void);
 extern int session_request(uint8_t* request, size_t req_len, uint8_t* response, size_t *res_len);               //establish session
