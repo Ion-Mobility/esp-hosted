@@ -28,23 +28,24 @@ typedef struct {
     uint8_t pk[KEY_LEN];
 } keypair_t;
 
-// phone
-typedef struct {
-    keypair_t bike_pairing_key;             // bike pairing key pair for each phone
-    uint8_t session_id[SESSION_ID_LEN];     // session id
-    uint8_t phone_identity_pk[KEY_LEN];     // long-term, one per device
-    uint8_t phone_pairing_pk[KEY_LEN];      // medium-term, pairing key (1 week expired)
-    uint8_t derived_key[KEY_LEN];           // short-term, session derived key
+typedef struct{
+    uint8_t value[KEY_LEN];
     time_t start_time;
     time_t expiry_time;
-} paired_phone_t;
+} phone_pairing_key_t;
+
+// phone
+typedef struct {
+    uint8_t identity_pk[KEY_LEN];               // long-term, one per device
+    phone_pairing_key_t pairing_pk;             // medium-term, pairing key (1 week expired)
+    uint8_t derivation_key[KEY_LEN];            // short-term, one per session
+    uint8_t session_id[SESSION_ID_LEN];         // session id
+} phone_t;
 
 // bike
 typedef struct {
-    keypair_t identity;                                 // long-term, one per device
-    paired_phone_t paired_phone[MAX_PAIRED_PHONE];      // medium-term, pairing key (1 week expired)            
-    uint8_t num_paired_phone;
-    uint8_t cur_paired_phone_idx;
+    keypair_t identity_key;                                 // long-term, one per device
+    keypair_t pairing_key;                                 // long-term, one per device
 } bike_t;
 
 // server
@@ -103,17 +104,15 @@ typedef struct {
 static void xed25519_sign(uint8_t signature[SIGNATURE_LEN], uint8_t secret_key[KEY_LEN], uint8_t *message, size_t message_size);
 static int xed25519_verify(uint8_t signature[SIGNATURE_LEN], uint8_t public_key[KEY_LEN], uint8_t *message, size_t message_size);
 static void random_generator(uint8_t *out, size_t len);
-static uint8_t update_paired_phone_table(pair_request_t *pair_request);
 static void message_lock(uint8_t *ciphertext, size_t *res_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *plaintext, size_t plaintext_len);
 static int message_unlock(uint8_t *plaintext, size_t *plaintext_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *ciphertext, size_t ciphertext_len);
 static int pair(pair_request_t *pair_request, pair_response_t *pair_response);
 static int session(session_request_t *session_request, session_response_t *session_response);
-static void cleanup_paired_storage(nvs_handle_t *my_handle);
 
 bike_t bike                 = {0};
 server_t server             = {0};
+phone_t phone               = {0};
 uint8_t empty_key[KEY_LEN]  = {0};
-keypair_t bike_pair         = {0};
 
 esp_err_t crypto_init(void) {
     nvs_handle_t my_handle;
@@ -136,41 +135,15 @@ esp_err_t crypto_init(void) {
         }
         // Read previously saved blob if available
         if (required_size == sizeof(keypair_t)) {
-            err = nvs_get_blob(my_handle, "bike", &bike.identity, &required_size);
+            err = nvs_get_blob(my_handle, "bike", &bike.identity_key, &required_size);
             if (err != ESP_OK) {
                 ESP_LOGE(CRYPTO_TAG, "Failed to read bike's identity key from flash...");
                 goto init_exit;
             } else {
                 ESP_LOGI(CRYPTO_TAG, "Bike Identity SK:");
-                esp_log_buffer_hex(CRYPTO_TAG, bike.identity.sk, KEY_LEN);
+                esp_log_buffer_hex(CRYPTO_TAG, bike.identity_key.sk, KEY_LEN);
                 ESP_LOGI(CRYPTO_TAG, "Bike Identity PK:");
-                esp_log_buffer_hex(CRYPTO_TAG, bike.identity.pk, KEY_LEN);
-            }
-        } else {
-            ESP_LOGE(CRYPTO_TAG, "bike's identity key size is not correct, the stored key is corrupted");
-            goto init_exit;
-        }
-    }
-
-    // read bike pairing key from NVS
-    {
-        size_t required_size = 0;  // value will default to 0, if not set yet in NVS
-        err = nvs_get_blob(my_handle, "pair", NULL, &required_size);
-        if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
-            ESP_LOGE(CRYPTO_TAG, "No bike's pairing key founded in flash or data is corrupted");
-            goto init_exit;
-        }
-        // Read previously saved blob if available
-        if (required_size == sizeof(keypair_t)) {
-            err = nvs_get_blob(my_handle, "pair", &bike_pair, &required_size);
-            if (err != ESP_OK) {
-                ESP_LOGE(CRYPTO_TAG, "Failed to read bike's pairing key from flash...");
-                goto init_exit;
-            } else {
-                ESP_LOGI(CRYPTO_TAG, "Bike pairing SK:");
-                esp_log_buffer_hex(CRYPTO_TAG, bike_pair.sk, KEY_LEN);
-                ESP_LOGI(CRYPTO_TAG, "Bike pairing PK:");
-                esp_log_buffer_hex(CRYPTO_TAG, bike_pair.pk, KEY_LEN);
+                esp_log_buffer_hex(CRYPTO_TAG, bike.identity_key.pk, KEY_LEN);
             }
         } else {
             ESP_LOGE(CRYPTO_TAG, "bike's identity key size is not correct, the stored key is corrupted");
@@ -202,46 +175,8 @@ esp_err_t crypto_init(void) {
         }
     }
 
-    // reas list of paired phone if any
-    {
-        bike.num_paired_phone = 0;
-        err = nvs_get_u8(my_handle, "num_paired_phone", &bike.num_paired_phone);
-        if (err == ESP_OK) {
-            if (bike.num_paired_phone > MAX_PAIRED_PHONE) {
-                ESP_LOGE(CRYPTO_TAG, "number of paired phone data is corrupted: %d",bike.num_paired_phone);
-                cleanup_paired_storage(&my_handle);
-            } else {
-                ESP_LOGI(CRYPTO_TAG, "number of paired phone: %d",bike.num_paired_phone);
-                // read server key from NVS
-                size_t required_size = 0;  // value will default to 0, if not set yet in NVS
-                err = nvs_get_blob(my_handle, "paired_phones", NULL, &required_size);
-                if (err != ESP_OK) {
-                    ESP_LOGE(CRYPTO_TAG, "paired phone key size in flash is corrupted");
-                    cleanup_paired_storage(&my_handle);
-                } else {
-                    // Read previously saved phones
-                    if (required_size == sizeof(paired_phone_t) * MAX_PAIRED_PHONE) {
-                        err = nvs_get_blob(my_handle, "paired_phones", bike.paired_phone, &required_size);
-                        if (err != ESP_OK) {
-                            ESP_LOGE(CRYPTO_TAG, "Failed to read paired_phones...");
-                            cleanup_paired_storage(&my_handle);
-                        }
-                    } else {
-                        ESP_LOGE(CRYPTO_TAG, "paired phones identity keys is corrupted");
-                        cleanup_paired_storage(&my_handle);
-                    }
-                }
-            }
-        } else {
-            cleanup_paired_storage(&my_handle);
-        }
-    }
-
     // init random number generator module
     srand(time(NULL));
-
-    // no pairing at init time
-    bike.cur_paired_phone_idx = MAX_PAIRED_PHONE;
 
 init_exit:
     // Close
@@ -288,33 +223,26 @@ int pairing_request(uint8_t* request, size_t req_len, uint8_t* response, size_t 
 
 void client_disconnect(void)
 {
-    bike.cur_paired_phone_idx = MAX_PAIRED_PHONE;
-}
-
-static void cleanup_paired_storage(nvs_handle_t *my_handle) {
-    bike.num_paired_phone = 0;
-    nvs_set_u8(*my_handle, "num_paired_phone", bike.num_paired_phone);
-    memset(bike.paired_phone, 0, sizeof(bike.paired_phone));
-    nvs_set_blob(*my_handle, "paired_phones", bike.paired_phone, sizeof(paired_phone_t) * MAX_PAIRED_PHONE);
-    nvs_commit(*my_handle);
+    memset(&phone, 0, sizeof(phone));
+    memset(&bike.pairing_key, 0, sizeof(bike.pairing_key));
 }
 
 static void message_lock(uint8_t *ciphertext, size_t *res_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *plaintext, size_t plaintext_len)
 {
-    crypto_aead_lock(ciphertext, mac,                                                                                                           //cipher_text, mac,
-                     bike.paired_phone[bike.cur_paired_phone_idx].derived_key, nonce,                                                           //key, nonce
-                     bike.paired_phone[bike.cur_paired_phone_idx].session_id, sizeof(bike.paired_phone[bike.cur_paired_phone_idx].session_id),  //ad, ad_size
-                     plaintext, plaintext_len);                                                                                                 //plain_text, sizeof(plain_text)
+    crypto_aead_lock(ciphertext, mac,                                               //cipher_text, mac,
+                     phone.derivation_key, nonce,                                   //key, nonce
+                     phone.session_id, sizeof(phone.session_id),                    //ad, ad_size
+                     plaintext, plaintext_len);                                     //plain_text, sizeof(plain_text)
 
     *res_len = MES_AUTHEN_CODE_LEN + NONCE_LEN + plaintext_len;
 }
 
 static int message_unlock(uint8_t *plaintext, size_t *plaintext_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *ciphertext, size_t ciphertext_len)
 {
-    int ret = crypto_aead_unlock(plaintext, mac,                                                                                                            //plain_text, mac,
-                           bike.paired_phone[bike.cur_paired_phone_idx].derived_key, nonce,                                                                 //key, nonce
-                           bike.paired_phone[bike.cur_paired_phone_idx].session_id, sizeof(bike.paired_phone[bike.cur_paired_phone_idx].session_id),        //ad, ad_size
-                           ciphertext, ciphertext_len);                                                                                                     //cipher_text, sizeof(cipher_text)
+    int ret = crypto_aead_unlock(plaintext, mac,                                    //plain_text, mac,
+                                phone.derivation_key, nonce,                        //key, nonce
+                                phone.session_id, sizeof(phone.session_id),         //ad, ad_size
+                                ciphertext, ciphertext_len);                                                                                                     //cipher_text, sizeof(cipher_text)
     if (ret != 0) {
         ESP_LOGE(CRYPTO_TAG, "The message is corrupted");
     } else {
@@ -349,52 +277,7 @@ static void random_generator(uint8_t *out, size_t len) {
     }
 }
 
-static uint8_t update_paired_phone_table(pair_request_t *pair_request) {
-    // bike pairing key for each phone
-    // if this phone already existed, just update pairing key
-    // else add new phone
-
-    //check if this pairing key is expired
-    // if (pair_request->contents.expiry_time < now())
-    //     return MAX_PAIRED_PHONE;
-
-    // if this phone is already in paired table, just update the table, else add new phone to the table
-    int index = 0;
-    for (index = 0; index < MAX_PAIRED_PHONE; index++) {
-        if (!memcmp(bike.paired_phone[index].phone_identity_pk, pair_request->contents.phone_identity_pk, KEY_LEN)) {
-            //phone founded
-            bike.cur_paired_phone_idx = index;
-
-            //todo: update start/expiry key time if needed
-            break;
-        }
-    }
-
-    if (index >= MAX_PAIRED_PHONE) {
-        // found no phone, find a free slot to add this new phone
-        for (index = 0; index < MAX_PAIRED_PHONE; index++) {
-            if (!memcmp(bike.paired_phone[index].phone_identity_pk, empty_key, KEY_LEN)) {
-                bike.cur_paired_phone_idx = index;
-                memcpy(&bike.paired_phone[bike.cur_paired_phone_idx].phone_identity_pk, pair_request->contents.phone_identity_pk, KEY_LEN);
-                memcpy(&bike.paired_phone[bike.cur_paired_phone_idx].phone_pairing_pk, pair_request->contents.phone_pairing_pk, KEY_LEN);
-                bike.paired_phone[bike.cur_paired_phone_idx].start_time = pair_request->contents.start_time;
-                bike.paired_phone[bike.cur_paired_phone_idx].expiry_time = pair_request->contents.expiry_time;
-                random_generator(bike.paired_phone[bike.cur_paired_phone_idx ].bike_pairing_key.sk, KEY_LEN);
-                crypto_x25519_public_key(bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.pk, bike.paired_phone[index].bike_pairing_key.sk);
-                break;
-            }
-        }
-    }
-
-    return bike.cur_paired_phone_idx;
-}
-
 static int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
-    if (bike.num_paired_phone >= MAX_PAIRED_PHONE) {
-        ESP_LOGE(CRYPTO_TAG, "number of paired phones reaches limitation: %d", MAX_PAIRED_PHONE);
-        return -2;
-    }
-
     // Verify that the message was actually signed by the server
     // int verify_server_signature = crypto_eddsa_check(pair_request->signature, server.identity_pk, (uint8_t*)&pair_request->contents, sizeof(pair_request_content_t));
 #if(DEBUG)
@@ -405,41 +288,73 @@ static int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
     ESP_LOGE(CRYPTO_TAG, "conntent:");
     esp_log_buffer_hex(CRYPTO_TAG, (uint8_t*)&pair_request->contents, sizeof(pair_request_content_t));
 #endif
+
+    if (memcmp(bike.identity_key.pk, pair_request->contents.bike_identity_pk, sizeof(bike.identity_key.pk)) != 0) {
+        ESP_LOGE(CRYPTO_TAG, "invalid bike_identity_pk!!!");
+        return -1;
+    }
+    
     int verify_server_signature = crypto_ed25519_check(pair_request->signature, server.identity_pk, (uint8_t*)&pair_request->contents, sizeof(pair_request_content_t));
     if (verify_server_signature != 0) {
         ESP_LOGE(CRYPTO_TAG, "failed to verify server signature");
         return verify_server_signature;
     }
 
-    bike.cur_paired_phone_idx = update_paired_phone_table(pair_request);
+    memcpy(phone.identity_pk, pair_request->contents.phone_identity_pk, sizeof(phone.identity_pk));
+    memcpy(phone.pairing_pk.value, pair_request->contents.phone_pairing_pk, sizeof(phone.pairing_pk.value));
+    phone.pairing_pk.start_time = pair_request->contents.start_time;
+    phone.pairing_pk.expiry_time = pair_request->contents.expiry_time;
+
+#if(DEBUG)
+    ESP_LOGI(CRYPTO_TAG, "phone_identity_pk:");
+    esp_log_buffer_hex(CRYPTO_TAG, phone.identity_pk, KEY_LEN);
+    ESP_LOGI(CRYPTO_TAG, "phone.pairing_pk.value:");
+    esp_log_buffer_hex(CRYPTO_TAG, phone.pairing_pk.value, KEY_LEN);
+    ESP_LOGI(CRYPTO_TAG, "phone.pairing_pk.start_time: %ld", phone.pairing_pk.start_time);
+    ESP_LOGI(CRYPTO_TAG, "phone.pairing_pk.expiry_time: %ld", phone.pairing_pk.expiry_time);
+#endif
+
+    //generate bike pairing key for this connection
+    random_generator(bike.pairing_key.sk, KEY_LEN);
+    crypto_x25519_public_key(bike.pairing_key.pk, bike.pairing_key.sk);
+
+#if(DEBUG)
+    ESP_LOGI(CRYPTO_TAG, "bike.pairing_key.sk:");
+    esp_log_buffer_hex(CRYPTO_TAG, bike.pairing_key.sk, KEY_LEN);
+    ESP_LOGI(CRYPTO_TAG, "bike.pairing_key.pk:");
+    esp_log_buffer_hex(CRYPTO_TAG, bike.pairing_key.pk, KEY_LEN);
+#endif
 
     // Create the response and sign it
-    memcpy(pair_response->contents.phone_pairing_pk, pair_request->contents.phone_pairing_pk, KEY_LEN);
-    memcpy(pair_response->contents.bike_pairing_pk, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.pk, KEY_LEN);
-    xed25519_sign(pair_response->signature, bike.identity.sk, (uint8_t*)&pair_response->contents, sizeof(pair_response_content_t));
+    memcpy(pair_response->contents.phone_pairing_pk, phone.pairing_pk.value, KEY_LEN);
+    memcpy(pair_response->contents.bike_pairing_pk, bike.pairing_key.pk, KEY_LEN);
+    xed25519_sign(pair_response->signature, bike.identity_key.sk, (uint8_t*)&pair_response->contents, sizeof(pair_response_content_t));
+
+
+#if(DEBUG)
+    ESP_LOGE(CRYPTO_TAG, "pair signature:");
+    esp_log_buffer_hex(CRYPTO_TAG, (uint8_t*)pair_response->signature, SIGNATURE_LEN);
+    ESP_LOGE(CRYPTO_TAG, "content:");
+    esp_log_buffer_hex(CRYPTO_TAG, (uint8_t*)&pair_response->contents, sizeof(pair_response_content_t));
+#endif
 
     return 0;
 }
 
 static int session(session_request_t *session_request, session_response_t *session_response) {
-    // Ensure that we're paired with this phone
-    if (bike.cur_paired_phone_idx >= MAX_PAIRED_PHONE) {
-        ESP_LOGE(CRYPTO_TAG, "no phone paired yet...");
-        return -1;
-    }
 
-    if (memcmp(bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.pk, session_request->contents.bike_pairing_pk, KEY_LEN)) {
+    if (memcmp(bike.pairing_key.pk, session_request->contents.bike_pairing_pk, KEY_LEN) != 0) {
         ESP_LOGE(CRYPTO_TAG, "invalid pairing key...");
 #if(DEBUG)
-        ESP_LOGE(CRYPTO_TAG, "Bike pairing key...");
-        esp_log_buffer_hex(CRYPTO_TAG, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.pk, KEY_LEN);
-        ESP_LOGE(CRYPTO_TAG, "Received Bike pairing key...");
+        ESP_LOGE(CRYPTO_TAG, "session Bike pairing key...");
+        esp_log_buffer_hex(CRYPTO_TAG, bike.pairing_key.pk, KEY_LEN);
+        ESP_LOGE(CRYPTO_TAG, "session Received Bike pairing key...");
         esp_log_buffer_hex(CRYPTO_TAG, session_request->contents.bike_pairing_pk, KEY_LEN);
 #endif
         return -1;
     }
 
-    int verify = xed25519_verify(session_request->signature, bike.paired_phone[bike.cur_paired_phone_idx].phone_identity_pk, (uint8_t*)&session_request->contents, sizeof(session_request_content_t));
+    int verify = xed25519_verify(session_request->signature, phone.identity_pk, (uint8_t*)&session_request->contents, sizeof(session_request_content_t));
     if (!verify) {
         ESP_LOGI(CRYPTO_TAG, "session signature is correct");
     } else {
@@ -448,31 +363,31 @@ static int session(session_request_t *session_request, session_response_t *sessi
     }
 
     uint8_t dh1[KEY_LEN];
-    crypto_x25519(dh1, bike.identity.sk, bike.paired_phone[bike.cur_paired_phone_idx].phone_identity_pk);
+    crypto_x25519(dh1, bike.identity_key.sk, phone.identity_pk);
 #if (DEBUG)
-    ESP_LOGE(CRYPTO_TAG, "bike.identity.sk...");
-    esp_log_buffer_hex(CRYPTO_TAG, bike.identity.sk, KEY_LEN);
-    ESP_LOGE(CRYPTO_TAG, "phone_identity_pk...");
-    esp_log_buffer_hex(CRYPTO_TAG, bike.paired_phone[bike.cur_paired_phone_idx].phone_identity_pk, KEY_LEN);
+    ESP_LOGE(CRYPTO_TAG, "session bike.identity.sk...");
+    esp_log_buffer_hex(CRYPTO_TAG, bike.identity_key.sk, KEY_LEN);
+    ESP_LOGE(CRYPTO_TAG, "session phone_identity_pk...");
+    esp_log_buffer_hex(CRYPTO_TAG, phone.identity_pk, KEY_LEN);
 #endif
     uint8_t dh2[KEY_LEN];
-    crypto_x25519(dh2, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.sk, bike.paired_phone[bike.cur_paired_phone_idx].phone_pairing_pk);
+    crypto_x25519(dh2, bike.pairing_key.sk, phone.pairing_pk.value);
 #if (DEBUG)
-    ESP_LOGE(CRYPTO_TAG, "bike_pairing_key.sk...");
-    esp_log_buffer_hex(CRYPTO_TAG, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.sk, KEY_LEN);
-    ESP_LOGE(CRYPTO_TAG, "bike_pairing_key.pk...");
-    esp_log_buffer_hex(CRYPTO_TAG, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.pk, KEY_LEN);
-    ESP_LOGE(CRYPTO_TAG, "phone_pairing_pk...");
-    esp_log_buffer_hex(CRYPTO_TAG, bike.paired_phone[bike.cur_paired_phone_idx].phone_pairing_pk, KEY_LEN);
+    ESP_LOGE(CRYPTO_TAG, "session bike_pairing_key.sk...");
+    esp_log_buffer_hex(CRYPTO_TAG, bike.pairing_key.sk, KEY_LEN);
+    ESP_LOGE(CRYPTO_TAG, "session bike_pairing_key.pk...");
+    esp_log_buffer_hex(CRYPTO_TAG, bike.pairing_key.pk, KEY_LEN);
+    ESP_LOGE(CRYPTO_TAG, "session phone.pairing_pk.value...");
+    esp_log_buffer_hex(CRYPTO_TAG, phone.pairing_pk.value, KEY_LEN);
 #endif
     uint8_t dh3[KEY_LEN];
-    crypto_x25519(dh3, bike.identity.sk, session_request->contents.ephemeral_pk);
+    crypto_x25519(dh3, bike.identity_key.sk, session_request->contents.ephemeral_pk);
 #if (DEBUG)
     ESP_LOGE(CRYPTO_TAG, "ephemeral_pk...");
     esp_log_buffer_hex(CRYPTO_TAG, session_request->contents.ephemeral_pk, KEY_LEN);
 #endif
     uint8_t dh4[KEY_LEN];
-    crypto_x25519(dh4, bike.paired_phone[bike.cur_paired_phone_idx].bike_pairing_key.sk, session_request->contents.ephemeral_pk);
+    crypto_x25519(dh4, bike.pairing_key.sk, session_request->contents.ephemeral_pk);
 
     uint8_t sk[KEY_LEN*2] = {0};
     crypto_blake2b_ctx ctx;
@@ -482,23 +397,19 @@ static int session(session_request_t *session_request, session_response_t *sessi
     crypto_blake2b_update(&ctx, dh3, KEY_LEN);
     crypto_blake2b_update(&ctx, dh4, KEY_LEN);
     crypto_blake2b_final(&ctx, sk);
-    memcpy(bike.paired_phone[bike.cur_paired_phone_idx].derived_key, sk, KEY_LEN);
+    memcpy(phone.derivation_key, sk, KEY_LEN);
 #if (DEBUG)
-    ESP_LOGI(CRYPTO_TAG, "bike derived key");
-    esp_log_buffer_hex(CRYPTO_TAG, bike.paired_phone[bike.cur_paired_phone_idx].derived_key, KEY_LEN);
+    ESP_LOGI(CRYPTO_TAG, "session derivation_key");
+    esp_log_buffer_hex(CRYPTO_TAG, phone.derivation_key, KEY_LEN);
 #endif
     // generate random session id
-    random_generator(bike.paired_phone[bike.cur_paired_phone_idx].session_id, KEY_LEN);
-    memcpy(session_response->contents.session_id, bike.paired_phone[bike.cur_paired_phone_idx].session_id, KEY_LEN);
+    random_generator(phone.session_id, KEY_LEN);
+    memcpy(session_response->contents.session_id, phone.session_id, KEY_LEN);
     memcpy(session_response->contents.ephemeral_pk, session_request->contents.ephemeral_pk, KEY_LEN);
-#if (DEBUG)
-    ESP_LOGI(CRYPTO_TAG, "ephemeral_pk:");
-    esp_log_buffer_hex(CRYPTO_TAG, session_response->contents.ephemeral_pk, KEY_LEN);
-#endif
     uint8_t random[SIGNATURE_LEN];
     random_generator(random, SIGNATURE_LEN);
     xed25519_sign(session_response->signature,
-                   bike.identity.sk,
+                   bike.identity_key.sk,
                    (uint8_t*)&session_response->contents, sizeof(session_response_content_t));
     return 0;
 }
@@ -584,6 +495,15 @@ static int xed25519_verify(uint8_t signature[SIGNATURE_LEN],
                     uint8_t *message,
                     size_t message_size)
 {
+#if (DEBUG)
+    ESP_LOGI(CRYPTO_TAG, "xed25519_verify()-signature:");
+    esp_log_buffer_hex(CRYPTO_TAG, signature, SIGNATURE_LEN);
+    ESP_LOGI(CRYPTO_TAG, "xed25519_verify()-public_key:");
+    esp_log_buffer_hex(CRYPTO_TAG, public_key, KEY_LEN);
+    ESP_LOGI(CRYPTO_TAG, "xed25519_verify()-message:");
+    esp_log_buffer_hex(CRYPTO_TAG, message, message_size);
+#endif
+
 	/* Convert X25519 key to EdDSA */
 	uint8_t A[KEY_LEN];
 	crypto_x25519_to_eddsa(A, public_key);
