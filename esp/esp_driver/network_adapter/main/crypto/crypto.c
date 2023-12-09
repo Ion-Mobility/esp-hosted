@@ -114,6 +114,11 @@ server_t server             = {0};
 phone_t phone               = {0};
 uint8_t empty_key[KEY_LEN]  = {0};
 
+#if (IGNORE_PAIRING)
+uint8_t derivation_key[KEY_LEN] = {0x85,0xd8,0x7a,0xe1,0x3e,0xdc,0x8d,0x61,0x34,0x06,0x63,0xa4,0xc9,0x27,0x9f,0x98,0xc3,0x3b,0xf4,0xb5,0x9f,0x45,0x01,0x6b,0x82,0x8d,0xc3,0x0e,0x0b,0x06,0x60,0x39};
+uint8_t session_id[SESSION_ID_LEN] = {0x52,0x04,0x2a,0x89,0x2b,0xe5,0x28,0x61,0x89,0x9c,0xb5,0xb0,0x52,0x21,0x4f,0xf8,0x40,0xd4,0x5b,0x70,0x91,0x18,0xc7,0x12,0xd3,0xdb,0x5e,0x8f,0xc9,0x44,0xe1,0x1b};
+#endif
+
 esp_err_t crypto_init(void) {
     nvs_handle_t my_handle;
     esp_err_t err = ESP_OK;
@@ -342,7 +347,7 @@ static int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
 }
 
 static int session(session_request_t *session_request, session_response_t *session_response) {
-
+#if (IGNORE_PAIRING != 1)
     if (memcmp(bike.pairing_key.pk, session_request->contents.bike_pairing_pk, KEY_LEN) != 0) {
         ESP_LOGE(CRYPTO_TAG, "invalid pairing key...");
 #if(DEBUG)
@@ -398,13 +403,22 @@ static int session(session_request_t *session_request, session_response_t *sessi
     crypto_blake2b_update(&ctx, dh4, KEY_LEN);
     crypto_blake2b_final(&ctx, sk);
     memcpy(phone.derivation_key, sk, KEY_LEN);
-#if (DEBUG)
-    ESP_LOGI(CRYPTO_TAG, "session derivation_key");
-    esp_log_buffer_hex(CRYPTO_TAG, phone.derivation_key, KEY_LEN);
-#endif
+
     // generate random session id
     random_generator(phone.session_id, KEY_LEN);
     memcpy(session_response->contents.session_id, phone.session_id, KEY_LEN);
+#else
+    memcpy(phone.derivation_key, derivation_key, KEY_LEN);
+    memcpy(phone.session_id, session_id, SESSION_ID_LEN);
+#endif
+
+#if (DEBUG)
+    ESP_LOGI(CRYPTO_TAG, "session derivation_key");
+    esp_log_buffer_hex(CRYPTO_TAG, phone.derivation_key, KEY_LEN);
+    ESP_LOGI(CRYPTO_TAG, "session id");
+    esp_log_buffer_hex(CRYPTO_TAG, phone.session_id, SESSION_ID_LEN);
+#endif
+
     memcpy(session_response->contents.ephemeral_pk, session_request->contents.ephemeral_pk, KEY_LEN);
     uint8_t random[SIGNATURE_LEN];
     random_generator(random, SIGNATURE_LEN);
