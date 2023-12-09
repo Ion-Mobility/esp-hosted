@@ -635,9 +635,6 @@ static void send_to_ble_queue(uint8_t msg_id, uint8_t *data, int len) {
         // case PHONE_BLE_BATTERY:
         //     to_ble_msg.msg_id = PHONE_BLE_BATTERY;
         //     break;
-        // case PHONE_BLE_CHARGE:
-        //     to_ble_msg.msg_id = PHONE_BLE_CHARGE;
-        //     break;
         // case PHONE_BLE_LAST_TRIP:
         //     to_ble_msg.msg_id = PHONE_BLE_LAST_TRIP;
         //     break;

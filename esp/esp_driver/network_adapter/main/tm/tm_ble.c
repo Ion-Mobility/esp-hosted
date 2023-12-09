@@ -15,7 +15,6 @@
 #define ION_BLE_TAG             "TM_BLE"
 #define BLE_PAIRING_TIMEOUT     5  //10s
 
-#define FOR_IMOS                0
 #define OK                      1
 #define FAIL                    0
 
@@ -81,16 +80,11 @@ static void ble_task(void *arg)
                     int pairing_result = pairing_request(to_ble_msg.data, to_ble_msg.len, buf, &buf_len);
                     if (pairing_result == ESP_OK) {
                         to_phone_msg.msg_id = PHONE_BLE_PAIRING;
-#if (FOR_IMOS)
-                        connection_state = SESSION_CREATED;
-                        to_phone_msg.len = 1;
-                        to_phone_msg.data[0] = 1;
-                        send_to_tm_queue(TM_BLE_PAIRED, NULL, 0);
-#else
+
                         connection_state = PAIRED;
                         to_phone_msg.len = buf_len;
                         memcpy(to_phone_msg.data, buf, buf_len);
-#endif
+
                         send_to_phone(&to_phone_msg);
                         ESP_LOGI(ION_BLE_TAG, "Pair OK");
                     } else {
@@ -140,22 +134,15 @@ static void ble_task(void *arg)
                     ret = message_decrypt(buf, &buf_len, to_ble_msg.data, to_ble_msg.len);
                     if (ret == 0) {
                         //successfully decrypted message, let process this command
-                        switch (buf[0]) {
+                        switch (buf[3]) {
                             case PHONE_BLE_BATTERY:
                                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_BATTERY");
                                 if (connection_state == SESSION_CREATED) {
-                                    send_to_tm_queue(TM_BLE_BATTERY, NULL, 0);
-                                } else {
-                                    ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
-                                    send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
-                                    tm_ble_gatts_kill_connection();
-                                }
-                                break;
+#if (IGNORE_PAIRING)
 
-                            case PHONE_BLE_CHARGE:
-                                ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_CHARGE");
-                                if (connection_state == SESSION_CREATED) {
-                                    send_to_tm_queue(TM_BLE_CHARGE, NULL, 0);
+#else
+                                    send_to_tm_queue(TM_BLE_BATTERY, NULL, 0);
+#endif
                                 } else {
                                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
                                     send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
@@ -174,21 +161,10 @@ static void ble_task(void *arg)
                                 }
                                 break;
 
-                            case PHONE_BLE_STEERING_LOCK:
-                                ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_STEERING_LOCK");
+                            case PHONE_BLE_STEERING:
+                                ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_STEERING");
                                 if (connection_state == SESSION_CREATED) {
-                                    send_to_tm_queue(TM_BLE_STEERING_LOCK, NULL, 0);
-                                } else {
-                                    ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
-                                    send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
-                                    tm_ble_gatts_kill_connection();
-                                }
-                                break;
-
-                            case PHONE_BLE_STEERING_UNLOCK:
-                                ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_STEERING_UNLOCK");
-                                if (connection_state == SESSION_CREATED) {
-                                    send_to_tm_queue(TM_BLE_STEERING_UNLOCK, NULL, 0);
+                                    send_to_tm_queue(TM_BLE_STEERING, NULL, 0);
                                 } else {
                                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
                                     send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
@@ -244,47 +220,19 @@ static void ble_task(void *arg)
                 }
                 break;
 
-            case TM_BLE_CHARGE:
-                ESP_LOGI(ION_BLE_TAG, "TM_BLE_CHARGE");
-                if (connection_state == SESSION_CREATED) {
-                    memset(&charge, 0, sizeof(charge_t));
-                    memcpy(&charge, to_ble_msg.data, sizeof(charge_t));
-#if (FOR_IMOS)
-                    to_phone_msg.len = sizeof(charge.state) + sizeof(charge.time_to_full);
-                    memcpy(&to_phone_msg.data[0], &charge.state, sizeof(charge.state));
-                    memcpy(&to_phone_msg.data[0+sizeof(charge.state)], &charge.time_to_full, sizeof(charge.time_to_full));
-                    esp_log_buffer_hex(ION_BLE_TAG, to_phone_msg.data, to_phone_msg.len);
-#else
-                    //encrypt data & send to phone
-                    message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, to_ble_msg.data, to_ble_msg.len);
-#endif
-                    ESP_LOGI(ION_BLE_TAG, "charge state            %d",charge.state);
-                    ESP_LOGI(ION_BLE_TAG, "charge time_to_full     %d",charge.time_to_full);
-
-                    if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
-                        to_phone_msg.msg_id = PHONE_BLE_CHARGE;
-                        send_to_phone(&to_phone_msg);
-                    }
-                }
-                break;
-
             case TM_BLE_BATTERY:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_BATTERY");
                 if (connection_state == SESSION_CREATED) {
                     //todo: debug only, remove later
                     memset(&battery, 0, sizeof(battery_t));
                     memcpy(&battery, to_ble_msg.data, sizeof(battery_t));
-#if (FOR_IMOS)
-                    to_phone_msg.len = sizeof(battery.level) + sizeof(battery.estimate_range);
-                    to_phone_msg.data[0] = battery.level;
-                    memcpy(&to_phone_msg.data[1], &battery.estimate_range, sizeof(battery.estimate_range));
-                    esp_log_buffer_hex(ION_BLE_TAG, to_phone_msg.data, to_phone_msg.len);
-#else
+
                     //encrypt data & send to phone
                     message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, to_ble_msg.data, to_ble_msg.len);
-#endif
-                    ESP_LOGI(ION_BLE_TAG, "battery level           %d",battery.level);
-                    ESP_LOGI(ION_BLE_TAG, "estimate range vol      %d",battery.estimate_range);
+
+                    ESP_LOGI(ION_BLE_TAG, "battery.level           %d",battery.level);
+                    ESP_LOGI(ION_BLE_TAG, "battery.estimate_range  %d",battery.estimate_range);
+                    ESP_LOGI(ION_BLE_TAG, "battery.time_to_full    %d",battery.time_to_full);
 
                     if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
                         to_phone_msg.msg_id = PHONE_BLE_BATTERY;
@@ -298,16 +246,9 @@ static void ble_task(void *arg)
                 if (connection_state == SESSION_CREATED) {
                     memset(&trip, 0, sizeof(trip_t));
                     memcpy(&trip, to_ble_msg.data, sizeof(trip_t));
-#if (FOR_IMOS)
-                    to_phone_msg.len = sizeof(trip.distance) + sizeof(trip.ride_time) + sizeof(trip.elec_used);
-                    memcpy(&to_phone_msg.data[0], &trip.distance, sizeof(trip.distance));
-                    memcpy(&to_phone_msg.data[0+sizeof(trip.distance)], &trip.ride_time, sizeof(trip.ride_time));
-                    memcpy(&to_phone_msg.data[0+sizeof(trip.distance)+sizeof(trip.ride_time)], &trip.elec_used, sizeof(trip.elec_used));
-                    esp_log_buffer_hex(ION_BLE_TAG, to_phone_msg.data, to_phone_msg.len);
-#else
+
                     //encrypt data & send to phone
                     message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, to_ble_msg.data, to_ble_msg.len);
-#endif
                     ESP_LOGI(ION_BLE_TAG, "last trip distance      %d",trip.distance);
                     ESP_LOGI(ION_BLE_TAG, "last trip ride time     %d",trip.ride_time);
                     ESP_LOGI(ION_BLE_TAG, "last trip electric used %d",trip.elec_used);
@@ -319,22 +260,10 @@ static void ble_task(void *arg)
                 }
                 break;
 
-            case TM_BLE_STEERING_LOCK:
-                ESP_LOGI(ION_BLE_TAG, "TM_BLE_STEERING_LOCK");
+            case TM_BLE_STEERING:
+                ESP_LOGI(ION_BLE_TAG, "TM_BLE_STEERING");
                 if (connection_state == SESSION_CREATED) {
-                    to_phone_msg.msg_id = PHONE_BLE_STEERING_LOCK;
-                    buf_len = 1;
-                    buf[0] = OK;
-                    //encrypt data & send to phone
-                    message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, buf, buf_len);
-                    send_to_phone(&to_phone_msg);
-                }
-                break;
-
-            case TM_BLE_STEERING_UNLOCK:
-                ESP_LOGI(ION_BLE_TAG, "TM_BLE_STEERING_UNLOCK");
-                if (connection_state == SESSION_CREATED) {
-                    to_phone_msg.msg_id = PHONE_BLE_STEERING_UNLOCK;
+                    to_phone_msg.msg_id = PHONE_BLE_STEERING;
                     buf_len = 1;
                     buf[0] = OK;
                     //encrypt data & send to phone
@@ -345,9 +274,6 @@ static void ble_task(void *arg)
 
             case TM_BLE_PING_BIKE:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_PING_BIKE");
-#if (FOR_IMOS)
-                ESP_LOGI(ION_BLE_TAG, "148-ble ping bike");
-#else
                 if (connection_state == SESSION_CREATED) {
                     to_phone_msg.msg_id = PHONE_BLE_PING_BIKE;
                     buf_len = 1;
@@ -356,14 +282,10 @@ static void ble_task(void *arg)
                     message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, buf, buf_len);
                     send_to_phone(&to_phone_msg);
                 }
-#endif
                 break;
 
             case TM_BLE_OPEN_SEAT:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_OPEN_SEAT");
-#if (FOR_IMOS)
-                ESP_LOGI(ION_BLE_TAG, "148-ble open seat");
-#else
                 if (connection_state == SESSION_CREATED) {
                     to_phone_msg.msg_id = PHONE_BLE_OPEN_SEAT;
                     buf_len = 1;
@@ -372,7 +294,6 @@ static void ble_task(void *arg)
                     message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, buf, buf_len);
                     send_to_phone(&to_phone_msg);
                 }
-#endif
                 break;
 
             case TM_BLE_DIAG:

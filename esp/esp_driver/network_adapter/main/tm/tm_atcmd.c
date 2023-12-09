@@ -33,7 +33,7 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len);
 static esp_err_t tm_atcmd_handler(ble_to_tm_msg_t* msg);
 static esp_err_t send_msg_to_ble(int msg_id, uint8_t *data, int len);
 static int tm_atcmd_recv_parser(char* cmd, int len);
-charge_t charge = {0};
+
 battery_t battery = {0};
 trip_t trip = {0};
 
@@ -47,9 +47,6 @@ static void tm_atcmd_task(void *arg)
             continue;
 
         switch (ble_to_tm_msg.msg_id) {
-            case TM_BLE_CHARGE:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "charge info");
-                break;
 
             case TM_BLE_BATTERY:
                 ESP_LOGI(ION_TM_ATCMD_TAG, "battery info");
@@ -59,12 +56,8 @@ static void tm_atcmd_task(void *arg)
                 ESP_LOGI(ION_TM_ATCMD_TAG, "last trip info");
                 break;
 
-            case TM_BLE_STEERING_LOCK:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "steering lock");
-                break;
-
-            case TM_BLE_STEERING_UNLOCK:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "steering unlock");
+            case TM_BLE_STEERING:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "steering");
                 break;
 
             case TM_BLE_PING_BIKE:
@@ -141,20 +134,14 @@ static esp_err_t tm_atcmd_handler(ble_to_tm_msg_t *msg) {
 
 static esp_err_t tm_atcmd_construct(ble_to_tm_msg_t *msg, char* txbuf) {
     switch (msg->msg_id) {
-        case TM_BLE_CHARGE:
-            snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+CHARGE\r\n");
-            break;
         case TM_BLE_BATTERY:
             snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+BATTERY\r\n");
             break;
         case TM_BLE_LAST_TRIP:
             snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+LAST_TRIP\r\n");
             break;
-        case TM_BLE_STEERING_LOCK:
-            snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+STEERING_LOCK\r\n");
-            break;
-        case TM_BLE_STEERING_UNLOCK:
-            snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+STEERING_UNLOCK\r\n");
+        case TM_BLE_STEERING:
+            snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+STEERING\r\n");
             break;
         case TM_BLE_PING_BIKE:
             snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+PING_BIKE\r\n");
@@ -216,32 +203,15 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len) {
     int cmd_id = tm_atcmd_recv_parser(cmd, cmd_len);
 
     switch (cmd_id) {
-        case TM_BLE_CHARGE: {
-            //0         1         2         3         4         5
-            //01234567890123456789012345678901234567890123456789012
-            //TM+CHARGE,x,xxxxx,xxxxx,xxxxx,xxxxx
-            //on/off,charge_vol,charge_cur,charge_cycle,charge_time_to_full
-            memset(&charge, 0, sizeof(charge_t));
-            charge.state                = atoi(&cmd[10]);
-            if (charge.state) {
-                charge.time_to_full        = atoi(&cmd[12]);
-                // charge.vol              = atoi(&cmd[12]);
-                // charge.cur              = atoi(&cmd[18]);
-                // charge.cycle            = atoi(&cmd[24]);
-                // charge.time_to_full     = atoi(&cmd[30]);
-            }
-            send_msg_to_ble(TM_BLE_CHARGE, (uint8_t*)&charge, sizeof(charge_t));
-        }
-        break;
-
         case TM_BLE_BATTERY: {
             //0         1         2         3         4         5
             //01234567890123456789012345678901234567890123456789012
-            //TM+BATTERY,xxx,xxxxx
+            //TM+BATTERY,xxx,xxxxx,xxxxx
             //level,estimate range
             memset(&battery, 0, sizeof(battery_t));
             battery.level           = atoi(&cmd[11]);
             battery.estimate_range  = atoi(&cmd[15]);
+            battery.time_to_full    = atoi(&cmd[21]);
             send_msg_to_ble(TM_BLE_BATTERY, (uint8_t*)&battery, sizeof(battery_t));
         }
         break;
@@ -259,19 +229,11 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len) {
         }
         break;
 
-        case TM_BLE_STEERING_LOCK: {
+        case TM_BLE_STEERING: {
             //0         1         2         3         4         5
             //01234567890123456789012345678901234567890123456789012
-            //TM+STEERING_LOCKED
-            send_msg_to_ble(TM_BLE_STEERING_LOCK, NULL, 0);
-        }
-        break;
-
-        case TM_BLE_STEERING_UNLOCK: {
-            //0         1         2         3         4         5
-            //01234567890123456789012345678901234567890123456789012
-            //TM+STERRING_UNLOCKED
-            send_msg_to_ble(TM_BLE_STEERING_UNLOCK, NULL, 0);
+            //TM+STEERING
+            send_msg_to_ble(TM_BLE_STEERING, NULL, 0);
         }
         break;
 
@@ -382,15 +344,6 @@ int tm_atcmd_recv_parser(char* cmd, int len) {
             }
             break;
 
-        case 'C':
-            //TM+CHARGE,...
-            if (strncmp("CHARGE",&cmd[CMD_START_CHAR_INDEX], sizeof("CHARGE")-1) == 0) {
-                ret = TM_BLE_CHARGE;
-            } else {
-                ret = -1;
-            }
-            break;
-
         case 'B':
             //TM+BATTERY,...
             if (strncmp("BATTERY",&cmd[CMD_START_CHAR_INDEX], sizeof("BATTERY")-1) == 0) {
@@ -402,10 +355,8 @@ int tm_atcmd_recv_parser(char* cmd, int len) {
 
         case 'S':
             //TM+STEERING_LOCK, //TM+STEERING_UNLOCK
-            if (strncmp("STEERING_LOCK",&cmd[CMD_START_CHAR_INDEX], sizeof("STEERING_LOCK")-1) == 0) {
-                ret = TM_BLE_STEERING_LOCK;
-            } else if (strncmp("STEERING_UNLOCK",&cmd[CMD_START_CHAR_INDEX], sizeof("STEERING_UNLOCK")-1) == 0) {
-                ret = TM_BLE_STEERING_UNLOCK;
+            if (strncmp("STEERING",&cmd[CMD_START_CHAR_INDEX], sizeof("STEERING")-1) == 0) {
+                ret = TM_BLE_STEERING;
             } else {
                 ret = -1;
             }

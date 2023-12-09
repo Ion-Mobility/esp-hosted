@@ -12,6 +12,7 @@ typedef struct {
 typedef struct {
     uint8_t level;
     uint16_t estimate_range;
+    uint16_t time_to_full;
 } battery_t;
 
 typedef struct {
