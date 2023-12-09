@@ -76,7 +76,7 @@ static void tm_atcmd_task(void *arg)
                 ESP_LOGI(ION_TM_ATCMD_TAG, "ble pairing");
                 break;
 
-            case TM_BLE_PAIRED:
+            case TM_BLE_SESSION:
                 ESP_LOGI(ION_TM_ATCMD_TAG, "ble paired");
                 break;
 
@@ -133,40 +133,51 @@ static esp_err_t tm_atcmd_handler(ble_to_tm_msg_t *msg) {
 }
 
 static esp_err_t tm_atcmd_construct(ble_to_tm_msg_t *msg, char* txbuf) {
-    switch (msg->msg_id) {
-        case TM_BLE_BATTERY:
-            snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+BATTERY\r\n");
-            break;
-        case TM_BLE_LAST_TRIP:
-            snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+LAST_TRIP\r\n");
-            break;
-        case TM_BLE_STEERING:
-            snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+STEERING\r\n");
-            break;
-        case TM_BLE_PING_BIKE:
-            snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+PING_BIKE\r\n");
-            break;
-        case TM_BLE_OPEN_SEAT:
-            snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+OPEN_SEAT\r\n");
-            break;
-        case TM_BLE_DIAG:
-            snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+DIAG\r\n");
-            break;
-        case TM_BLE_PAIRING:
-            snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+PAIRING\r\n");
-            break;
-        case TM_BLE_PAIRED:
-            snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+PAIRED\r\n");
-            break;
-        case TM_BLE_DISCONNECT:
-            snprintf(txbuf, ATCMD_CMD_LEN+1, "BLE+DISCONNECTED\r\n");
-            break;
-        default:
-            ESP_LOGE(ION_TM_ATCMD_TAG, "unknown command");
-            return ESP_FAIL;
-            break;
-    }
+    if (msg->msg_id>=TM_BLE_PAIRING && msg->msg_id<TM_BLE_INVALID) {
+        txbuf[0] = (uint8_t)(msg->msg_id & 0xFF);
+        switch (txbuf[0]) {
+            case TM_BLE_PAIRING:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_PAIRING");
+                break;
+            case TM_BLE_SESSION:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_SESSION");
+                break;
+            case TM_BLE_DISCONNECT:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_DISCONNECT");
+                break;
+            case TM_BLE_BATTERY:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_BATTERY");
+                break;
+            case TM_BLE_LAST_TRIP:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_LAST_TRIP");
+                break;
+            case TM_BLE_STEERING:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_STEERING");
+                break;
+            case TM_BLE_PING_BIKE:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_PING_BIKE");
+                break;
+            case TM_BLE_OPEN_SEAT:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_OPEN_SEAT");
+                break;
+            case TM_BLE_DIAG:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_DIAG");
+                break;
+            case TM_BLE_BIKE_INFO:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_BIKE_INFO");
+                break;
+            case TM_BLE_POWER_ON:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_POWER_ON");
+                break;
 
+            default:
+                ESP_LOGE(ION_TM_ATCMD_TAG, "unknown command");
+                return ESP_FAIL;
+                break;
+        }
+    } else {
+        return ESP_FAIL;
+    }
     return ESP_OK;
 }
 
@@ -269,7 +280,7 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len) {
         }
         break;
 
-        case TM_BLE_PAIRED: {
+        case TM_BLE_SESSION: {
             //0         1         2         3         4         5
             //01234567890123456789012345678901234567890123456789012
             //TM+PAIRED
@@ -297,7 +308,7 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len) {
 
 void send_to_tm_queue(int msg_id, uint8_t *data, int len)
 {
-    if ((msg_id >= TM_BLE_BATTERY) && (msg_id < TM_BLE_INVALID)) {
+    if ((msg_id >= TM_BLE_PAIRING) && (msg_id < TM_BLE_INVALID)) {
         ble_to_tm_msg_t ble_to_tm_msg = {0};
         ble_to_tm_msg.msg_id = msg_id;
         if (data != NULL) {
@@ -369,7 +380,7 @@ int tm_atcmd_recv_parser(char* cmd, int len) {
             } else if (strncmp("PAIRING",&cmd[CMD_START_CHAR_INDEX], sizeof("PAIRING")-1) == 0) {
                 ret = TM_BLE_PAIRING;
             } else if (strncmp("PAIRED",&cmd[CMD_START_CHAR_INDEX], sizeof("PAIRED")-1) == 0) {
-                ret = TM_BLE_PAIRED;
+                ret = TM_BLE_SESSION;
             } else {
                 ret = -1;
             }

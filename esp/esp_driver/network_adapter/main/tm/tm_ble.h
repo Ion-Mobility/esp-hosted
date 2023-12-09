@@ -28,15 +28,17 @@ typedef enum {
     //add new command here
 
     // between tm & ble
-    TM_BLE_BATTERY              = 0x50,
-    TM_BLE_LAST_TRIP            = 0x52,
-    TM_BLE_STEERING             = 0x53,
-    TM_BLE_PING_BIKE            = 0x55,
-    TM_BLE_OPEN_SEAT            = 0x56,
-    TM_BLE_DIAG                 = 0x57,
-    TM_BLE_PAIRING              = 0x58,
-    TM_BLE_PAIRED               = 0x59,
-    TM_BLE_DISCONNECT           = 0x5A,
+    TM_BLE_PAIRING              = 0x50,
+    TM_BLE_SESSION              = 0x51,
+    TM_BLE_DISCONNECT           = 0x52,
+    TM_BLE_BATTERY              = 0x53,
+    TM_BLE_LAST_TRIP            = 0x54,
+    TM_BLE_STEERING             = 0x55,
+    TM_BLE_PING_BIKE            = 0x56,
+    TM_BLE_OPEN_SEAT            = 0x57,
+    TM_BLE_DIAG                 = 0x58,
+    TM_BLE_BIKE_INFO            = 0x59,
+    TM_BLE_POWER_ON             = 0x5A,
     // add new msg here
     TM_BLE_INVALID              = 0x5B,
 

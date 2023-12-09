@@ -119,7 +119,7 @@ static void ble_task(void *arg)
                         ESP_LOGE(ION_BLE_TAG, "Failed to create session");
                     }
                     // connection_state = SESSION_CREATED;
-                    send_to_tm_queue(TM_BLE_PAIRED, NULL, 0);
+                    send_to_tm_queue(TM_BLE_SESSION, NULL, 0);
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "phone not pair yet, kill this connection");
                     send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
