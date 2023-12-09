@@ -678,8 +678,8 @@ uint32_t EndianConverter(uint32_t *byteArray)
     return ret;
 }
 
-int serialize_data(uint8_t *buf, size_t pos, uint8_t *data, size_t len)
+size_t serialize_data(uint8_t *buf, size_t pos, uint8_t *data, size_t len)
 {
     memcpy(&buf[pos], data, len);
-    return (pos+len);
+    return (len);
 }

@@ -4,10 +4,11 @@
 
 #define BLE_TO_TM_MSG_MAX_LEN   128
 
-typedef struct {
-    bool state;
-    uint16_t time_to_full;
-} charge_t;
+typedef enum {
+    LOCK,
+    UNLOCK,
+    STATE
+} steering_t;
 
 typedef struct {
     uint8_t level;

@@ -31,13 +31,13 @@ static void ble_task(void *arg)
     ble_msg_t to_ble_msg = {0};
     ble_msg_t to_phone_msg = {0};
 
-    charge_t charge = {0};
     battery_t battery = {0};
     trip_t trip = {0};
     //signature + phone pairing key + bike pairing key
     uint8_t buf[BLE_MSG_MAX_LEN];
     size_t buf_len;
     int ret = 0;
+    int msg_id;
 
     ble_gatts_start_advertise();
     while(1) {
@@ -139,7 +139,26 @@ static void ble_task(void *arg)
                                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_BATTERY");
                                 if (connection_state == SESSION_CREATED) {
 #if (IGNORE_PAIRING)
+                                    battery.level = 80;
+                                    battery.estimate_range = 120;
+                                    battery.time_to_full = 123;
+                                    memset(buf, 0, sizeof(buf));
+                                    msg_id = PHONE_BLE_BATTERY;
+                                    buf_len = serialize_data(buf, 0, (uint8_t*)&msg_id, sizeof(msg_id));
+                                    buf_len += serialize_data(buf, buf_len-1, (uint8_t*)&battery.level, sizeof(battery.level));
+                                    buf_len += serialize_data(buf, buf_len-1, (uint8_t*)&battery.estimate_range, sizeof(battery.estimate_range));
+                                    buf_len += serialize_data(buf, buf_len-1, (uint8_t*)&battery.time_to_full, sizeof(battery.time_to_full));
+                                    //encrypt data & send to phone
+                                    message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, buf, buf_len);
 
+                                    ESP_LOGI(ION_BLE_TAG, "battery.level           %d",battery.level);
+                                    ESP_LOGI(ION_BLE_TAG, "battery.estimate_range  %d",battery.estimate_range);
+                                    ESP_LOGI(ION_BLE_TAG, "battery.time_to_full    %d",battery.time_to_full);
+
+                                    if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
+                                        to_phone_msg.msg_id = PHONE_BLE_COMMAND;
+                                        send_to_phone(&to_phone_msg);
+                                    }
 #else
                                     send_to_tm_queue(TM_BLE_BATTERY, NULL, 0);
 #endif
