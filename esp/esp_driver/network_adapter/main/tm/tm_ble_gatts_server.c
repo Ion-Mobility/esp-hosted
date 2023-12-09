@@ -412,13 +412,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                     }
                 } else {
                     uint8_t msg_id = param->write.value[3];
-                    int len = 0;
-                    memcpy(&len, &param->write.value[sizeof(int)], sizeof(int));
-                    len =   ((len>>24)&0xff) |         // move byte 3 to byte 0
-                            ((len<<8)&0xff0000) |      // move byte 1 to byte 2
-                            ((len>>8)&0xff00) |        // move byte 2 to byte 1
-                            ((len<<24)&0xff000000);    // byte 0 to byte 3
-
+                    int len = EndianConverter((uint32_t*)&param->write.value[sizeof(int)]);
                     if (param->write.len <= sizeof(int) + sizeof(int) && len == 0) {
                         //for imos only, where phone can send command_id without encryption
                         send_to_ble_queue(msg_id, NULL, 0);
@@ -675,4 +669,20 @@ void tm_ble_gatts_kill_connection(void)
 #if(!DEBUG)
     esp_ble_gatts_close(ion_profile_tab[PROFILE_APP_IDX].gatts_if, ion_profile_tab[PROFILE_APP_IDX].conn_id);
 #endif
+}
+
+uint32_t EndianConverter(uint32_t *byteArray)
+{
+    uint32_t ret = 0;
+    ret =   ((*byteArray>>24)&0xff) |         // move byte 3 to byte 0
+            ((*byteArray<<8)&0xff0000) |      // move byte 1 to byte 2
+            ((*byteArray>>8)&0xff00) |        // move byte 2 to byte 1
+            ((*byteArray<<24)&0xff000000);    // byte 0 to byte 3
+    return ret;
+}
+
+int serialize_data(uint8_t *buf, size_t pos, uint8_t *data, size_t len)
+{
+    memcpy(&buf[pos], data, len);
+    return (pos+len);
 }
