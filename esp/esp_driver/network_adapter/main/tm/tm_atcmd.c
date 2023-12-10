@@ -32,7 +32,6 @@ static esp_err_t tm_atcmd_recv(char* cmd, int* len);
 static esp_err_t tm_atcmd_process(char* cmd, int cmd_len);
 static esp_err_t tm_atcmd_handler(ble_to_tm_msg_t* msg);
 static esp_err_t send_msg_to_ble(int msg_id, uint8_t *data, int len);
-static int tm_atcmd_recv_parser(char* cmd, int len);
 
 battery_t battery = {0};
 trip_t trip = {0};
@@ -47,6 +46,17 @@ static void tm_atcmd_task(void *arg)
             continue;
 
         switch (ble_to_tm_msg.msg_id) {
+            case TM_BLE_PAIRING:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "ble pairing");
+                break;
+
+            case TM_BLE_SESSION:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "ble paired");
+                break;
+
+            case TM_BLE_DISCONNECT:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "ble disconnected");
+                break;
 
             case TM_BLE_BATTERY:
                 ESP_LOGI(ION_TM_ATCMD_TAG, "battery info");
@@ -70,18 +80,6 @@ static void tm_atcmd_task(void *arg)
 
             case TM_BLE_DIAG:
                 ESP_LOGI(ION_TM_ATCMD_TAG, "diag");
-                break;
-
-            case TM_BLE_PAIRING:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "ble pairing");
-                break;
-
-            case TM_BLE_SESSION:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "ble paired");
-                break;
-
-            case TM_BLE_DISCONNECT:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "ble disconnected");
                 break;
 
             default:
@@ -182,9 +180,6 @@ static esp_err_t tm_atcmd_construct(ble_to_tm_msg_t *msg, char* txbuf) {
 }
 
 static esp_err_t tm_atcmd_send(char* msg) {
-    if (strlen(msg) > ATCMD_CMD_LEN)
-        return ESP_ERR_INVALID_SIZE;
-
     spi_slave_transaction_t t;
     memset(&t, 0, sizeof(t));
     t.length=ATCMD_CMD_LEN*8;   // send 128 bytes each time for alignment
@@ -210,32 +205,46 @@ static esp_err_t tm_atcmd_recv(char* cmd, int* len) {
 
 static esp_err_t tm_atcmd_process(char* cmd, int cmd_len) {
     // process each command here, timeout is 2s
-    ESP_LOGI(ION_TM_ATCMD_TAG, "cmd_data:%s", cmd);
-    int cmd_id = tm_atcmd_recv_parser(cmd, cmd_len);
+    switch (cmd[0]) {
+        case TM_BLE_PAIRING: {
+            ESP_LOGI(ION_TM_ATCMD_TAG, "148 received pairing notification");
+        }
+        break;
 
-    switch (cmd_id) {
+        case TM_BLE_SESSION: {
+            ESP_LOGI(ION_TM_ATCMD_TAG, "148 received paired notification");
+        }
+        break;
+
+        case TM_BLE_DISCONNECT: {
+            ESP_LOGI(ION_TM_ATCMD_TAG, "148 received disconnect notification");
+        }
+        break;
+
         case TM_BLE_BATTERY: {
-            //0         1         2         3         4         5
-            //01234567890123456789012345678901234567890123456789012
-            //TM+BATTERY,xxx,xxxxx,xxxxx
-            //level,estimate range
             memset(&battery, 0, sizeof(battery_t));
-            battery.level           = atoi(&cmd[11]);
-            battery.estimate_range  = atoi(&cmd[15]);
-            battery.time_to_full    = atoi(&cmd[21]);
+            memcpy(&battery.level, &cmd[1], sizeof(cmd[1]));
+            memcpy(&battery.estimate_range, &cmd[2], sizeof(battery.estimate_range));
+            memcpy(&battery.time_to_full, &cmd[4], sizeof(battery.time_to_full));
+#if (DEBUG)
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process battery.level: %d",battery.level);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process battery.estimate_range: %d",battery.estimate_range);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process battery.time_to_full: %d",battery.time_to_full);
+#endif
             send_msg_to_ble(TM_BLE_BATTERY, (uint8_t*)&battery, sizeof(battery_t));
         }
         break;
 
         case TM_BLE_LAST_TRIP: {
-            //0         1         2         3         4         5
-            //01234567890123456789012345678901234567890123456789012
-            //TM+LAST_TRIP,xxxxx,xxxxx,xxxxx
-            //distance, ride_time, elec_used
             memset(&trip, 0, sizeof(trip_t));
-            trip.distance       = atoi(&cmd[13]);
-            trip.ride_time      = atoi(&cmd[19]);
-            trip.elec_used      = atoi(&cmd[25]);
+            memcpy(&trip.distance, &cmd[1], sizeof(trip.distance));
+            memcpy(&trip.ride_time, &cmd[3], sizeof(trip.ride_time));
+            memcpy(&trip.elec_used, &cmd[5], sizeof(trip.elec_used));
+#if (DEBUG)
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process trip.distance: %d",trip.distance);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process trip.ride_time: %d",trip.ride_time);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process trip.elec_used: %d",trip.elec_used);
+#endif
             send_msg_to_ble(TM_BLE_LAST_TRIP, (uint8_t*)&trip, sizeof(trip_t));
         }
         break;
@@ -269,30 +278,6 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len) {
             //01234567890123456789012345678901234567890123456789012
             //TM+DIAG
             send_msg_to_ble(TM_BLE_DIAG, NULL, 0);
-        }
-        break;
-
-        case TM_BLE_PAIRING: {
-            //0         1         2         3         4         5
-            //01234567890123456789012345678901234567890123456789012
-            //TM+PAIRING
-            ESP_LOGI(ION_TM_ATCMD_TAG, "148 received pairing notification");
-        }
-        break;
-
-        case TM_BLE_SESSION: {
-            //0         1         2         3         4         5
-            //01234567890123456789012345678901234567890123456789012
-            //TM+PAIRED
-            ESP_LOGI(ION_TM_ATCMD_TAG, "148 received paired notification");
-        }
-        break;
-
-        case TM_BLE_DISCONNECT: {
-            //0         1         2         3         4         5
-            //01234567890123456789012345678901234567890123456789012
-            //TM+DISCONNECT
-            ESP_LOGI(ION_TM_ATCMD_TAG, "148 received disconnect notification");
         }
         break;
 
@@ -333,81 +318,4 @@ static esp_err_t send_msg_to_ble(int msg_id, uint8_t *data, int len) {
 
     xQueueSend(ble_queue, (void*)&ble_msg, (TickType_t)0);
     return ESP_OK;
-}
-
-int tm_atcmd_recv_parser(char* cmd, int len) {
-    if (len < CMD_MIN_LEN || len > CMD_MAX_LEN)
-        return -1;
-
-    if (strncmp(CMD_PREFIX, cmd, CMD_MIN_LEN) < 0)
-        return -1;
-
-    int ret = -1;
-
-    // command below is parse with alphabet order, when adding new command, make sure it's in right order
-    switch (cmd[CMD_START_CHAR_INDEX]) {
-        case 'L':
-            //TM+LAST_TRIP,...
-            if (strncmp("LAST_TRIP",&cmd[CMD_START_CHAR_INDEX], sizeof("LAST_TRIP")-1) == 0) {
-                ret = TM_BLE_LAST_TRIP;
-            } else {
-                ret = -1;
-            }
-            break;
-
-        case 'B':
-            //TM+BATTERY,...
-            if (strncmp("BATTERY",&cmd[CMD_START_CHAR_INDEX], sizeof("BATTERY")-1) == 0) {
-                ret = TM_BLE_BATTERY;
-            } else {
-                ret = -1;
-            }
-            break;
-
-        case 'S':
-            //TM+STEERING_LOCK, //TM+STEERING_UNLOCK
-            if (strncmp("STEERING",&cmd[CMD_START_CHAR_INDEX], sizeof("STEERING")-1) == 0) {
-                ret = TM_BLE_STEERING;
-            } else {
-                ret = -1;
-            }
-            break;
-
-        case 'P':
-            //TM+PING_BIKE, TM+PAIRING, TM+PAIRED
-            if (strncmp("PING_BIKE",&cmd[CMD_START_CHAR_INDEX], sizeof("PING_BIKE")-1) == 0) {
-                ret = TM_BLE_PING_BIKE;
-            } else if (strncmp("PAIRING",&cmd[CMD_START_CHAR_INDEX], sizeof("PAIRING")-1) == 0) {
-                ret = TM_BLE_PAIRING;
-            } else if (strncmp("PAIRED",&cmd[CMD_START_CHAR_INDEX], sizeof("PAIRED")-1) == 0) {
-                ret = TM_BLE_SESSION;
-            } else {
-                ret = -1;
-            }
-            break;
-
-        case 'O':
-            //TM+OPEN_SEAT
-            if (strncmp("OPEN_SEAT",&cmd[CMD_START_CHAR_INDEX], sizeof("OPEN_SEAT")-1) == 0) {
-                ret = TM_BLE_OPEN_SEAT;
-            } else {
-                ret = -1;
-            }
-            break;
-
-        case 'D':
-            //TM+DIAG
-            if (strncmp("DIAG",&cmd[CMD_START_CHAR_INDEX], sizeof("DIAG")-1) == 0) {
-                ret = TM_BLE_DIAG;
-            } else {
-                ret = -1;
-            }
-            break;
-
-        default:
-            ret = -1;
-            break;
-    }
-
-    return ret;
 }

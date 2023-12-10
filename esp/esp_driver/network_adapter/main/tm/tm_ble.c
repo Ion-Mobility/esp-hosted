@@ -134,7 +134,7 @@ static void ble_task(void *arg)
                     ret = message_decrypt(buf, &buf_len, to_ble_msg.data, to_ble_msg.len);
                     if (ret == 0) {
                         //successfully decrypted message, let process this command
-                        switch (buf[3]) {
+                        switch (to_ble_msg.data[3]) {
                             case PHONE_BLE_BATTERY:
                                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_BATTERY");
                                 if (connection_state == SESSION_CREATED) {
