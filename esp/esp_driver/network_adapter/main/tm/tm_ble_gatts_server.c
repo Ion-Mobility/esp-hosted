@@ -631,28 +631,7 @@ static void send_to_ble_queue(uint8_t msg_id, uint8_t *data, int len) {
                 return;
             to_ble_msg.msg_id = PHONE_BLE_COMMAND;
             memcpy(to_ble_msg.data, data, len);
-            break;     
-        // case PHONE_BLE_BATTERY:
-        //     to_ble_msg.msg_id = PHONE_BLE_BATTERY;
-        //     break;
-        // case PHONE_BLE_LAST_TRIP:
-        //     to_ble_msg.msg_id = PHONE_BLE_LAST_TRIP;
-        //     break;
-        // case PHONE_BLE_STEERING_LOCK:
-        //     to_ble_msg.msg_id = PHONE_BLE_STEERING_LOCK;
-        //     break;
-        // case PHONE_BLE_STEERING_UNLOCK:
-        //     to_ble_msg.msg_id = PHONE_BLE_STEERING_UNLOCK;
-        //     break;
-        // case PHONE_BLE_PING_BIKE:
-        //     to_ble_msg.msg_id = PHONE_BLE_PING_BIKE;
-        //     break;
-        // case PHONE_BLE_OPEN_SEAT:
-        //     to_ble_msg.msg_id = PHONE_BLE_OPEN_SEAT;
-        //     break;
-        // case PHONE_BLE_DIAG:
-        //     to_ble_msg.msg_id = PHONE_BLE_DIAG;
-        //     break;
+            break;
         default:
             return;
     }
