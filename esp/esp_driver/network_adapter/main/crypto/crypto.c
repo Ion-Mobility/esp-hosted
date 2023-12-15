@@ -15,9 +15,8 @@
 #define SESSION_ID_LEN          (32)
 #define SIGNATURE_LEN           (64)
 #define PAIRING_RESPONSE_LEN    (64)
-#define MSG_AUTHN_CODE_LEN      (16)
 #define MAX_PAIRED_PHONE        (3)
-#define MES_AUTHEN_CODE_LEN     (16)    // Message Authentication Code
+#define MAC_LEN                 (16)    // Message Authentication Code
 #define NONCE_LEN               (24)    // Use only once per key
 
 #define STORAGE_NAMESPACE       "ble_keys"
@@ -104,8 +103,8 @@ typedef struct {
 static void xed25519_sign(uint8_t signature[SIGNATURE_LEN], uint8_t secret_key[KEY_LEN], uint8_t *message, size_t message_size);
 static int xed25519_verify(uint8_t signature[SIGNATURE_LEN], uint8_t public_key[KEY_LEN], uint8_t *message, size_t message_size);
 static void random_generator(uint8_t *out, size_t len);
-static void message_lock(uint8_t *ciphertext, size_t *res_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *plaintext, size_t plaintext_len);
-static int message_unlock(uint8_t *plaintext, size_t *plaintext_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *ciphertext, size_t ciphertext_len);
+static void message_lock(uint8_t *ciphertext, size_t *res_len, uint8_t mac[MAC_LEN], uint8_t nonce[NONCE_LEN], uint8_t *plaintext, size_t plaintext_len);
+static int message_unlock(uint8_t *plaintext, size_t *plaintext_len, uint8_t mac[MAC_LEN], uint8_t nonce[NONCE_LEN], uint8_t *ciphertext, size_t ciphertext_len);
 static int pair(pair_request_t *pair_request, pair_response_t *pair_response);
 static int session(session_request_t *session_request, session_response_t *session_response);
 
@@ -232,28 +231,43 @@ void client_disconnect(void)
     memset(&bike.pairing_key, 0, sizeof(bike.pairing_key));
 }
 
-static void message_lock(uint8_t *ciphertext, size_t *res_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *plaintext, size_t plaintext_len)
+static void message_lock(uint8_t *ciphertext, size_t *res_len, uint8_t mac[MAC_LEN], uint8_t nonce[NONCE_LEN], uint8_t *plaintext, size_t plaintext_len)
 {
     crypto_aead_lock(ciphertext, mac,                                               //cipher_text, mac,
                      phone.derivation_key, nonce,                                   //key, nonce
                      phone.session_id, sizeof(phone.session_id),                    //ad, ad_size
                      plaintext, plaintext_len);                                     //plain_text, sizeof(plain_text)
 
-    *res_len = MES_AUTHEN_CODE_LEN + NONCE_LEN + plaintext_len;
+    *res_len = MAC_LEN + NONCE_LEN + plaintext_len;
 }
 
-static int message_unlock(uint8_t *plaintext, size_t *plaintext_len, uint8_t mac[MES_AUTHEN_CODE_LEN], uint8_t nonce[NONCE_LEN], uint8_t *ciphertext, size_t ciphertext_len)
+static int message_unlock(uint8_t *plaintext, size_t *plaintext_len, uint8_t mac[MAC_LEN], uint8_t nonce[NONCE_LEN], uint8_t *ciphertext, size_t ciphertext_len)
 {
     int ret = crypto_aead_unlock(plaintext, mac,                                    //plain_text, mac,
                                 phone.derivation_key, nonce,                        //key, nonce
                                 phone.session_id, sizeof(phone.session_id),         //ad, ad_size
-                                ciphertext, ciphertext_len);                                                                                                     //cipher_text, sizeof(cipher_text)
+                                ciphertext, ciphertext_len);                        //cipher_text, sizeof(cipher_text)
+#if(DEBUG)
+    ESP_LOGE(CRYPTO_TAG, "mac:");
+    esp_log_buffer_hex(CRYPTO_TAG, mac, MAC_LEN);
+    ESP_LOGE(CRYPTO_TAG, "phone.derivation_key:");
+    esp_log_buffer_hex(CRYPTO_TAG, phone.derivation_key, KEY_LEN);
+    ESP_LOGE(CRYPTO_TAG, "nonce:");
+    esp_log_buffer_hex(CRYPTO_TAG, nonce, NONCE_LEN);
+    ESP_LOGE(CRYPTO_TAG, "phone.session_id,:");
+    esp_log_buffer_hex(CRYPTO_TAG, phone.session_id,SESSION_ID_LEN);
+    ESP_LOGE(CRYPTO_TAG, "ciphertext_len: %zu", ciphertext_len);
+    ESP_LOGE(CRYPTO_TAG, "ciphertext:");
+    esp_log_buffer_hex(CRYPTO_TAG, ciphertext, ciphertext_len);
+#endif
+
     if (ret != 0) {
         ESP_LOGE(CRYPTO_TAG, "The message is corrupted");
     } else {
         ESP_LOGI(CRYPTO_TAG, "decrypted mes: ");
         *plaintext_len = ciphertext_len;
-        ESP_LOG_BUFFER_CHAR(CRYPTO_TAG, plaintext, *plaintext_len);
+        esp_log_buffer_hex(CRYPTO_TAG, plaintext, *plaintext_len);
+        // ESP_LOG_BUFFER_CHAR(CRYPTO_TAG, plaintext, *plaintext_len);
     }
     return ret;
 }
@@ -261,18 +275,18 @@ static int message_unlock(uint8_t *plaintext, size_t *plaintext_len, uint8_t mac
 void message_encrypt(uint8_t *response, size_t *res_len, uint8_t *plaintext, size_t plaintext_len)
 {
     uint8_t *mac = &response[0];
-    uint8_t *nonce = &response[MES_AUTHEN_CODE_LEN];
+    uint8_t *nonce = &response[MAC_LEN];
     random_generator(nonce, NONCE_LEN);
-    uint8_t *ciphertext = &response[MES_AUTHEN_CODE_LEN + NONCE_LEN];
+    uint8_t *ciphertext = &response[MAC_LEN + NONCE_LEN];
     message_lock(ciphertext, res_len, mac, nonce, plaintext, plaintext_len);
 }
 
 int message_decrypt(uint8_t *plaintext, size_t *plaintext_len, uint8_t *request, size_t request_len)
 {
     uint8_t *mac = &request[0];
-    uint8_t *nonce = &request[MES_AUTHEN_CODE_LEN];
-    uint8_t *ciphertext = &request[MES_AUTHEN_CODE_LEN + NONCE_LEN];
-    size_t ciphertext_len = request_len - MES_AUTHEN_CODE_LEN - NONCE_LEN;
+    uint8_t *nonce = &request[MAC_LEN];
+    uint8_t *ciphertext = &request[MAC_LEN + NONCE_LEN];
+    size_t ciphertext_len = request_len - MAC_LEN - NONCE_LEN;    
     return message_unlock(plaintext, plaintext_len, mac, nonce, ciphertext, ciphertext_len);
 }
 
@@ -298,7 +312,7 @@ static int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
         ESP_LOGE(CRYPTO_TAG, "invalid bike_identity_pk!!!");
         return -1;
     }
-    
+
     int verify_server_signature = crypto_ed25519_check(pair_request->signature, server.identity_pk, (uint8_t*)&pair_request->contents, sizeof(pair_request_content_t));
     if (verify_server_signature != 0) {
         ESP_LOGE(CRYPTO_TAG, "failed to verify server signature");
