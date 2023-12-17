@@ -189,11 +189,11 @@ static void ble_task(void *arg)
                                 if (connection_state == SESSION_CREATED) {
 #if (DEBUG_BLE)
                                     switch (buf[4]) {
-                                        case LOCK:
-                                            ESP_LOGI(ION_BLE_TAG, "LOCK");
+                                        case ON:
+                                            ESP_LOGI(ION_BLE_TAG, "ON");
                                             break;
-                                        case UNLOCK:
-                                            ESP_LOGI(ION_BLE_TAG, "UNLOCK");
+                                        case OFF:
+                                            ESP_LOGI(ION_BLE_TAG, "OFF");
                                             break;
                                         case STATE:
                                             ESP_LOGI(ION_BLE_TAG, "STATE");
@@ -258,6 +258,84 @@ static void ble_task(void *arg)
                                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_POWER_ON");
                                 if (connection_state == SESSION_CREATED) {
                                     send_to_tm_queue(TM_BLE_POWER_ON, NULL, 0);
+                                } else {
+                                    ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
+                                    send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
+                                    tm_ble_gatts_kill_connection();
+                                }
+                                break;
+
+                            case PHONE_BLE_CELLULAR:
+                                ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_CELLULAR");
+                                if (connection_state == SESSION_CREATED) {
+#if (DEBUG_BLE)
+                                    switch (buf[4]) {
+                                        case ON:
+                                            ESP_LOGI(ION_BLE_TAG, "ON");
+                                            break;
+                                        case OFF:
+                                            ESP_LOGI(ION_BLE_TAG, "OFF");
+                                            break;
+                                        case STATE:
+                                            ESP_LOGI(ION_BLE_TAG, "STATE");
+                                            break;
+                                        default:
+                                            break;
+                                    }
+#endif
+                                    send_to_tm_queue(TM_BLE_CELLULAR, &buf[4], sizeof(buf[4]));
+                                } else {
+                                    ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
+                                    send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
+                                    tm_ble_gatts_kill_connection();
+                                }
+                                break;
+
+                            case PHONE_BLE_LOCATION:
+                                ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_LOCATION");
+                                if (connection_state == SESSION_CREATED) {
+#if (DEBUG_BLE)
+                                    switch (buf[4]) {
+                                        case ON:
+                                            ESP_LOGI(ION_BLE_TAG, "ON");
+                                            break;
+                                        case OFF:
+                                            ESP_LOGI(ION_BLE_TAG, "OFF");
+                                            break;
+                                        case STATE:
+                                            ESP_LOGI(ION_BLE_TAG, "STATE");
+                                            break;
+                                        default:
+                                            break;
+                                    }
+#endif
+                                    send_to_tm_queue(TM_BLE_LOCATION, &buf[4], sizeof(buf[4]));
+                                } else {
+                                    ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
+                                    send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
+                                    tm_ble_gatts_kill_connection();
+                                }
+                                break;
+
+                            case PHONE_BLE_RIDE_TRACKING:
+                                ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_RIDE_TRACKING");
+                                if (connection_state == SESSION_CREATED) {
+#if (DEBUG_BLE)
+                                    switch (buf[4]) {
+                                        case ON:
+                                            ESP_LOGI(ION_BLE_TAG, "ON");
+                                            break;
+                                        case OFF:
+                                            ESP_LOGI(ION_BLE_TAG, "OFF");
+                                            break;
+                                        case STATE:
+                                            ESP_LOGI(ION_BLE_TAG, "STATE");
+                                            break;
+                                        default:
+                                            break;
+                                    }
+#endif
+                                    send_to_tm_queue(TM_BLE_RIDE_TRACKING, &buf[4], sizeof(buf[4]));
                                 } else {
                                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
                                     send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
@@ -417,6 +495,60 @@ static void ble_task(void *arg)
                     buf_len = serialize_data(buf, 0, (uint8_t*)&msg_id, sizeof(msg_id));
                     //encrypt data & send to phone
                     message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, buf, buf_len);
+                    if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
+                        to_phone_msg.msg_id = PHONE_BLE_COMMAND;
+                        send_to_phone(&to_phone_msg);
+                    }
+                }
+                break;
+
+            case TM_BLE_CELLULAR:
+                ESP_LOGI(ION_BLE_TAG, "TM_BLE_CELLULAR");
+                if (connection_state == SESSION_CREATED) {
+                    ESP_LOGI(ION_BLE_TAG, "cellular.state           %d",to_ble_msg.data[0]);
+                    memset(buf, 0, sizeof(buf));
+                    msg_id = PHONE_BLE_CELLULAR;
+                    buf_len = serialize_data(buf, 0, (uint8_t*)&msg_id, sizeof(msg_id));
+                    buf_len += serialize_data(buf, buf_len, (uint8_t*)&to_ble_msg.data[0], sizeof(to_ble_msg.data[0]));
+                    //encrypt data & send to phone
+                    message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, buf, buf_len);
+
+                    if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
+                        to_phone_msg.msg_id = PHONE_BLE_COMMAND;
+                        send_to_phone(&to_phone_msg);
+                    }
+                }
+                break;
+
+            case TM_BLE_LOCATION:
+                ESP_LOGI(ION_BLE_TAG, "TM_BLE_LOCATION");
+                if (connection_state == SESSION_CREATED) {
+                    ESP_LOGI(ION_BLE_TAG, "location.state           %d",to_ble_msg.data[0]);
+                    memset(buf, 0, sizeof(buf));
+                    msg_id = PHONE_BLE_LOCATION;
+                    buf_len = serialize_data(buf, 0, (uint8_t*)&msg_id, sizeof(msg_id));
+                    buf_len += serialize_data(buf, buf_len, (uint8_t*)&to_ble_msg.data[0], sizeof(to_ble_msg.data[0]));
+                    //encrypt data & send to phone
+                    message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, buf, buf_len);
+
+                    if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
+                        to_phone_msg.msg_id = PHONE_BLE_COMMAND;
+                        send_to_phone(&to_phone_msg);
+                    }
+                }
+                break;
+
+            case TM_BLE_RIDE_TRACKING:
+                ESP_LOGI(ION_BLE_TAG, "TM_BLE_RIDE_TRACKING");
+                if (connection_state == SESSION_CREATED) {
+                    ESP_LOGI(ION_BLE_TAG, "ride_tracking.state           %d",to_ble_msg.data[0]);
+                    memset(buf, 0, sizeof(buf));
+                    msg_id = PHONE_BLE_RIDE_TRACKING;
+                    buf_len = serialize_data(buf, 0, (uint8_t*)&msg_id, sizeof(msg_id));
+                    buf_len += serialize_data(buf, buf_len, (uint8_t*)&to_ble_msg.data[0], sizeof(to_ble_msg.data[0]));
+                    //encrypt data & send to phone
+                    message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, buf, buf_len);
+
                     if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
                         to_phone_msg.msg_id = PHONE_BLE_COMMAND;
                         send_to_phone(&to_phone_msg);

@@ -35,7 +35,10 @@ static esp_err_t send_msg_to_ble(int msg_id, uint8_t *data, int len);
 
 battery_t battery = {0};
 trip_t trip = {0};
-steering_t steering = STATE;
+on_off_state_t steering = STATE;
+on_off_state_t cellular = STATE;
+on_off_state_t location = STATE;
+on_off_state_t ride_tracking = STATE;
 
 static void tm_atcmd_task(void *arg)
 {
@@ -91,6 +94,18 @@ static void tm_atcmd_task(void *arg)
                 ESP_LOGI(ION_TM_ATCMD_TAG, "power on");
                 break;
 
+            case TM_BLE_CELLULAR:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "cellular");
+                break;
+
+            case TM_BLE_LOCATION:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "location");
+                break;
+
+            case TM_BLE_RIDE_TRACKING:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "ride tracking");
+                break;
+
             default:
                 continue;
                 break;
@@ -142,58 +157,15 @@ static esp_err_t tm_atcmd_handler(ble_to_tm_msg_t *msg) {
 static esp_err_t tm_atcmd_construct(ble_to_tm_msg_t *msg, char* txbuf) {
     if (msg->msg_id>=TM_BLE_PAIRING && msg->msg_id<=TM_BLE_OK) {
         txbuf[0] = (uint8_t)(msg->msg_id & 0xFF);
-        if (msg->msg_id == TM_BLE_STEERING)
+        if (msg->msg_id == TM_BLE_STEERING ||
+            msg->msg_id == TM_BLE_CELLULAR ||
+            msg->msg_id == TM_BLE_LOCATION ||
+            msg->msg_id == TM_BLE_RIDE_TRACKING)
             txbuf[1] = (uint8_t)(msg->data[0]);
-        switch (txbuf[0]) {
-            case TM_BLE_PAIRING:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_PAIRING");
-                break;
-            case TM_BLE_SESSION:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_SESSION");
-                break;
-            case TM_BLE_DISCONNECT:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_DISCONNECT");
-                break;
-            case TM_BLE_BATTERY:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_BATTERY");
-                break;
-            case TM_BLE_LAST_TRIP:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_LAST_TRIP");
-                break;
-            case TM_BLE_STEERING:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_STEERING");
-                break;
-            case TM_BLE_PING_BIKE:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_PING_BIKE");
-                break;
-            case TM_BLE_OPEN_SEAT:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_OPEN_SEAT");
-                break;
-            case TM_BLE_DIAG:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_DIAG");
-                break;
-            case TM_BLE_BIKE_INFO:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_BIKE_INFO");
-                break;
-            case TM_BLE_POWER_ON:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_POWER_ON");
-                break;
-            case TM_BLE_FAIL:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_FAIL");
-                break;
-            case TM_BLE_OK:
-                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_OK");
-                break;
 
-            default:
-                ESP_LOGE(ION_TM_ATCMD_TAG, "unknown command");
-                return ESP_FAIL;
-                break;
-        }
-    } else {
-        return ESP_FAIL;
+        return ESP_OK;
     }
-    return ESP_OK;
+    return ESP_FAIL;
 }
 
 static IRAM_ATTR esp_err_t tm_atcmd_transmit(char* tx, char* rx) {
@@ -311,12 +283,30 @@ static esp_err_t tm_atcmd_process(char* cmd) {
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process trip.elec_used: %d",trip.elec_used);
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process steering state: %d",steering);
 #endif
-            send_msg_to_ble(TM_BLE_BIKE_INFO, (uint8_t*)&cmd[1], sizeof(battery_t) + sizeof(trip_t) + sizeof(steering_t));
+            send_msg_to_ble(TM_BLE_BIKE_INFO, (uint8_t*)&cmd[1], sizeof(battery_t) + sizeof(trip_t) + sizeof(on_off_state_t));
         }
         break;
 
         case TM_BLE_POWER_ON: {
             send_msg_to_ble(TM_BLE_POWER_ON, NULL, 0);
+        }
+        break;
+
+        case TM_BLE_CELLULAR: {
+            cellular = cmd[1];
+            send_msg_to_ble(TM_BLE_CELLULAR, (uint8_t*)&cellular, sizeof(cellular));
+        }
+        break;
+
+        case TM_BLE_LOCATION: {
+            location = cmd[1];
+            send_msg_to_ble(TM_BLE_LOCATION, (uint8_t*)&location, sizeof(location));
+        }
+        break;
+
+        case TM_BLE_RIDE_TRACKING: {
+            ride_tracking = cmd[1];
+            send_msg_to_ble(TM_BLE_RIDE_TRACKING, (uint8_t*)&ride_tracking, sizeof(ride_tracking));
         }
         break;
 

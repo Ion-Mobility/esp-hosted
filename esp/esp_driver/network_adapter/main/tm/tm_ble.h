@@ -25,6 +25,9 @@ typedef enum {
     PHONE_BLE_DIAG              = 0x08,
     PHONE_BLE_BIKE_INFO         = 0x09,
     PHONE_BLE_POWER_ON          = 0x0A,
+    PHONE_BLE_CELLULAR          = 0x0B,
+    PHONE_BLE_LOCATION          = 0x0C,
+    PHONE_BLE_RIDE_TRACKING     = 0x0D,
     //add new command here
 
     // between tm & ble
@@ -39,6 +42,9 @@ typedef enum {
     TM_BLE_DIAG                 = 0x58,
     TM_BLE_BIKE_INFO            = 0x59,
     TM_BLE_POWER_ON             = 0x5A,
+    TM_BLE_CELLULAR             = 0x5B,
+    TM_BLE_LOCATION             = 0x5C,
+    TM_BLE_RIDE_TRACKING        = 0x5D,
     // add new msg here
     TM_BLE_FAIL                 = 0x9E,
     TM_BLE_OK                   = 0x9F,

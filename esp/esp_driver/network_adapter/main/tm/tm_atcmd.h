@@ -5,10 +5,10 @@
 #define BLE_TO_TM_MSG_MAX_LEN   128
 
 typedef enum {
-    LOCK,
-    UNLOCK,
+    ON,
+    OFF,
     STATE
-} steering_t;
+} on_off_state_t;
 
 typedef struct {
     uint8_t level;
