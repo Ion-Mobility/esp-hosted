@@ -134,7 +134,11 @@ static void ble_task(void *arg)
                     ret = message_decrypt(buf, &buf_len, to_ble_msg.data, to_ble_msg.len);
                     if (ret == 0) {
                         //successfully decrypted message, let process this command
-                        switch (to_ble_msg.data[3]) {
+#if (DEBUG)
+                        ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_COMMAND:");
+                        esp_log_buffer_hex(ION_BLE_TAG, buf, buf_len);
+#endif
+                        switch (buf[3]) {
                             case PHONE_BLE_BATTERY:
                                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_BATTERY");
                                 if (connection_state == SESSION_CREATED) {
@@ -184,7 +188,7 @@ static void ble_task(void *arg)
                                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_STEERING");
                                 if (connection_state == SESSION_CREATED) {
 #if (DEBUG)
-                                    switch (to_ble_msg.data[4]) {
+                                    switch (buf[4]) {
                                         case LOCK:
                                             ESP_LOGI(ION_BLE_TAG, "LOCK");
                                             break;
@@ -198,7 +202,7 @@ static void ble_task(void *arg)
                                             break;
                                     }
 #endif
-                                    send_to_tm_queue(TM_BLE_STEERING, &to_ble_msg.data[4], sizeof(to_ble_msg.data[4]));
+                                    send_to_tm_queue(TM_BLE_STEERING, &buf[4], sizeof(buf[4]));
                                 } else {
                                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
                                     send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);

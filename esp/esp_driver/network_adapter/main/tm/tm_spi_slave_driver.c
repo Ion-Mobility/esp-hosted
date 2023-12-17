@@ -18,12 +18,6 @@
 #define GPIO_SCLK       35
 #define GPIO_CS         36
 
-//todo: use for dev kit, remove this later
-// #define GPIO_MOSI 12
-// #define GPIO_MISO 13
-// #define GPIO_SCLK 15
-// #define GPIO_CS 14
-
 void spi_slave_pull_interupt_high(void) {
     gpio_set_level(GPIO_HANDSHAKE, 1);
 }

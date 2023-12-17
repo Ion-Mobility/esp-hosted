@@ -40,7 +40,8 @@ typedef enum {
     TM_BLE_BIKE_INFO            = 0x59,
     TM_BLE_POWER_ON             = 0x5A,
     // add new msg here
-    TM_BLE_INVALID              = 0x5B,
+    TM_BLE_FAIL                 = 0x9E,
+    TM_BLE_OK                   = 0x9F,
 
     BLE_START_ADVERTISE         = 0xA0,
     BLE_DISCONNECT              = 0xA1,

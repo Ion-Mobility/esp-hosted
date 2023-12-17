@@ -14,6 +14,7 @@
 #include "tm_spi_slave_driver.h"
 #include "tm_atcmd.h"
 #include "tm_ble.h"
+#include "crypto.h"
 
 #define ATCMD_TASK_PRIO         3
 #define ATCMD_CMD_LEN           128
@@ -132,7 +133,7 @@ static esp_err_t tm_atcmd_handler(ble_to_tm_msg_t *msg) {
 }
 
 static esp_err_t tm_atcmd_construct(ble_to_tm_msg_t *msg, char* txbuf) {
-    if (msg->msg_id>=TM_BLE_PAIRING && msg->msg_id<TM_BLE_INVALID) {
+    if (msg->msg_id>=TM_BLE_PAIRING && msg->msg_id<=TM_BLE_OK) {
         txbuf[0] = (uint8_t)(msg->msg_id & 0xFF);
         if (msg->msg_id == TM_BLE_STEERING)
             txbuf[1] = (uint8_t)(msg->data[0]);
@@ -170,6 +171,12 @@ static esp_err_t tm_atcmd_construct(ble_to_tm_msg_t *msg, char* txbuf) {
             case TM_BLE_POWER_ON:
                 ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_POWER_ON");
                 break;
+            case TM_BLE_FAIL:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_FAIL");
+                break;
+            case TM_BLE_OK:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_construct TM_BLE_OK");
+                break;
 
             default:
                 ESP_LOGE(ION_TM_ATCMD_TAG, "unknown command");
@@ -188,7 +195,6 @@ static esp_err_t tm_atcmd_send(char* msg) {
     t.length=ATCMD_CMD_LEN*8;   // send 128 bytes each time for alignment
     t.tx_buffer=msg;
     t.rx_buffer=NULL;
-    // spi_slave_pull_interupt_high();
     esp_err_t status=spi_slave_transmit(RCV_HOST, &t, pdMS_TO_TICKS(ATCMD_TIMEOUT));
     spi_slave_pull_interupt_low();
     return status;
@@ -208,6 +214,10 @@ static esp_err_t tm_atcmd_recv(char* cmd, int* len) {
 
 static esp_err_t tm_atcmd_process(char* cmd, int cmd_len) {
     // process each command here, timeout is 2s
+#if (DEBUG)
+    ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process:");
+    esp_log_buffer_hex(ION_TM_ATCMD_TAG, cmd, cmd_len);
+#endif
 
     switch (cmd[0]) {
         case TM_BLE_PAIRING: {
@@ -319,7 +329,7 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len) {
 
 void send_to_tm_queue(int msg_id, uint8_t *data, int len)
 {
-    if ((msg_id >= TM_BLE_PAIRING) && (msg_id < TM_BLE_INVALID)) {
+    if ((msg_id >= TM_BLE_PAIRING) && (msg_id <= TM_BLE_OK)) {
         ble_to_tm_msg_t ble_to_tm_msg = {0};
         ble_to_tm_msg.msg_id = msg_id;
         if (data != NULL) {
