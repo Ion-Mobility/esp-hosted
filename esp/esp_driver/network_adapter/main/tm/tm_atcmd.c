@@ -83,6 +83,14 @@ static void tm_atcmd_task(void *arg)
                 ESP_LOGI(ION_TM_ATCMD_TAG, "diag");
                 break;
 
+            case TM_BLE_BIKE_INFO:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "bike info");
+                break;
+
+            case TM_BLE_POWER_ON:
+                ESP_LOGI(ION_TM_ATCMD_TAG, "power on");
+                break;
+
             default:
                 continue;
                 break;
