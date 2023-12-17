@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define DEBUG                   (1)
+#define DEBUG_CRYPTO            (1)
+#define DEBUG_BLE               (1)
+#define DEBUG_TM                (1)
 #define IGNORE_PAIRING          (0)
 
 extern esp_err_t crypto_init(void);

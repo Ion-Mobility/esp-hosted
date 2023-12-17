@@ -17,7 +17,7 @@
 #include "crypto.h"
 
 #define ATCMD_TASK_PRIO         3
-#define ATCMD_CMD_LEN           128
+#define ATCMD_CMD_LEN           32
 #define ATCMD_TIMEOUT           2000        //ms
 #define ION_TM_ATCMD_TAG        "TM_ATCMD"
 #define CMD_PREFIX              "TM+"
@@ -28,9 +28,8 @@
 QueueHandle_t ble_to_tm_queue;
 
 static esp_err_t tm_atcmd_construct(ble_to_tm_msg_t *msg, char* txbuf);
-static esp_err_t tm_atcmd_send(char* msg);
-static esp_err_t tm_atcmd_recv(char* cmd, int* len);
-static esp_err_t tm_atcmd_process(char* cmd, int cmd_len);
+static IRAM_ATTR esp_err_t tm_atcmd_transmit(char* tx, char* rx);
+static esp_err_t tm_atcmd_process(char* cmd);
 static esp_err_t tm_atcmd_handler(ble_to_tm_msg_t* msg);
 static esp_err_t send_msg_to_ble(int msg_id, uint8_t *data, int len);
 
@@ -107,18 +106,18 @@ static esp_err_t tm_atcmd_handler(ble_to_tm_msg_t *msg) {
     esp_err_t ret = ESP_OK;
     WORD_ALIGNED_ATTR char txbuf[ATCMD_CMD_LEN+1] = {0};
     WORD_ALIGNED_ATTR char rxbuf[ATCMD_CMD_LEN+1] = {0};
-    int len;
 
     // construct message
     ret = tm_atcmd_construct(msg, txbuf);
     if (ret == ESP_OK) {
         // send msg to 148
-        ret = tm_atcmd_send(txbuf);
+        ret = tm_atcmd_transmit(txbuf, rxbuf);
         if (ret == ESP_OK) {
             // get response from 148
-            ret = tm_atcmd_recv(rxbuf, &len);
+            txbuf[0] = TM_BLE_OK;
+            ret = tm_atcmd_transmit(txbuf, rxbuf);
             if (ret == ESP_OK) {
-                ret = tm_atcmd_process(rxbuf, len);
+                ret = tm_atcmd_process(rxbuf);
             } else {
                 ESP_LOGE(ION_TM_ATCMD_TAG, "Failed to get data from 148: %d",ret);
             }
@@ -189,34 +188,30 @@ static esp_err_t tm_atcmd_construct(ble_to_tm_msg_t *msg, char* txbuf) {
     return ESP_OK;
 }
 
-static esp_err_t tm_atcmd_send(char* msg) {
+static IRAM_ATTR esp_err_t tm_atcmd_transmit(char* tx, char* rx) {
     spi_slave_transaction_t t;
     memset(&t, 0, sizeof(t));
     t.length=ATCMD_CMD_LEN*8;   // send 128 bytes each time for alignment
-    t.tx_buffer=msg;
-    t.rx_buffer=NULL;
+    t.tx_buffer=tx;
+    t.rx_buffer=rx;
     esp_err_t status=spi_slave_transmit(RCV_HOST, &t, pdMS_TO_TICKS(ATCMD_TIMEOUT));
     spi_slave_pull_interupt_low();
+#if (DEBUG_TM)
+    ESP_LOGI(ION_TM_ATCMD_TAG, "trans_len: %d",t.trans_len);
+    ESP_LOGI(ION_TM_ATCMD_TAG, "spi_slave_transmit:");
+    esp_log_buffer_hex(ION_TM_ATCMD_TAG, t.tx_buffer, 16);
+    esp_log_buffer_hex(ION_TM_ATCMD_TAG, t.rx_buffer, 16);
+#endif
+
     return status;
 }
 
-static esp_err_t tm_atcmd_recv(char* cmd, int* len) {
-    spi_slave_transaction_t t;
-    memset(&t, 0, sizeof(t));
-    t.length=ATCMD_CMD_LEN*8;
-    t.tx_buffer=NULL;
-    t.rx_buffer=cmd;
-    esp_err_t ret = spi_slave_transmit(RCV_HOST, &t, pdMS_TO_TICKS(ATCMD_TIMEOUT));
-    *len = t.trans_len/8;
-    spi_slave_pull_interupt_low();
-    return ret;
-}
 
-static esp_err_t tm_atcmd_process(char* cmd, int cmd_len) {
+static esp_err_t tm_atcmd_process(char* cmd) {
     // process each command here, timeout is 2s
-#if (DEBUG)
+#if (DEBUG_TM)
     ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process:");
-    esp_log_buffer_hex(ION_TM_ATCMD_TAG, cmd, cmd_len);
+    esp_log_buffer_hex(ION_TM_ATCMD_TAG, cmd, 16);
 #endif
 
     switch (cmd[0]) {
@@ -236,7 +231,7 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len) {
         break;
 
         case TM_BLE_BATTERY: {
-#if (DEBUG)
+#if (DEBUG_TM)
             memset(&battery, 0, sizeof(battery_t));
             memcpy(&battery.level, &cmd[1], sizeof(cmd[1]));
             memcpy(&battery.estimate_range, &cmd[2], sizeof(battery.estimate_range));
@@ -252,7 +247,7 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len) {
         break;
 
         case TM_BLE_LAST_TRIP: {
-#if (DEBUG)
+#if (DEBUG_TM)
             memset(&trip, 0, sizeof(trip_t));
             memcpy(&trip.distance, &cmd[1], sizeof(trip.distance));
             memcpy(&trip.ride_time, &cmd[3], sizeof(trip.ride_time));
@@ -289,7 +284,7 @@ static esp_err_t tm_atcmd_process(char* cmd, int cmd_len) {
         break;
 
         case TM_BLE_BIKE_INFO: {
-#if (DEBUG)
+#if (DEBUG_TM)
             memset(&battery, 0, sizeof(battery_t));
             memset(&trip, 0, sizeof(trip_t));
 

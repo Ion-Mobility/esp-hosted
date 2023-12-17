@@ -247,7 +247,7 @@ static int message_unlock(uint8_t *plaintext, size_t *plaintext_len, uint8_t mac
                                 phone.derivation_key, nonce,                        //key, nonce
                                 phone.session_id, sizeof(phone.session_id),         //ad, ad_size
                                 ciphertext, ciphertext_len);                        //cipher_text, sizeof(cipher_text)
-#if(DEBUG)
+#if (DEBUG_CRYPTO)
     ESP_LOGE(CRYPTO_TAG, "mac:");
     esp_log_buffer_hex(CRYPTO_TAG, mac, MAC_LEN);
     ESP_LOGE(CRYPTO_TAG, "phone.derivation_key:");
@@ -299,7 +299,7 @@ static void random_generator(uint8_t *out, size_t len) {
 static int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
     // Verify that the message was actually signed by the server
     // int verify_server_signature = crypto_eddsa_check(pair_request->signature, server.identity_pk, (uint8_t*)&pair_request->contents, sizeof(pair_request_content_t));
-#if(DEBUG)
+#if (DEBUG_CRYPTO)
     ESP_LOGE(CRYPTO_TAG, "signature:");
     esp_log_buffer_hex(CRYPTO_TAG, pair_request->signature, SIGNATURE_LEN);
     ESP_LOGE(CRYPTO_TAG, "server.identity_pk:");
@@ -324,7 +324,7 @@ static int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
     phone.pairing_pk.start_time = pair_request->contents.start_time;
     phone.pairing_pk.expiry_time = pair_request->contents.expiry_time;
 
-#if(DEBUG)
+#if (DEBUG_CRYPTO)
     ESP_LOGI(CRYPTO_TAG, "phone_identity_pk:");
     esp_log_buffer_hex(CRYPTO_TAG, phone.identity_pk, KEY_LEN);
     ESP_LOGI(CRYPTO_TAG, "phone.pairing_pk.value:");
@@ -337,7 +337,7 @@ static int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
     random_generator(bike.pairing_key.sk, KEY_LEN);
     crypto_x25519_public_key(bike.pairing_key.pk, bike.pairing_key.sk);
 
-#if(DEBUG)
+#if (DEBUG_CRYPTO)
     ESP_LOGI(CRYPTO_TAG, "bike.pairing_key.sk:");
     esp_log_buffer_hex(CRYPTO_TAG, bike.pairing_key.sk, KEY_LEN);
     ESP_LOGI(CRYPTO_TAG, "bike.pairing_key.pk:");
@@ -350,7 +350,7 @@ static int pair(pair_request_t *pair_request, pair_response_t *pair_response) {
     xed25519_sign(pair_response->signature, bike.identity_key.sk, (uint8_t*)&pair_response->contents, sizeof(pair_response_content_t));
 
 
-#if(DEBUG)
+#if (DEBUG_CRYPTO)
     ESP_LOGE(CRYPTO_TAG, "pair signature:");
     esp_log_buffer_hex(CRYPTO_TAG, (uint8_t*)pair_response->signature, SIGNATURE_LEN);
     ESP_LOGE(CRYPTO_TAG, "content:");
@@ -364,7 +364,7 @@ static int session(session_request_t *session_request, session_response_t *sessi
 #if (IGNORE_PAIRING != 1)
     if (memcmp(bike.pairing_key.pk, session_request->contents.bike_pairing_pk, KEY_LEN) != 0) {
         ESP_LOGE(CRYPTO_TAG, "invalid pairing key...");
-#if(DEBUG)
+#if (DEBUG_CRYPTO)
         ESP_LOGE(CRYPTO_TAG, "session Bike pairing key...");
         esp_log_buffer_hex(CRYPTO_TAG, bike.pairing_key.pk, KEY_LEN);
         ESP_LOGE(CRYPTO_TAG, "session Received Bike pairing key...");
@@ -383,7 +383,7 @@ static int session(session_request_t *session_request, session_response_t *sessi
 
     uint8_t dh1[KEY_LEN];
     crypto_x25519(dh1, bike.identity_key.sk, phone.identity_pk);
-#if (DEBUG)
+#if (DEBUG_CRYPTO)
     ESP_LOGE(CRYPTO_TAG, "session bike.identity.sk...");
     esp_log_buffer_hex(CRYPTO_TAG, bike.identity_key.sk, KEY_LEN);
     ESP_LOGE(CRYPTO_TAG, "session phone_identity_pk...");
@@ -391,7 +391,7 @@ static int session(session_request_t *session_request, session_response_t *sessi
 #endif
     uint8_t dh2[KEY_LEN];
     crypto_x25519(dh2, bike.pairing_key.sk, phone.pairing_pk.value);
-#if (DEBUG)
+#if (DEBUG_CRYPTO)
     ESP_LOGE(CRYPTO_TAG, "session bike_pairing_key.sk...");
     esp_log_buffer_hex(CRYPTO_TAG, bike.pairing_key.sk, KEY_LEN);
     ESP_LOGE(CRYPTO_TAG, "session bike_pairing_key.pk...");
@@ -401,7 +401,7 @@ static int session(session_request_t *session_request, session_response_t *sessi
 #endif
     uint8_t dh3[KEY_LEN];
     crypto_x25519(dh3, bike.identity_key.sk, session_request->contents.ephemeral_pk);
-#if (DEBUG)
+#if (DEBUG_CRYPTO)
     ESP_LOGE(CRYPTO_TAG, "ephemeral_pk...");
     esp_log_buffer_hex(CRYPTO_TAG, session_request->contents.ephemeral_pk, KEY_LEN);
 #endif
@@ -426,7 +426,7 @@ static int session(session_request_t *session_request, session_response_t *sessi
     memcpy(phone.session_id, session_id, SESSION_ID_LEN);
 #endif
 
-#if (DEBUG)
+#if (DEBUG_CRYPTO)
     ESP_LOGI(CRYPTO_TAG, "session derivation_key");
     esp_log_buffer_hex(CRYPTO_TAG, phone.derivation_key, KEY_LEN);
     ESP_LOGI(CRYPTO_TAG, "session id");
@@ -461,7 +461,7 @@ static void xed25519_sign(uint8_t signature[SIGNATURE_LEN],
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 	};
-#if (DEBUG)
+#if (DEBUG_CRYPTO)
     ESP_LOGI(CRYPTO_TAG, "xed25519_sign()-secret_key:");
     esp_log_buffer_hex(CRYPTO_TAG, secret_key, KEY_LEN);
     ESP_LOGI(CRYPTO_TAG, "xed25519_sign()-message:");
@@ -512,7 +512,7 @@ static void xed25519_sign(uint8_t signature[SIGNATURE_LEN],
 	/* Wipe secrets (A, R, and H are not secret) */
 	crypto_wipe(a, KEY_LEN);
 	crypto_wipe(r, KEY_LEN);
-#if (DEBUG)
+#if (DEBUG_CRYPTO)
     ESP_LOGI(CRYPTO_TAG, "xed25519_sign()-signature:");
     esp_log_buffer_hex(CRYPTO_TAG, signature, SIGNATURE_LEN);
 #endif
@@ -523,7 +523,7 @@ static int xed25519_verify(uint8_t signature[SIGNATURE_LEN],
                     uint8_t *message,
                     size_t message_size)
 {
-#if (DEBUG)
+#if (DEBUG_CRYPTO)
     ESP_LOGI(CRYPTO_TAG, "xed25519_verify()-signature:");
     esp_log_buffer_hex(CRYPTO_TAG, signature, SIGNATURE_LEN);
     ESP_LOGI(CRYPTO_TAG, "xed25519_verify()-public_key:");

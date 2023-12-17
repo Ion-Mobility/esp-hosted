@@ -63,7 +63,7 @@ static void ble_task(void *arg)
 
             case BLE_CONNECT:
                 ESP_LOGI(ION_BLE_TAG, "BLE_CONNECT");
-#if (!DEBUG)
+#if (!DEBUG_BLE)
                 start_oneshot_timer(BLE_PAIRING_TIMEOUT);
 #endif
                 connection_state = UNPAIRED;
@@ -73,7 +73,7 @@ static void ble_task(void *arg)
                 if (connection_state == UNPAIRED) {
                     ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_PAIRING");
                     send_to_tm_queue(TM_BLE_PAIRING, NULL, 0);
-#if(DEBUG)
+#if (DEBUG_BLE)
                     esp_log_buffer_hex(ION_BLE_TAG, to_ble_msg.data, to_ble_msg.len);
 #endif
                     //verify pairing request
@@ -97,7 +97,7 @@ static void ble_task(void *arg)
                         tm_ble_gatts_kill_connection();
                         ESP_LOGE(ION_BLE_TAG, "Pair fails");
                     }
-#if(!DEBUG)
+#if (!DEBUG_BLE)
                     stop_oneshot_timer();
 #endif
                 }
@@ -134,7 +134,7 @@ static void ble_task(void *arg)
                     ret = message_decrypt(buf, &buf_len, to_ble_msg.data, to_ble_msg.len);
                     if (ret == 0) {
                         //successfully decrypted message, let process this command
-#if (DEBUG)
+#if (DEBUG_BLE)
                         ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_COMMAND:");
                         esp_log_buffer_hex(ION_BLE_TAG, buf, buf_len);
 #endif
@@ -187,7 +187,7 @@ static void ble_task(void *arg)
                             case PHONE_BLE_STEERING:
                                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_STEERING");
                                 if (connection_state == SESSION_CREATED) {
-#if (DEBUG)
+#if (DEBUG_BLE)
                                     switch (buf[4]) {
                                         case LOCK:
                                             ESP_LOGI(ION_BLE_TAG, "LOCK");
