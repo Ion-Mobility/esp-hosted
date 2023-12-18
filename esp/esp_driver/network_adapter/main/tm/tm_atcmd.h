@@ -5,9 +5,9 @@
 #define BLE_TO_TM_MSG_MAX_LEN   128
 
 typedef enum {
-    ON,
-    OFF,
-    STATE
+    OFF = 0,
+    ON = 1,
+    STATE = 2
 } on_off_state_t;
 
 typedef struct {
