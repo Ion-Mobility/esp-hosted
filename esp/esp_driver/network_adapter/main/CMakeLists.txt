@@ -1,5 +1,4 @@
 set(COMPONENT_SRCS "app_main.c"
-                   "mempool.c"
                    "tm/tm_ble_gatts_server.c"
                    "tm/tm_spi_slave_driver.c"
                    "tm/tm_ble.c"
