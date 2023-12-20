@@ -7,3 +7,5 @@
 extern void spi_slave_pull_interupt_high(void);
 extern void spi_slave_pull_interupt_low(void);
 extern void spi_slave_init(void);
+// to verify the unity test framework only, remove later
+extern int add2num(int a, int b);
