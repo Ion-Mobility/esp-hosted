@@ -7,6 +7,5 @@ message(************************************************************************
 message("                    Building ESP-Hosted Firmware version :: ${PROJECT_VERSION}             ")
 message(*************************************************************************************)
 
-set(EXTRA_COMPONENT_DIRS "../components")
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(network_adapter)
