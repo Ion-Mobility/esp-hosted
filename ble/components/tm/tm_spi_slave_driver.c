@@ -81,7 +81,7 @@ void spi_slave_init(void)
 }
 
 // to verify the unity test framework only, remove later
-int add2num(int a, int b)
+int tm_add2num(int a, int b)
 {
     return (a+b);
 }

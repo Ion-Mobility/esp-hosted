@@ -549,3 +549,9 @@ static int xed25519_verify(uint8_t signature[SIGNATURE_LEN],
 	/* Check signature */
 	return crypto_eddsa_check_equation(signature, A, H);
 }
+
+// to verify the unity test framework only, remove later
+int crypto_add2num(int a, int b)
+{
+    return (a+b);
+}

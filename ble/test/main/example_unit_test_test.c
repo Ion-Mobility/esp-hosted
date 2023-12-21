@@ -23,7 +23,12 @@ void app_main(void)
      */
     print_banner("Executing one test by its name");
     UNITY_BEGIN();
-    unity_run_test_by_name("add 2 numbers");
+    unity_run_test_by_name("tm add 2 numbers");
+    UNITY_END();
+
+    print_banner("Executing one test by its name");
+    UNITY_BEGIN();
+    unity_run_test_by_name("crypto add 2 numbers");
     UNITY_END();
 
     print_banner("Executing one test by its name");

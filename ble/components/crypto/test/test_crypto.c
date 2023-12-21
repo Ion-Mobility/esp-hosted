@@ -9,11 +9,11 @@
 
 #include <limits.h>
 #include "unity.h"
-#include "tm_spi_slave_driver.h"
+#include "crypto.h"
 
-TEST_CASE("tm add 2 numbers", "[tm]")
+TEST_CASE("crypto add 2 numbers", "[crypto]")
 {
-    TEST_ASSERT_EQUAL(5, tm_add2num(2, 3));
+    TEST_ASSERT_EQUAL(6, crypto_add2num(3, 3));
 }
 
 // TEST_CASE("Mean of an empty array is zero", "[mean]")

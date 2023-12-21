@@ -12,3 +12,5 @@ extern int pairing_request(uint8_t* request, size_t req_len, uint8_t* response, 
 extern void message_encrypt(uint8_t *response, size_t *res_len, uint8_t *plaintext, size_t plaintext_len);      //encrypt message
 extern int message_decrypt(uint8_t *plaintext, size_t *plaintext_len, uint8_t *request, size_t request_len);    //decrypt message
 extern void client_disconnect(void);
+// to verify the unity test framework only, remove later
+extern int crypto_add2num(int a, int b);

@@ -12,6 +12,7 @@ EXTRA_COMPONENT_DIRS := $(realpath ../components)
 # This can be overriden from the command line
 # (e.g. 'make TEST_COMPONENTS=xxxx flash monitor')
 #
-TEST_COMPONENTS ?= tm
+TEST_COMPONENTS ?= crypto
+TEST_COMPONENTS += tm
 
 include $(IDF_PATH)/make/project.mk
