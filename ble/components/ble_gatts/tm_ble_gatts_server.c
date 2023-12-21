@@ -1,10 +1,6 @@
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
-#include "freertos/semphr.h"
-#include "esp_system.h"
+#include "freertos/queue.h"
 #include "esp_log.h"
-#include "nvs_flash.h"
 #include "esp_bt.h"
 
 #include "esp_gap_ble_api.h"
@@ -14,7 +10,6 @@
 #include "esp_gatt_common_api.h"
 
 #include "tm_ble_gatts_server.h"
-#include "tm_ble.h"
 
 #define GATTS_TABLE_TAG "BLE_GATTS_SERVER"
 
@@ -23,7 +18,6 @@
 #define ION_APP_ID                  0x55
 #define SAMPLE_DEVICE_NAME          "ION_BIKE"
 #define SVC_INST_ID                 0
-#define DEFAULT_MTU_TRUNCATED_SIZE  22
 #define MAC_LEN                     6
 
 /* The max length of characteristic value. When the GATT client performs a write or prepare write operation,
@@ -52,6 +46,7 @@ enum
 
 static uint8_t adv_config_done      = 0;
 static bool ready_to_advertise      = false;
+static QueueHandle_t *ble_queue     = NULL;
 
 uint16_t ion_handle_table[ION_IDX_NB];
 
@@ -461,11 +456,11 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             conn_params.timeout = 400;    // timeout = 400*10ms = 4000ms
             //start sent the update connection parameters to the peer device.
             esp_ble_gap_update_conn_params(&conn_params);
-            send_to_ble_queue(BLE_CONNECT, NULL, 0);
+            send_to_ble_queue(BLE_CONNECT_EVENT, NULL, 0);
             break;
         case ESP_GATTS_DISCONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_DISCONNECT_EVT, reason = 0x%x", param->disconnect.reason);
-            send_to_ble_queue(BLE_DISCONNECT, NULL, 0);
+            send_to_ble_queue(BLE_DISCONNECT_EVENT, NULL, 0);
             // esp_ble_gap_start_advertising(&adv_params);
             break;
         case ESP_GATTS_CREAT_ATTR_TAB_EVT:{
@@ -599,7 +594,7 @@ void tm_ble_gatts_send_to_phone(uint8_t *data, int len)
 }
 
 static void send_to_ble_queue(uint8_t msg_id, uint8_t *data, int len) {
-    if (len > BLE_MSG_MAX_LEN)
+    if (len > BLE_MSG_MAX_LEN || ble_queue == NULL)
         return;
     ble_msg_t to_ble_msg = {0};
 #if(DEBUG)
@@ -607,36 +602,22 @@ static void send_to_ble_queue(uint8_t msg_id, uint8_t *data, int len) {
     esp_log_buffer_hex(GATTS_TABLE_TAG, data, len);
 #endif
     switch (msg_id) {
-        case BLE_DISCONNECT:
-            to_ble_msg.msg_id = BLE_DISCONNECT;
+        case BLE_DISCONNECT_EVENT:
+            to_ble_msg.msg_id = BLE_DISCONNECT_EVENT;
             break;
-        case BLE_CONNECT:
-            to_ble_msg.msg_id = BLE_CONNECT;
-            break;
-        case PHONE_BLE_PAIRING:
-            to_ble_msg.msg_id = PHONE_BLE_PAIRING;
-            if (len > BLE_MSG_MAX_LEN)
-                return;
-            memcpy(to_ble_msg.data, data, len);
-            break;
-        case PHONE_BLE_SESSION:
-            to_ble_msg.msg_id = PHONE_BLE_SESSION;
-            if (len > BLE_MSG_MAX_LEN)
-                return;
-            memcpy(to_ble_msg.data, data, len);
-            break;
-        case PHONE_BLE_COMMAND:
-            if (len > BLE_MSG_MAX_LEN)
-                return;
-            to_ble_msg.msg_id = PHONE_BLE_COMMAND;
-            memcpy(to_ble_msg.data, data, len);
+        case BLE_CONNECT_EVENT:
+            to_ble_msg.msg_id = BLE_CONNECT_EVENT;
             break;
         default:
-            return;
+            if (len > BLE_MSG_MAX_LEN)
+                return;
+            to_ble_msg.msg_id = msg_id;
+            memcpy(to_ble_msg.data, data, len);
+        break;
     }
 
     to_ble_msg.len = len;
-    xQueueSend(ble_queue, (void*)&to_ble_msg, (TickType_t)0);
+    xQueueSend(*ble_queue, (void*)&to_ble_msg, (TickType_t)0);
 }
 
 void tm_ble_gatts_kill_connection(void)
@@ -660,4 +641,15 @@ size_t serialize_data(uint8_t *buf, size_t pos, uint8_t *data, size_t len)
 {
     memcpy(&buf[pos], data, len);
     return (len);
+}
+
+// to verify the unity test framework only, remove later
+int ble_gatts_add2num(int a, int b)
+{
+    return (a+b);
+}
+
+extern void init_ble_queue(QueueHandle_t *queue)
+{
+    ble_queue = queue;
 }

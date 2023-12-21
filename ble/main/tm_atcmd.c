@@ -14,7 +14,6 @@
 #include "tm_spi_slave_driver.h"
 #include "tm_atcmd.h"
 #include "tm_ble.h"
-#include "tm_ble_gatts_server.h"
 #include "crypto.h"
 
 #define ATCMD_TASK_PRIO         3

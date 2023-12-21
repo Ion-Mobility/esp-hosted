@@ -11,7 +11,8 @@ set(EXTRA_COMPONENT_DIRS "../components")
 # - when using idf.py: idf.py -T xxxxx build
 #
 set(TEST_COMPONENTS "crypto"
-                    "tm")
+                    "tm"
+                    "ble_gatts")
 # CACHE STRING "List of components to test")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)

@@ -33,6 +33,11 @@ void app_main(void)
 
     print_banner("Executing one test by its name");
     UNITY_BEGIN();
+    unity_run_test_by_name("ble gatts add 2 numbers");
+    UNITY_END();
+
+    print_banner("Executing one test by its name");
+    UNITY_BEGIN();
     unity_run_test_by_name("Mean of an empty array is zero");
     UNITY_END();
 

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "freertos/queue.h"
+#include "tm_ble_gatts_server.h"
 
 typedef enum {
     UNPAIRED            = 0,
@@ -48,8 +49,8 @@ typedef enum {
     TM_BLE_OK                   = 0x9F,
 
     BLE_START_ADVERTISE         = 0xA0,
-    BLE_DISCONNECT              = 0xA1,
-    BLE_CONNECT                 = 0xA2
+    BLE_DISCONNECT              = BLE_DISCONNECT_EVENT,
+    BLE_CONNECT                 = BLE_CONNECT_EVENT
 } ble_msg_id_t;
 
 extern QueueHandle_t ble_queue;

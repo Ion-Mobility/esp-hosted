@@ -14,5 +14,6 @@ EXTRA_COMPONENT_DIRS := $(realpath ../components)
 #
 TEST_COMPONENTS ?= crypto
 TEST_COMPONENTS += tm
+TEST_COMPONENTS += ble_gatts
 
 include $(IDF_PATH)/make/project.mk

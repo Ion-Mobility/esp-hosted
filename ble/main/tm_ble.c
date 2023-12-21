@@ -6,7 +6,6 @@
 #include "esp_timer.h"
 #include "nvs_flash.h"
 
-#include "tm_ble_gatts_server.h"
 #include "tm_atcmd.h"
 #include "tm_ble.h"
 #include "crypto.h"
@@ -568,6 +567,7 @@ void tm_ble_init(void)
     crypto_init();
     tm_ble_gatts_server_init();
     ble_queue = xQueueCreate(20, sizeof(ble_msg_t));
+    init_ble_queue(&ble_queue);
 
     //Create and start stats task
     xTaskCreatePinnedToCore(ble_task, "ble_task", 8192, NULL, BLE_TASK_PRIO, NULL, tskNO_AFFINITY);
