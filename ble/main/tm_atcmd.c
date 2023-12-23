@@ -189,6 +189,8 @@ static IRAM_ATTR esp_err_t tm_atcmd_transmit(char* tx, char* rx) {
 
 static esp_err_t tm_atcmd_process(char* cmd) {
     // process each command here, timeout is 2s
+    uint8_t buf[BLE_MSG_MAX_LEN];
+    size_t len;
 #if (DEBUG_TM)
     ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process:");
     esp_log_buffer_hex(ION_TM_ATCMD_TAG, cmd, 16);
@@ -211,34 +213,33 @@ static esp_err_t tm_atcmd_process(char* cmd) {
         break;
 
         case TM_BLE_BATTERY: {
-#if (DEBUG_TM)
             memset(&battery, 0, sizeof(battery_t));
             memcpy(&battery.level, &cmd[1], sizeof(cmd[1]));
             memcpy(&battery.estimate_range, &cmd[2], sizeof(battery.estimate_range));
             memcpy(&battery.time_to_full, &cmd[4], sizeof(battery.time_to_full));
+#if (DEBUG_TM)
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process battery.level: %d",battery.level);
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process battery.estimate_range: %d",battery.estimate_range);
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process battery.time_to_full: %d",battery.time_to_full);
-            send_msg_to_ble(TM_BLE_BATTERY, (uint8_t*)&battery, sizeof(battery_t));
-#else
-            send_msg_to_ble(TM_BLE_BATTERY, (uint8_t*)&cmd[1], sizeof(battery_t));
 #endif
+            memcpy(buf, &battery, sizeof(battery_t));
+            len = sizeof(battery_t);
+            send_msg_to_ble(TM_BLE_BATTERY, buf, len);
         }
         break;
 
         case TM_BLE_LAST_TRIP: {
-#if (DEBUG_TM)
-            memset(&trip, 0, sizeof(trip_t));
             memcpy(&trip.distance, &cmd[1], sizeof(trip.distance));
             memcpy(&trip.ride_time, &cmd[3], sizeof(trip.ride_time));
             memcpy(&trip.elec_used, &cmd[5], sizeof(trip.elec_used));
+#if (DEBUG_TM)
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process trip.distance: %d",trip.distance);
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process trip.ride_time: %d",trip.ride_time);
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process trip.elec_used: %d",trip.elec_used);
-            send_msg_to_ble(TM_BLE_LAST_TRIP, (uint8_t*)&trip, sizeof(trip_t));
-#else
-            send_msg_to_ble(TM_BLE_LAST_TRIP, (uint8_t*)&cmd[1], sizeof(trip_t));
 #endif
+            memcpy(buf, &trip, sizeof(trip_t));
+            len = sizeof(trip_t);
+            send_msg_to_ble(TM_BLE_LAST_TRIP, buf, len);
         }
         break;
 
@@ -264,26 +265,39 @@ static esp_err_t tm_atcmd_process(char* cmd) {
         break;
 
         case TM_BLE_BIKE_INFO: {
-#if (DEBUG_TM)
-            memset(&battery, 0, sizeof(battery_t));
-            memset(&trip, 0, sizeof(trip_t));
-
-            memcpy(&battery.level, &cmd[1], sizeof(cmd[1]));
+            memcpy(&battery.level,          &cmd[1], sizeof(cmd[1]));
             memcpy(&battery.estimate_range, &cmd[2], sizeof(battery.estimate_range));
-            memcpy(&battery.time_to_full, &cmd[4], sizeof(battery.time_to_full));
-            memcpy(&trip.distance, &cmd[6], sizeof(trip.distance));
-            memcpy(&trip.ride_time, &cmd[8], sizeof(trip.ride_time));
-            memcpy(&trip.elec_used, &cmd[10], sizeof(trip.elec_used));
-            memcpy(&steering, &cmd[11], sizeof(steering));
+            memcpy(&battery.time_to_full,   &cmd[4], sizeof(battery.time_to_full));
+            memcpy(&trip.distance,          &cmd[6], sizeof(trip.distance));
+            memcpy(&trip.ride_time,         &cmd[8], sizeof(trip.ride_time));
+            memcpy(&trip.elec_used,         &cmd[10], sizeof(trip.elec_used));
+            memcpy(&cellular,               &cmd[11], sizeof(cellular));
+            memcpy(&location,               &cmd[12], sizeof(location));
+            memcpy(&ride_tracking,          &cmd[14], sizeof(ride_tracking));
+#if (DEBUG_TM)
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process battery.level: %d",battery.level);
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process battery.estimate_range: %d",battery.estimate_range);
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process battery.time_to_full: %d",battery.time_to_full);
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process trip.distance: %d",trip.distance);
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process trip.ride_time: %d",trip.ride_time);
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process trip.elec_used: %d",trip.elec_used);
-            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process steering state: %d",steering);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process cellular state: %d",cellular);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process location state: %d",location);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process ride_tracking state: %d",ride_tracking);
 #endif
-            send_msg_to_ble(TM_BLE_BIKE_INFO, (uint8_t*)&cmd[1], sizeof(battery_t) + sizeof(trip_t) + sizeof(on_off_state_t));
+            len = 0;
+            memcpy(&buf[len], &battery, sizeof(battery_t));
+            len += sizeof(battery_t);
+            memcpy(&buf[len], &trip, sizeof(trip_t));
+            len += sizeof(trip_t);
+            memcpy(&buf[len], &cellular, sizeof(cellular));
+            len += sizeof(cellular);
+            memcpy(&buf[len], &location, sizeof(location));
+            len += sizeof(location);
+            memcpy(&buf[len], &ride_tracking, sizeof(ride_tracking));
+            len += sizeof(ride_tracking);
+
+            send_msg_to_ble(TM_BLE_BIKE_INFO, buf, len);
         }
         break;
 

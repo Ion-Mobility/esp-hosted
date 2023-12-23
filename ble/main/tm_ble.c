@@ -12,7 +12,12 @@
 
 #define BLE_TASK_PRIO           3
 #define ION_BLE_TAG             "TM_BLE"
+
+#if (ENABLE_PAIR_TIMEOUT)
 #define BLE_PAIRING_TIMEOUT     5  //10s
+#elif (TEST_COMMAND)
+#define TEST_COMMAND_TIMEOUT    5  //10s
+#endif
 
 #define OK                      1
 #define FAIL                    0
@@ -32,6 +37,9 @@ static void ble_task(void *arg)
 
     battery_t battery = {0};
     trip_t trip = {0};
+    on_off_state_t cellular = STATE;
+    on_off_state_t location = STATE;
+    on_off_state_t ride_tracking = STATE;
     //signature + phone pairing key + bike pairing key
     uint8_t buf[BLE_MSG_MAX_LEN];
     size_t buf_len;
@@ -62,8 +70,10 @@ static void ble_task(void *arg)
 
             case BLE_CONNECT:
                 ESP_LOGI(ION_BLE_TAG, "BLE_CONNECT");
-#if (!DEBUG_BLE)
+#if (ENABLE_PAIR_TIMEOUT)
                 start_oneshot_timer(BLE_PAIRING_TIMEOUT);
+#elif (TEST_COMMAND)
+                start_oneshot_timer(TEST_COMMAND_TIMEOUT);
 #endif
                 connection_state = UNPAIRED;
                 break;
@@ -96,7 +106,7 @@ static void ble_task(void *arg)
                         tm_ble_gatts_kill_connection();
                         ESP_LOGE(ION_BLE_TAG, "Pair fails");
                     }
-#if (!DEBUG_BLE)
+#if (ENABLE_PAIR_TIMEOUT)
                     stop_oneshot_timer();
 #endif
                 }
@@ -370,12 +380,19 @@ static void ble_task(void *arg)
                     buf_len += serialize_data(buf, buf_len, (uint8_t*)&battery.estimate_range, sizeof(battery.estimate_range));
                     buf_len += serialize_data(buf, buf_len, (uint8_t*)&battery.time_to_full, sizeof(battery.time_to_full));
                     //encrypt data & send to phone
-                    message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, buf, buf_len);
-
+#if (DEBUG_BLE)
+                    ESP_LOGI(ION_BLE_TAG, "to_ble_msg.data: (%d len)",to_ble_msg.len);
+                    esp_log_buffer_hex(ION_BLE_TAG, to_ble_msg.data, to_ble_msg.len);
                     ESP_LOGI(ION_BLE_TAG, "battery.level           %d",battery.level);
                     ESP_LOGI(ION_BLE_TAG, "battery.estimate_range  %d",battery.estimate_range);
                     ESP_LOGI(ION_BLE_TAG, "battery.time_to_full    %d",battery.time_to_full);
 
+#endif
+                    message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, buf, buf_len);
+#if (DEBUG_BLE)
+                    ESP_LOGI(ION_BLE_TAG, "to_phone_msg.data: (%d len)",to_phone_msg.len);
+                    esp_log_buffer_hex(ION_BLE_TAG, to_phone_msg.data, to_phone_msg.len);
+#endif
                     if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
                         to_phone_msg.msg_id = PHONE_BLE_COMMAND;
                         send_to_phone(&to_phone_msg);
@@ -474,9 +491,23 @@ static void ble_task(void *arg)
             case TM_BLE_BIKE_INFO:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_BIKE_INFO");
                 if (connection_state == SESSION_CREATED) {
+                    memcpy(&battery, to_ble_msg.data, sizeof(battery_t));
+                    memcpy(&trip, &to_ble_msg.data[sizeof(battery_t)], sizeof(trip_t));
+                    memcpy(&cellular, &to_ble_msg.data[sizeof(battery_t) + sizeof(trip_t)], sizeof(cellular));
+                    memcpy(&location, &to_ble_msg.data[sizeof(battery_t) + sizeof(trip_t) + sizeof(cellular)], sizeof(location));
+                    memcpy(&ride_tracking, &to_ble_msg.data[sizeof(battery_t) + sizeof(trip_t) + sizeof(cellular) + sizeof(location)], sizeof(ride_tracking));
                     memset(buf, 0, sizeof(buf));
                     msg_id = PHONE_BLE_BIKE_INFO;
                     buf_len = serialize_data(buf, 0, (uint8_t*)&msg_id, sizeof(msg_id));
+                    buf_len += serialize_data(buf, buf_len, (uint8_t*)&battery.level, sizeof(battery.level));
+                    buf_len += serialize_data(buf, buf_len, (uint8_t*)&battery.estimate_range, sizeof(battery.estimate_range));
+                    buf_len += serialize_data(buf, buf_len, (uint8_t*)&battery.time_to_full, sizeof(battery.time_to_full));
+                    buf_len += serialize_data(buf, buf_len, (uint8_t*)&trip.distance, sizeof(trip.distance));
+                    buf_len += serialize_data(buf, buf_len, (uint8_t*)&trip.ride_time, sizeof(trip.ride_time));
+                    buf_len += serialize_data(buf, buf_len, (uint8_t*)&trip.elec_used, sizeof(trip.elec_used));
+                    buf_len += serialize_data(buf, buf_len, (uint8_t*)&cellular, sizeof(cellular));
+                    buf_len += serialize_data(buf, buf_len, (uint8_t*)&location, sizeof(location));
+                    buf_len += serialize_data(buf, buf_len, (uint8_t*)&ride_tracking, sizeof(ride_tracking));
                     //encrypt data & send to phone
                     message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, buf, buf_len);
                     if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
@@ -586,15 +617,28 @@ static void send_to_phone(ble_msg_t *pble_msg) {
     tm_ble_gatts_send_to_phone((uint8_t*)pble_msg, len);
 }
 
+#if ((ENABLE_PAIR_TIMEOUT) || (TEST_COMMAND))
 static void oneshot_timer_callback(void* arg)
 {
+#if (TEST_COMMAND)
+    uint8_t buf[4] = {0};
+    ble_msg_t to_ble_msg = {0};
+    to_ble_msg.msg_id = PHONE_BLE_COMMAND;
+    buf[3] = PHONE_BLE_BIKE_INFO;
+    to_ble_msg.len = sizeof(buf);
+    message_encrypt((uint8_t*)to_ble_msg.data, (size_t*)&to_ble_msg.len , (uint8_t*)buf, sizeof(buf));
+    xQueueSend(ble_queue, (void*)&to_ble_msg, (TickType_t)0);
+#elif (ENABLE_PAIR_TIMEOUT)
     if (connection_state < PAIRED) {
         ESP_LOGW(ION_BLE_TAG, "pairing timeout, terminate the connection");
         send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
         tm_ble_gatts_kill_connection();
     }
+#endif
 }
+#endif
 
+#if ((ENABLE_PAIR_TIMEOUT) || (TEST_COMMAND))
 static void start_oneshot_timer(int timeout_s)
 {
     esp_timer_create_args_t oneshot_timer_args = {
@@ -612,3 +656,4 @@ static void stop_oneshot_timer(void)
     ESP_ERROR_CHECK(esp_timer_stop(oneshot_timer));
     ESP_ERROR_CHECK(esp_timer_delete(oneshot_timer));
 }
+#endif

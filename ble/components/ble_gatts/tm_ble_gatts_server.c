@@ -622,7 +622,7 @@ static void send_to_ble_queue(uint8_t msg_id, uint8_t *data, int len) {
 
 void tm_ble_gatts_kill_connection(void)
 {
-#if(!DEBUG)
+#if(ENABLE_PAIR_TIMEOUT)
     esp_ble_gatts_close(ion_profile_tab[PROFILE_APP_IDX].gatts_if, ion_profile_tab[PROFILE_APP_IDX].conn_id);
 #endif
 }
