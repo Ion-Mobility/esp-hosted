@@ -36,9 +36,9 @@ static esp_err_t send_msg_to_ble(int msg_id, uint8_t *data, int len);
 battery_t battery = {0};
 trip_t trip = {0};
 on_off_state_t steering = STATE;
-on_off_state_t cellular = STATE;
-on_off_state_t location = STATE;
-on_off_state_t ride_tracking = STATE;
+uint8_t cellular = STATE;
+uint8_t location = STATE;
+uint8_t ride_tracking = STATE;
 
 static void tm_atcmd_task(void *arg)
 {
@@ -271,8 +271,8 @@ static esp_err_t tm_atcmd_process(char* cmd) {
             memcpy(&trip.distance,          &cmd[6], sizeof(trip.distance));
             memcpy(&trip.ride_time,         &cmd[8], sizeof(trip.ride_time));
             memcpy(&trip.elec_used,         &cmd[10], sizeof(trip.elec_used));
-            memcpy(&cellular,               &cmd[11], sizeof(cellular));
-            memcpy(&location,               &cmd[12], sizeof(location));
+            memcpy(&cellular,               &cmd[12], sizeof(cellular));
+            memcpy(&location,               &cmd[13], sizeof(location));
             memcpy(&ride_tracking,          &cmd[14], sizeof(ride_tracking));
 #if (DEBUG_TM)
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process battery.level: %d",battery.level);

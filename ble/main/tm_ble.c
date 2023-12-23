@@ -37,9 +37,9 @@ static void ble_task(void *arg)
 
     battery_t battery = {0};
     trip_t trip = {0};
-    on_off_state_t cellular = STATE;
-    on_off_state_t location = STATE;
-    on_off_state_t ride_tracking = STATE;
+    uint8_t cellular = STATE;
+    uint8_t location = STATE;
+    uint8_t ride_tracking = STATE;
     //signature + phone pairing key + bike pairing key
     uint8_t buf[BLE_MSG_MAX_LEN];
     size_t buf_len;
@@ -490,6 +490,9 @@ static void ble_task(void *arg)
 
             case TM_BLE_BIKE_INFO:
                 ESP_LOGI(ION_BLE_TAG, "TM_BLE_BIKE_INFO");
+#if (DEBUG_BLE)
+                esp_log_buffer_hex(ION_BLE_TAG, to_ble_msg.data, to_ble_msg.len);
+#endif
                 if (connection_state == SESSION_CREATED) {
                     memcpy(&battery, to_ble_msg.data, sizeof(battery_t));
                     memcpy(&trip, &to_ble_msg.data[sizeof(battery_t)], sizeof(trip_t));
@@ -508,7 +511,18 @@ static void ble_task(void *arg)
                     buf_len += serialize_data(buf, buf_len, (uint8_t*)&cellular, sizeof(cellular));
                     buf_len += serialize_data(buf, buf_len, (uint8_t*)&location, sizeof(location));
                     buf_len += serialize_data(buf, buf_len, (uint8_t*)&ride_tracking, sizeof(ride_tracking));
-                    //encrypt data & send to phone
+#if (DEBUG_BLE)
+                    ESP_LOGI(ION_BLE_TAG, "battery.level           %d",battery.level);
+                    ESP_LOGI(ION_BLE_TAG, "battery.estimate_range  %d",battery.estimate_range);
+                    ESP_LOGI(ION_BLE_TAG, "battery.time_to_full    %d",battery.time_to_full);
+                    ESP_LOGI(ION_BLE_TAG, "last trip distance      %d",trip.distance);
+                    ESP_LOGI(ION_BLE_TAG, "last trip ride time     %d",trip.ride_time);
+                    ESP_LOGI(ION_BLE_TAG, "last trip electric used %d",trip.elec_used);
+                    ESP_LOGI(ION_BLE_TAG, "cellular.state          %d",cellular);
+                    ESP_LOGI(ION_BLE_TAG, "location.state          %d",location);
+                    ESP_LOGI(ION_BLE_TAG, "ride tracking.state     %d",ride_tracking);
+#endif
+                    // encrypt data & send to phone
                     message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, buf, buf_len);
                     if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
                         to_phone_msg.msg_id = PHONE_BLE_COMMAND;
