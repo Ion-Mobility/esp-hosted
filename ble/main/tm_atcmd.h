@@ -17,12 +17,6 @@ typedef struct {
 } battery_t;
 
 typedef struct {
-    uint16_t distance;
-    uint16_t ride_time;
-    uint16_t elec_used;
-} trip_t;
-
-typedef struct {
     int msg_id;
     int len;
     uint8_t data[BLE_TO_TM_MSG_MAX_LEN];
