@@ -457,6 +457,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             //start sent the update connection parameters to the peer device.
             esp_ble_gap_update_conn_params(&conn_params);
             send_to_ble_queue(BLE_CONNECT_EVENT, NULL, 0);
+            esp_ble_gap_stop_advertising();
             break;
         case ESP_GATTS_DISCONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_DISCONNECT_EVT, reason = 0x%x", param->disconnect.reason);
@@ -622,9 +623,7 @@ static void send_to_ble_queue(uint8_t msg_id, uint8_t *data, int len) {
 
 void tm_ble_gatts_kill_connection(void)
 {
-#if(ENABLE_PAIR_TIMEOUT)
     esp_ble_gatts_close(ion_profile_tab[PROFILE_APP_IDX].gatts_if, ion_profile_tab[PROFILE_APP_IDX].conn_id);
-#endif
 }
 
 uint32_t EndianConverter(uint32_t *byteArray)

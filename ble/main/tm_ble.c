@@ -14,9 +14,9 @@
 #define ION_BLE_TAG             "TM_BLE"
 
 #if (ENABLE_PAIR_TIMEOUT)
-#define BLE_PAIRING_TIMEOUT     5  //10s
+#define BLE_PAIRING_TIMEOUT     1500    //1500ms
 #elif (TEST_COMMAND)
-#define TEST_COMMAND_TIMEOUT    5  //10s
+#define TEST_COMMAND_TIMEOUT    5000    //5s
 #endif
 
 #define OK                      1
@@ -27,8 +27,7 @@ static uint8_t connection_state = UNPAIRED;
 static esp_timer_handle_t oneshot_timer;
 static void send_to_phone(ble_msg_t *pble_msg);
 static void oneshot_timer_callback(void* arg);
-static void start_oneshot_timer(int timeout_s);
-static void stop_oneshot_timer(void);
+static void start_oneshot_timer(int timeout_ms);
 
 static void ble_task(void *arg)
 {
@@ -106,9 +105,6 @@ static void ble_task(void *arg)
                         tm_ble_gatts_kill_connection();
                         ESP_LOGE(ION_BLE_TAG, "Pair fails");
                     }
-#if (ENABLE_PAIR_TIMEOUT)
-                    stop_oneshot_timer();
-#endif
                 }
                 break;
 
@@ -559,16 +555,18 @@ static void oneshot_timer_callback(void* arg)
     xQueueSend(ble_queue, (void*)&to_ble_msg, (TickType_t)0);
 #elif (ENABLE_PAIR_TIMEOUT)
     if (connection_state < PAIRED) {
-        ESP_LOGW(ION_BLE_TAG, "pairing timeout, terminate the connection");
+        ESP_LOGW(ION_BLE_TAG, "pairing state:%d/expected:%d, terminate the connection",connection_state, PAIRED);
         send_to_tm_queue(TM_BLE_DISCONNECT, NULL, 0);
+#if (ENABLE_PAIR_TIMEOUT)
         tm_ble_gatts_kill_connection();
+#endif
     }
 #endif
 }
 #endif
 
 #if ((ENABLE_PAIR_TIMEOUT) || (TEST_COMMAND))
-static void start_oneshot_timer(int timeout_s)
+static void start_oneshot_timer(int timeout_ms)
 {
     esp_timer_create_args_t oneshot_timer_args = {
             .callback = &oneshot_timer_callback,
@@ -577,12 +575,7 @@ static void start_oneshot_timer(int timeout_s)
             .name = "one-shot"
     };
     ESP_ERROR_CHECK(esp_timer_create(&oneshot_timer_args, &oneshot_timer));
-    ESP_ERROR_CHECK(esp_timer_start_once(oneshot_timer, timeout_s*1000000));
+    ESP_ERROR_CHECK(esp_timer_start_once(oneshot_timer, timeout_ms*1000));
     ESP_LOGI(ION_BLE_TAG, "Started timers");
-}
-static void stop_oneshot_timer(void)
-{
-    ESP_ERROR_CHECK(esp_timer_stop(oneshot_timer));
-    ESP_ERROR_CHECK(esp_timer_delete(oneshot_timer));
 }
 #endif

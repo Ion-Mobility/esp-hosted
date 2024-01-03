@@ -2,10 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #define DEBUG_CRYPTO            (0)
-#define DEBUG_BLE               (1)
-#define DEBUG_TM                (1)
+#define DEBUG_BLE               (0)
+#define DEBUG_TM                (0)
 #define TEST_COMMAND            (0)
-#define ENABLE_PAIR_TIMEOUT     (0)
+#define ENABLE_PAIR_TIMEOUT     (1)
 #define IGNORE_PAIRING          (0)
 
 extern esp_err_t crypto_init(void);
