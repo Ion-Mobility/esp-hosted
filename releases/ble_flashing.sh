@@ -1,17 +1,5 @@
 #!/bin/bash
 
-# Check if a .bin file is provided
-if [ -z "$1" ]; then
-    echo "Usage: $0 <path/to/file.bin>"
-    exit 1
-fi
-
-# Check if the provided file has a .bin extension
-if [[ "$1" != *.bin ]]; then
-    echo "Error: Please provide a .bin file."
-    exit 1
-fi
-
 # Set the path to esptool.py
 ESPTOOL="esptool.py"
 
@@ -25,11 +13,27 @@ FLASH_SIZE="detect"
 FLASH_FREQ="80m"
 
 # Run esptool.py command
-$ESPTOOL -p $SERIAL_PORT -b $FLASH_BAUD --before default_reset --after hard_reset --chip esp32s3 write_flash --flash_mode $FLASH_MODE --flash_size $FLASH_SIZE --flash_freq $FLASH_FREQ 0x0 bootloader.bin 0x8000 partition-table.bin 0x9000 "$1" 0xd000 ota_data_initial.bin 0x10000 network_adapter.bin
+current_directory=$(dirname "$0")
 
-# Check the exit status of the esptool.py command
-if [ $? -eq 0 ]; then
-    echo "Flash completed successfully."
+BOOTLOADER="$current_directory/bootloader.bin"
+PARTTION="$current_directory/partition-table.bin"
+OTA_DATA_INITIAL="$current_directory/ota_data_initial.bin"
+NETWORK_ADAPTER="$current_directory/network_adapter.bin"
+BOOTLOADER="$current_directory/bootloader.bin"
+OPTIONS="--before default_reset --after hard_reset --chip esp32s3 write_flash"
+
+# Search for .key files only in the specified directory (not in subdirectories)
+KEY_FILE=$(find "$current_directory" -maxdepth 1 -type f -name "*.key")
+# Check if any .key files were found
+if [ -n "$KEY_FILE" ]; then
+    $ESPTOOL -p $SERIAL_PORT -b $FLASH_BAUD  $OPTIONS --flash_mode $FLASH_MODE --flash_size $FLASH_SIZE --flash_freq $FLASH_FREQ 0x0 $BOOTLOADER 0x8000 $PARTTION 0x9000 $KEY_FILE 0xd000 $OTA_DATA_INITIAL 0x10000 $NETWORK_ADAPTER
+
+    # Check the exit status of the esptool.py command
+    if [ $? -eq 0 ]; then
+        echo "Flash completed successfully."
+    else
+        echo "Flash failed."
+    fi
 else
-    echo "Flash failed."
+    echo "No .key files found in the specified directory."
 fi
