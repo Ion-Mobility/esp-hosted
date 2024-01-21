@@ -191,13 +191,7 @@ static esp_err_t tm_atcmd_process(char* cmd) {
     return ESP_OK;
 }
 
-void send_to_tm_queue(int msg_id, uint8_t *data, int len)
+void send_to_tm_queue(ble_to_tm_msg_t *msg)
 {
-    ble_to_tm_msg_t ble_to_tm_msg = {0};
-    ble_to_tm_msg.msg_id = msg_id;
-    if (data != NULL) {
-        ble_to_tm_msg.len = len;
-        memcpy(ble_to_tm_msg.data, data, ble_to_tm_msg.len);
-    }
-    xQueueSend(ble_to_tm_queue, (void*)&ble_to_tm_msg, (TickType_t)0);
+    xQueueSend(ble_to_tm_queue, (void*)msg, (TickType_t)0);
 }

@@ -23,4 +23,4 @@ typedef struct {
 } ble_to_tm_msg_t;
 
 extern void tm_atcmd_tasks_init(void);
-extern void send_to_tm_queue(int msg_id, uint8_t *data, int len);
+extern void send_to_tm_queue(ble_to_tm_msg_t *msg);
