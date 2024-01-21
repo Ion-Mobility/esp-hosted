@@ -25,31 +25,16 @@ typedef enum {
     PHONE_BLE_CELLULAR          = 0x0B,
     PHONE_BLE_LOCATION          = 0x0C,
     PHONE_BLE_RIDE_TRACKING     = 0x0D,
-    //add new command here
 
-    // between tm & ble
-    TM_BLE_PAIRING              = 0x50,
-    TM_BLE_SESSION              = 0x51,
-    TM_BLE_DISCONNECT           = 0x52,
-    TM_BLE_BATTERY              = 0x53,
-    TM_BLE_PING_BIKE            = 0x56,
-    TM_BLE_OPEN_SEAT            = 0x57,
-    TM_BLE_DIAG                 = 0x58,
-    TM_BLE_BIKE_INFO            = 0x59,
-    TM_BLE_POWER_ON             = 0x5A,
-    TM_BLE_CELLULAR             = 0x5B,
-    TM_BLE_LOCATION             = 0x5C,
-    TM_BLE_RIDE_TRACKING        = 0x5D,
-    TM_BLE_GET_TIME             = 0x5E,
-    // add new msg here
-    TM_BLE_FAIL                 = 0x9E,
-    TM_BLE_OK                   = 0x9F,
-
-    BLE_START_ADVERTISE         = 0xA0,
+    TM_BLE_GET_TIME             = 0xFA,
+    BLE_START_ADVERTISE         = 0xFB,
+    BLE_CONNECT                 = BLE_CONNECT_EVENT,
     BLE_DISCONNECT              = BLE_DISCONNECT_EVENT,
-    BLE_CONNECT                 = BLE_CONNECT_EVENT
+    TM_BLE_FAIL                 = 0xFE,
+    TM_BLE_OK                   = 0xFF
 } ble_msg_id_t;
 
 extern QueueHandle_t ble_queue;
 extern void tm_ble_init(void);
 extern void tm_ble_start_advertise(void);
+extern void send_to_phone(ble_msg_t *pble_msg);

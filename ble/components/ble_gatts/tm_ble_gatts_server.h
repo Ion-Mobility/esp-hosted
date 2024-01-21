@@ -5,8 +5,8 @@
 #include "freertos/queue.h"
 
 #define BLE_MSG_MAX_LEN         235
-#define BLE_DISCONNECT_EVENT    0xA1
-#define BLE_CONNECT_EVENT       0xA2
+#define BLE_DISCONNECT_EVENT    0xFD
+#define BLE_CONNECT_EVENT       0xFC
 
 typedef struct {
     int msg_id;
