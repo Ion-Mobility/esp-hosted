@@ -34,8 +34,6 @@ static void ble_task(void *arg)
     ble_to_tm_msg_t ble_to_tm_msg = {0};
     uint8_t buf[BLE_MSG_MAX_LEN];
     size_t buf_len;
-    int ret = 0;
-    // int msg_id;
 
     ble_gatts_start_advertise();
     while(1) {
@@ -111,54 +109,40 @@ static void ble_task(void *arg)
 
             case PHONE_BLE_SESSION:
                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_SESSION");
-                if (connection_state == PAIRED) {
-                    int session_result = session_request(to_ble_msg.data, to_ble_msg.len, buf, &buf_len);
-                    if (session_result == ESP_OK) {
-                        connection_state = SESSION_CREATED;
-                        to_phone_msg.msg_id = PHONE_BLE_SESSION;
-                        to_phone_msg.len = buf_len;
-                        memcpy(to_phone_msg.data, buf, buf_len);
-                        send_to_phone(&to_phone_msg);
-                        vTaskDelay(50/portTICK_PERIOD_MS);
-                        ESP_LOGI(ION_BLE_TAG, "Session created");
-                    } else {
-                        ESP_LOGE(ION_BLE_TAG, "Failed to create session");
-                    }
-                    // connection_state = SESSION_CREATED;
-                        ble_to_tm_msg.msg_id = PHONE_BLE_SESSION;
-                        ble_to_tm_msg.len = 0;
-                        send_to_tm_queue(&ble_to_tm_msg);
+                if (connection_state == PAIRED && session_request(to_ble_msg.data, to_ble_msg.len, buf, &buf_len) == ESP_OK) {
+                    connection_state = SESSION_CREATED;
+
+                    // response to phone
+                    to_phone_msg.msg_id = PHONE_BLE_SESSION;
+                    to_phone_msg.len = buf_len;
+                    memcpy(to_phone_msg.data, buf, buf_len);
+                    send_to_phone(&to_phone_msg);
+                    vTaskDelay(50/portTICK_PERIOD_MS);
+
+                    // notify 148
+                    ESP_LOGI(ION_BLE_TAG, "Session created");
+                    ble_to_tm_msg.msg_id = PHONE_BLE_SESSION;
+                    ble_to_tm_msg.len = 0;
+                    send_to_tm_queue(&ble_to_tm_msg);
                 } else {
-                    ESP_LOGW(ION_BLE_TAG, "phone not pair yet, kill this connection");
+                    ESP_LOGW(ION_BLE_TAG, "phone not pair yet or pairing but fails to create session, kill this connection");
                     tm_ble_gatts_kill_connection();
                 }
                 break;
 
             case PHONE_BLE_COMMAND:
                 ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_COMMAND");
-                if (connection_state == SESSION_CREATED) {
-                    //decrypt this command
-                    ret = message_decrypt(buf, &buf_len, to_ble_msg.data, to_ble_msg.len);
-                    if (ret == 0) {
-                        //successfully decrypted message, let process this command
+                if (connection_state == SESSION_CREATED && message_decrypt(buf, &buf_len, to_ble_msg.data, to_ble_msg.len) == 0) {
 #if (DEBUG_BLE)
-                        ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_COMMAND len: %d",buf_len);
-                        esp_log_buffer_hex(ION_BLE_TAG, buf, buf_len);
+                    ESP_LOGI(ION_BLE_TAG, "PHONE_BLE_COMMAND len: %d",buf_len);
+                    esp_log_buffer_hex(ION_BLE_TAG, buf, buf_len);
 #endif
-                        if (PHONE_BLE_COMMAND < buf[3]) {
-                            ble_to_tm_msg.msg_id = buf[3];
-                            ble_to_tm_msg.len = buf_len - 4;
-                            if (ble_to_tm_msg.len > 0)
-                                memcpy(ble_to_tm_msg.data, &buf[4], ble_to_tm_msg.len);
-                            send_to_tm_queue(&ble_to_tm_msg);
-                        }
-                    } else {
-                        //failed to decrypt message
-                        ESP_LOGE(ION_BLE_TAG, "failed to decrypt message, kill this connection");
-                        ble_to_tm_msg.msg_id = BLE_DISCONNECT;
-                        ble_to_tm_msg.len = 0;
+                    if (PHONE_BLE_COMMAND < buf[3]) {
+                        ble_to_tm_msg.msg_id = buf[3];
+                        ble_to_tm_msg.len = buf_len - 4;
+                        if (ble_to_tm_msg.len > 0)
+                            memcpy(ble_to_tm_msg.data, &buf[4], ble_to_tm_msg.len);
                         send_to_tm_queue(&ble_to_tm_msg);
-                        tm_ble_gatts_kill_connection();
                     }
                 } else {
                     ESP_LOGW(ION_BLE_TAG, "session not created yet, kill this connection");
