@@ -67,7 +67,7 @@ static void ble_task(void *arg)
 
             case BLE_CONNECT:
                 ESP_LOGI(ION_BLE_TAG, "BLE_CONNECT");
-                // send_to_tm_queue(TM_BLE_GET_TIME, NULL, 0);
+                send_to_tm_queue(TM_BLE_GET_TIME, NULL, 0);
 #if (ENABLE_PAIR_TIMEOUT)
                 start_oneshot_timer(BLE_PAIRING_TIMEOUT);
 #elif (TEST_COMMAND)

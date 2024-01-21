@@ -126,20 +126,68 @@ static esp_err_t tm_atcmd_process(char* cmd) {
     esp_log_buffer_hex(ION_TM_ATCMD_TAG, cmd, 16);
 #endif
 
-    msg_id = cmd[0];
-    len = cmd[1];
-    buf_len = serialize_data(buf, 0, (uint8_t*)&msg_id, sizeof(msg_id));
-    memcpy(&buf[sizeof(msg_id)], &cmd[2], len);
-    buf_len += len;
-    message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, buf, buf_len);
-    if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
-        to_phone_msg.msg_id = PHONE_BLE_COMMAND;
-        send_to_phone(&to_phone_msg);
-    }
-#if (DEBUG_BLE)
-    ESP_LOGI(ION_TM_ATCMD_TAG, "send_to_phone msg_id: %d",to_phone_msg.msg_id);
-    esp_log_buffer_hex(ION_TM_ATCMD_TAG, to_phone_msg.data, to_phone_msg.len);
+    switch (cmd[0]) {
+        case PHONE_BLE_PAIRING: {
+            ESP_LOGI(ION_TM_ATCMD_TAG, "148 received pairing notification");
+        }
+        break;
+
+        case PHONE_BLE_SESSION: {
+            ESP_LOGI(ION_TM_ATCMD_TAG, "148 received paired notification");
+        }
+        break;
+
+        case BLE_DISCONNECT: {
+            ESP_LOGI(ION_TM_ATCMD_TAG, "148 received disconnect notification");
+        }
+        break;
+
+        case TM_BLE_GET_TIME: {
+            timeinfo.tm_sec     = cmd[2];
+            timeinfo.tm_min     = cmd[3];
+            timeinfo.tm_hour    = cmd[4];
+            timeinfo.tm_mday    = cmd[5];
+            timeinfo.tm_mon     = cmd[6];
+            timeinfo.tm_year    = cmd[7]+1900;
+            timeinfo.tm_wday    = cmd[8];
+#if (DEBUG_TM)
+            char strftime_buf[64];
+            time_t now;
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process: sec:  %d",timeinfo.tm_sec);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process: min:  %d",timeinfo.tm_min);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process: hour: %d",timeinfo.tm_hour);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process: mday: %d",timeinfo.tm_mday);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process: mon:  %d",timeinfo.tm_mon);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process: year: %d",timeinfo.tm_year);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process: wday: %d",timeinfo.tm_wday);
+            esp_log_buffer_hex(ION_TM_ATCMD_TAG, &cmd[1], sizeof(timeinfo));
+            strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+            now = mktime(&timeinfo);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "The current date/time is: %s", strftime_buf);
+            ESP_LOGI(ION_TM_ATCMD_TAG, "The current timestamp is: %ld", now);
+            // update system time
+            // time(&now);
 #endif
+        }
+        break;
+
+        default:
+            msg_id = cmd[0];
+            len = cmd[1];
+            buf_len = serialize_data(buf, 0, (uint8_t*)&msg_id, sizeof(msg_id));
+            memcpy(&buf[sizeof(msg_id)], &cmd[2], len);
+            buf_len += len;
+            message_encrypt(to_phone_msg.data, (size_t*)&to_phone_msg.len, buf, buf_len);
+            if (to_phone_msg.len <= BLE_MSG_MAX_LEN) {
+                to_phone_msg.msg_id = PHONE_BLE_COMMAND;
+                send_to_phone(&to_phone_msg);
+            }
+#if (DEBUG_BLE)
+            ESP_LOGI(ION_TM_ATCMD_TAG, "send_to_phone msg_id: %d",to_phone_msg.msg_id);
+            esp_log_buffer_hex(ION_TM_ATCMD_TAG, to_phone_msg.data, to_phone_msg.len);
+#endif
+        break;
+    }
     return ESP_OK;
 }
 
