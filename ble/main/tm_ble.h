@@ -16,15 +16,6 @@ typedef enum {
     PHONE_BLE_SESSION           = 0x01,
     //below commands only available after session is successfully created
     PHONE_BLE_COMMAND           = 0x02,
-    PHONE_BLE_BATTERY           = 0x03,
-    PHONE_BLE_PING_BIKE         = 0x06,
-    PHONE_BLE_OPEN_SEAT         = 0x07,
-    PHONE_BLE_DIAG              = 0x08,
-    PHONE_BLE_BIKE_INFO         = 0x09,
-    PHONE_BLE_POWER_ON          = 0x0A,
-    PHONE_BLE_CELLULAR          = 0x0B,
-    PHONE_BLE_LOCATION          = 0x0C,
-    PHONE_BLE_RIDE_TRACKING     = 0x0D,
 
     TM_BLE_GET_TIME             = 0xFA,
     BLE_START_ADVERTISE         = 0xFB,
