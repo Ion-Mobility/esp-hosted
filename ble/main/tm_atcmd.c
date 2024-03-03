@@ -161,7 +161,7 @@ static esp_err_t tm_atcmd_process(char* cmd) {
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process: year: %d",timeinfo.tm_year);
             ESP_LOGI(ION_TM_ATCMD_TAG, "tm_atcmd_process: wday: %d",timeinfo.tm_wday);
             esp_log_buffer_hex(ION_TM_ATCMD_TAG, &cmd[1], sizeof(timeinfo));
-            strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+            strftime(strftime_buf, sizeof(strftime_buf), "%x - %I:%M%p", &timeinfo);
             now = mktime(&timeinfo);
             ESP_LOGI(ION_TM_ATCMD_TAG, "The current date/time is: %s", strftime_buf);
             ESP_LOGI(ION_TM_ATCMD_TAG, "The current timestamp is: %ld", now);

@@ -12,21 +12,17 @@
 
 #define BLE_TASK_PRIO           3
 #define ION_BLE_TAG             "TM_BLE"
-
-#if (ENABLE_PAIR_TIMEOUT)
-#define BLE_PAIRING_TIMEOUT     1500    //1500ms
-#elif (TEST_COMMAND)
-#define TEST_COMMAND_TIMEOUT    5000    //5s
-#endif
-
+#define BLE_PAIRING_TIMEOUT     1200    //1200ms
 #define OK                      1
 #define FAIL                    0
 
 QueueHandle_t ble_queue;
 static uint8_t connection_state = UNPAIRED;
+#ifdef BLE_PAIRING_TIMEOUT
 static esp_timer_handle_t oneshot_timer;
-static void oneshot_timer_callback(void* arg);
 static void start_oneshot_timer(int timeout_ms);
+#endif
+
 static void ble_task(void *arg)
 {
     ble_msg_t to_ble_msg = {0};
@@ -64,10 +60,8 @@ static void ble_task(void *arg)
                 ble_to_tm_msg.msg_id = TM_BLE_GET_TIME;
                 ble_to_tm_msg.len = 0;
                 send_to_tm_queue(&ble_to_tm_msg);
-#if (ENABLE_PAIR_TIMEOUT)
+#ifdef BLE_PAIRING_TIMEOUT
                 start_oneshot_timer(BLE_PAIRING_TIMEOUT);
-#elif (TEST_COMMAND)
-                start_oneshot_timer(TEST_COMMAND_TIMEOUT);
 #endif
                 connection_state = UNPAIRED;
                 break;
@@ -183,33 +177,16 @@ void send_to_phone(ble_msg_t *pble_msg) {
     tm_ble_gatts_send_to_phone((uint8_t*)pble_msg, len);
 }
 
-#if ((ENABLE_PAIR_TIMEOUT) || (TEST_COMMAND))
+#ifdef BLE_PAIRING_TIMEOUT
 static void oneshot_timer_callback(void* arg)
-{
-#if (TEST_COMMAND)
-    uint8_t buf[4] = {0};
-    ble_msg_t to_ble_msg = {0};
-    to_ble_msg.msg_id = PHONE_BLE_COMMAND;
-    buf[3] = PHONE_BLE_BIKE_INFO;
-    to_ble_msg.len = sizeof(buf);
-    message_encrypt((uint8_t*)to_ble_msg.data, (size_t*)&to_ble_msg.len , (uint8_t*)buf, sizeof(buf));
-    xQueueSend(ble_queue, (void*)&to_ble_msg, (TickType_t)0);
-#elif (ENABLE_PAIR_TIMEOUT)
-    ble_to_tm_msg_t ble_to_tm_msg = {0};
+{    
+    esp_timer_delete(oneshot_timer);
     if (connection_state < PAIRED) {
         ESP_LOGW(ION_BLE_TAG, "pairing state:%d/expected:%d, terminate the connection",connection_state, PAIRED);
-        ble_to_tm_msg.msg_id = BLE_DISCONNECT;
-        ble_to_tm_msg.len = 0;
-        send_to_tm_queue(&ble_to_tm_msg);
-#if (ENABLE_PAIR_TIMEOUT)
         tm_ble_gatts_kill_connection();
-#endif
     }
-#endif
 }
-#endif
 
-#if ((ENABLE_PAIR_TIMEOUT) || (TEST_COMMAND))
 static void start_oneshot_timer(int timeout_ms)
 {
     esp_timer_create_args_t oneshot_timer_args = {
