@@ -199,6 +199,7 @@ uint8_t is_wakeup_needed(interface_buffer_handle_t *buf_handle)
 	}
 
 	if (memcmp(sta_mac, pos, MAC_ADDR_LEN) == 0) {
+		ESP_LOG_BUFFER_HEXDUMP("Frame", pos, 32, ESP_LOG_DEBUG);
 		ESP_LOGD(TAG, "Unicast addr matched, wakup host");
 		return 1;
 	}
@@ -615,6 +616,21 @@ int event_handler(uint8_t val)
 	return 0;
 }
 
+static void set_gpio_cd_pin(void)
+{
+#if CONFIG_SDIO_CARD_DETECTION_PIN_SUPPORT
+	gpio_config_t io_conf;
+	io_conf.intr_type = GPIO_INTR_DISABLE;
+	io_conf.mode = GPIO_MODE_OUTPUT;
+	io_conf.pin_bit_mask = (1ULL << CONFIG_SDIO_CD_PIN_GPIO);
+	io_conf.pull_down_en = 0;
+	io_conf.pull_up_en = 0;
+	gpio_config(&io_conf);
+
+	gpio_set_level(CONFIG_SDIO_CD_PIN_GPIO, 1);
+#endif
+}
+
 void app_main()
 {
 	esp_err_t ret;
@@ -688,6 +704,8 @@ void app_main()
 	while (!datapath) {
 		usleep(100*1000);
 	}
+
+	set_gpio_cd_pin();
 	/*send capabilities to host*/
 	send_bootup_event_to_host(capa);
 

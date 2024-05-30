@@ -165,6 +165,7 @@ int station_rx_eapol(uint8_t *src_addr, uint8_t *buf, uint32_t len)
 	if (power_save_on && wow.four_way_handshake) {
 		ESP_LOGI(TAG, "Wakeup on FourWayHandshake");
 		wake_host();
+		buf_handle.flag = 0xFF;
 		sleep(1);
 	}
 #endif
@@ -317,7 +318,7 @@ DONE:
 	return;
 }
 
-void handle_sta_disconnected_event(wifi_event_sta_disconnected_t *disconnected)
+void handle_sta_disconnected_event(wifi_event_sta_disconnected_t *disconnected, bool wakeup_flag)
 {
 	interface_buffer_handle_t buf_handle = {0};
 	struct disconnect_event *event;
@@ -342,6 +343,9 @@ void handle_sta_disconnected_event(wifi_event_sta_disconnected_t *disconnected)
 	memcpy(event->bssid, disconnected->bssid, MAC_ADDR_LEN);
 	event->reason = disconnected->reason;
 
+	if (wakeup_flag) {
+		buf_handle.flag = 0xFF;
+	}
 	ret = send_command_event(&buf_handle);
 	if (ret != pdTRUE) {
 		ESP_LOGE(TAG, "Slave -> Host: Failed to send disconnect event\n");
@@ -434,6 +438,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
 	int32_t event_id, void* event_data)
 {
 	esp_err_t result;
+	bool wakeup_flag = false;
 
 	if (event_base != WIFI_EVENT) {
 		ESP_LOGI(TAG, "Received unregistered event %s[%ld]\n", event_base, event_id);
@@ -474,10 +479,11 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
 		/* Wake-up host always on disconnect */
 			ESP_LOGI(TAG, "Wakeup on disconnect");
 			wake_host();
+			wakeup_flag = true;
 			sleep(1);
 		}
 #endif
-		handle_sta_disconnected_event((wifi_event_sta_disconnected_t*) event_data);
+		handle_sta_disconnected_event((wifi_event_sta_disconnected_t*) event_data, wakeup_flag);
 		station_connected = 0;
 		/*esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_STA, NULL);*/
 		break;
@@ -1169,6 +1175,7 @@ int process_auth_request(uint8_t if_type, uint8_t *payload, uint16_t payload_len
 	cmd_auth = (struct cmd_sta_auth *) payload;
 
 
+	esp_wifi_unset_appie_internal(WIFI_APPIE_RAM_STA_AUTH);
 	/* Auth data generally present in WPA3 frame */
 	if (cmd_auth->auth_data_len) {
 
@@ -1176,7 +1183,6 @@ int process_auth_request(uint8_t if_type, uint8_t *payload, uint16_t payload_len
 		msg_type = *pos;
 
 		/* Set Auth IEs */
-		esp_wifi_unset_appie_internal(WIFI_APPIE_RAM_STA_AUTH);
 		esp_wifi_set_appie_internal(WIFI_APPIE_RAM_STA_AUTH, cmd_auth->auth_data + 4,
 				cmd_auth->auth_data_len - 4, 0);
 	}
@@ -1195,7 +1201,7 @@ int process_auth_request(uint8_t if_type, uint8_t *payload, uint16_t payload_len
 			assert(params.bssid);
 
 			memcpy(params.bssid, cmd_auth->bssid, sizeof(cmd_auth->bssid));
-			params.scan_type = 1;
+			params.scan_type = WIFI_SCAN_TYPE_ACTIVE;
 		}
 
 		if (cmd_auth->channel) {

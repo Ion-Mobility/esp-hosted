@@ -113,12 +113,6 @@ static int init_app(void)
 		return FAILURE;
 	}
 
-	if (control_path_platform_init()) {
-		printf("Failed to read serial driver file\n");
-		deinit_hosted_control_lib();
-		return FAILURE;
-	}
-
 	register_event_callbacks();
 
 	test_config_heartbeat();
@@ -128,7 +122,10 @@ static int init_app(void)
 
 static void cleanup_app(void)
 {
-	test_disable_heartbeat();
+	// TODO properly disable heartbeat
+	test_disable_heartbeat_async();
+	// wait for async to complete
+	sleep(1);
 	unregister_event_callbacks();
 
 	control_path_platform_deinit();

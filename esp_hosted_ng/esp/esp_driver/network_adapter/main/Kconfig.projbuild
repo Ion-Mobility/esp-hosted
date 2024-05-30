@@ -7,7 +7,7 @@ menu "Example Configuration"
         default ESP_SPI_HOST_INTERFACE if IDF_TARGET_ESP32S3
         default ESP_SPI_HOST_INTERFACE if IDF_TARGET_ESP32C2
         default ESP_SPI_HOST_INTERFACE if IDF_TARGET_ESP32C3
-        default ESP_SPI_HOST_INTERFACE if IDF_TARGET_ESP32C6
+        default ESP_SDIO_HOST_INTERFACE if IDF_TARGET_ESP32C6
         help
             Bus interface to be used for communication with the host
 
@@ -47,7 +47,21 @@ menu "Example Configuration"
         int "GPIO pin for data ready interrupt"
         default 4
         help
-               GPIO pin for indicating host that SPI slave has data to be read by host
+            GPIO pin for indicating host that SPI slave has data to be read by host
+
+    config ESP_SPI_TX_Q_SIZE
+        int "ESP to Host SPI queue size"
+        default 10 if IDF_TARGET_ESP32
+        default 20
+        help
+            Very small tx queue will lower ESP == SPI ==> Host data rate
+
+    config ESP_SPI_RX_Q_SIZE
+        int "Host to ESP SPI queue size"
+        default 10 if IDF_TARGET_ESP32
+        default 20
+        help
+            Very small RX queue will lower ESP <== SPI == Host data rate
 
     config ESP_SPI_CHECKSUM
         bool "SPI checksum ENABLE/DISABLE"
@@ -74,10 +88,28 @@ menu "Example Configuration"
         help
             GPIO pin used to wake-up host
 
+    config SDIO_CARD_DETECTION_PIN_SUPPORT
+        bool "SDIO CD Pin support"
+        default n
+        help
+            Some hosts' implementations may require an additional signal by firmware
+            to indicate that it's ready for communication. This config option enables
+            support for that extra signal. GPIO pin number can be configured using SDIO_CD_PIN_GPIO.
+
+    config SDIO_CD_PIN_GPIO
+        int "CD Pin GPIO "
+        depends on ESP_SDIO_HOST_INTERFACE
+        depends on SDIO_CARD_DETECTION_PIN_SUPPORT
+        default 6
+        help
+            Some hosts' implementations may require an additional signal by firmware
+            to indicate that it's ready for communication. This GPIO pin used to indicate
+            host that card is ready for communication.
+
     choice SDIO_SLAVE_SPEED
         prompt "SDIO slave speed"
         depends on ESP_SDIO_HOST_INTERFACE
-        default SDIO_DEFAULT_SPEED
+        default SDIO_HIGH_SPEED
         help
             SDIO slave speed, could be either default speed or high speed.
             Enabling this will cause the host to see highspeed capability.

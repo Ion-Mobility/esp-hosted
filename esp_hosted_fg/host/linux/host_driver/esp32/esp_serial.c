@@ -32,6 +32,7 @@
 #include "esp.h"
 #include "esp_rb.h"
 #include "esp_api.h"
+#include "esp_kernel_port.h"
 
 #define ESP_SERIAL_MAJOR      221
 #define ESP_SERIAL_MINOR_MAX  1
@@ -153,6 +154,14 @@ static int esp_serial_open(struct inode *inode, struct file *file)
 {
 	struct esp_serial_devs *devs = NULL;
 
+	if (atomic_read(&ref_count_open) >= 1) {
+		esp_warn("already opened: denying new open request\n");
+		/* returning -EPERM may mislead user into checking the permission bits
+		 * of the device file. -EBUSY tells the user that the serial channel is
+		 * busy servicing another user of the device file */
+		return -EBUSY;
+	}
+
 	devs = container_of(inode->i_cdev, struct esp_serial_devs, cdev);
 	file->private_data = devs;
 
@@ -255,7 +264,7 @@ int esp_serial_init(void *priv)
 		goto err;
 	}
 
-	cl = class_create(THIS_MODULE, "esp_serial_chardrv");
+	cl = CLASS_CREATE("esp_serial_chardrv");
 	if (IS_ERR(cl)) {
 		esp_err("Class create err[%d]\n", err);
 		err = PTR_ERR(cl);

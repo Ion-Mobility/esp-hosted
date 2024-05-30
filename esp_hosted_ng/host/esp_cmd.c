@@ -132,15 +132,42 @@ static int decode_tx_power(struct esp_wifi_device *priv,
 		ret = -1;
 	}
 
-#if 0  //TODO firmware is not returning correct tx power value, remove this once we update IDF version
 	if (priv)
 		priv->tx_pwr = header->value;
 	else
 		esp_err("priv not updated\n");
-#endif
 
 	return ret;
 }
+
+static int decode_disconnect_resp(struct esp_wifi_device *priv, struct command_node *cmd_node)
+{
+	int ret = 0;
+	struct command_header *cmd;
+
+	if (!cmd_node || !cmd_node->resp_skb || !cmd_node->resp_skb->data) {
+		esp_info("Failed. cmd_node:%p\n", cmd_node);
+		if (cmd_node)
+			esp_info("code: %u resp_skb:%p\n",
+					cmd_node->cmd_code, cmd_node->resp_skb);
+		return -1;
+	}
+
+	cmd = (struct command_header *) (cmd_node->resp_skb->data);
+
+	if (cmd->cmd_status != CMD_RESPONSE_SUCCESS) {
+		esp_info("[0x%x] Command failed\n", cmd_node->cmd_code);
+		ret = -1;
+	}
+
+	if (priv)
+		priv->local_disconnect_req = true;
+	else
+		esp_err("priv not updated\n");
+
+	return ret;
+}
+
 
 static int decode_common_resp(struct command_node *cmd_node)
 {
@@ -236,7 +263,6 @@ static int wait_and_decode_cmd_resp(struct esp_wifi_device *priv,
 	case CMD_STA_AUTH:
 	case CMD_STA_ASSOC:
 	case CMD_STA_CONNECT:
-	case CMD_STA_DISCONNECT:
 	case CMD_ADD_KEY:
 	case CMD_DEL_KEY:
 	case CMD_SET_DEFAULT_KEY:
@@ -250,6 +276,10 @@ static int wait_and_decode_cmd_resp(struct esp_wifi_device *priv,
 		/* intentional fallthrough */
 		if (ret == 0)
 			ret = decode_common_resp(cmd_node);
+		break;
+	case CMD_STA_DISCONNECT:
+		if (ret == 0)
+			ret = decode_disconnect_resp(priv, cmd_node);
 		break;
 
 	case CMD_GET_MAC:
@@ -618,8 +648,21 @@ static void process_disconnect_event(struct esp_wifi_device *priv,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0))
 	cfg80211_bss_flush(priv->adapter->wiphy);
 #endif
-	/* Send dummpy deauth to userspace */
-	process_deauth_event(priv, event);
+	esp_port_close(priv);
+
+#if 0
+	if (event->reason >= 200) {
+		priv->local_disconnect_req = true;
+		event->reason = 1;
+	}
+#endif
+	if (priv->local_disconnect_req) {
+		CFG80211_DISCONNECTED(priv->ndev, event->reason, NULL, 0, true, GFP_KERNEL);
+		priv->local_disconnect_req = false;
+	} else {
+		/* Send dummpy deauth to userspace */
+		process_deauth_event(priv, event);
+	}
 }
 
 static void process_assoc_event(struct esp_wifi_device *priv,
@@ -1210,7 +1253,7 @@ int cmd_add_key(struct esp_wifi_device *priv, u8 key_index, bool pairwise,
 #endif
 
        /* Supplicant swaps tx/rx Mic keys whereas esp needs it normal format */
-       if (key->algo == WIFI_WPA_ALG_TKIP && !key->index) {
+       if (key->algo == WIFI_WPA_ALG_TKIP) {
                u8 buf[8];
                memcpy(buf, &key->data[16], 8);
                memcpy(&key->data[16], &key->data[24], 8);
