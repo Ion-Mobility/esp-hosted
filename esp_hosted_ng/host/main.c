@@ -630,6 +630,7 @@ static int process_internal_event(struct esp_adapter *adapter,
 			process_esp_bootup_event(adapter,
 				(struct esp_internal_bootup_event *)(skb->data));
 		} else {
+			printk("%s: Ignore BootupEvent\n", __func__);
 			return 0;
 		}
 
@@ -1022,6 +1023,7 @@ static void __exit esp_exit(void)
 		gpio_free(resetpin);
 	}
 	debugfs_exit();
+	esp32_is_started = 0;
 }
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Amey Inamdar <amey.inamdar@espressif.com>");
