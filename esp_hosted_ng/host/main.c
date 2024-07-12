@@ -609,7 +609,7 @@ static void process_esp_bootup_event(struct esp_adapter *adapter,
 	esp_info("Received ESP bootup event\n");
 	process_event_esp_bootup(adapter, evt->data, evt->len);
 }
-
+static u8 esp32_is_started = 0;
 static int process_internal_event(struct esp_adapter *adapter,
 		struct sk_buff *skb)
 {
@@ -625,8 +625,14 @@ static int process_internal_event(struct esp_adapter *adapter,
 	switch (header->event_code) {
 
 	case ESP_INTERNAL_BOOTUP_EVENT:
-		process_esp_bootup_event(adapter,
-			(struct esp_internal_bootup_event *)(skb->data));
+		if(esp32_is_started == 0) {
+			esp32_is_started = 1;
+			process_esp_bootup_event(adapter,
+				(struct esp_internal_bootup_event *)(skb->data));
+		} else {
+			return 0;
+		}
+
 		break;
 
 	default:
