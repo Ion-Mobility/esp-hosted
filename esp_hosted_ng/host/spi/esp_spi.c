@@ -566,8 +566,10 @@ static void spi_exit(void)
 
 	esp_remove_card(spi_context.adapter);
 
+#if(ION_ENABLE_BLE == 1)
 	if (spi_context.adapter->hcidev)
 		esp_deinit_bt(spi_context.adapter);
+#endif
 
 	if (spi_context.spi_gpio_enabled) {
 		free_irq(SPI_IRQ, spi_context.esp_spi_dev);

@@ -213,6 +213,7 @@ void print_capabilities(u32 cap)
 			esp_info("\t   - BR EDR only\n");
 	}
 }
+#if (ION_ENABLE_BLE == 1)
 
 void init_bt(struct esp_adapter *adapter)
 {
@@ -224,6 +225,7 @@ void init_bt(struct esp_adapter *adapter)
 		esp_init_bt(adapter);
 	}
 }
+#endif
 
 static int check_esp_version(struct fw_version *ver)
 {
@@ -325,7 +327,11 @@ int process_event_esp_bootup(struct esp_adapter *adapter, u8 *evt_buf, u8 len)
 		esp_err("network iterface init failed\n");
 		return -1;
 	}
+#if (ION_ENABLE_BLE == 1)
+
 	init_bt(adapter);
+
+#endif 
 
 	if (raw_tp_mode !=0) {
 #if TEST_RAW_TP
@@ -561,8 +567,10 @@ int esp_remove_card(struct esp_adapter *adapter)
 	}
 
 	esp_stop_network_ifaces(adapter);
+#if(ION_ENABLE_BLE == 1)
 	/* BT may have been initialized after fw bootup event, deinit it */
 	esp_deinit_bt(adapter);
+#endif
 	esp_commands_teardown(adapter);
 	esp_remove_network_ifaces(adapter);
 	esp_remove_wiphy(adapter);
@@ -738,7 +746,7 @@ static void process_rx_packet(struct esp_adapter *adapter, struct sk_buff *skb)
 			process_cmd_event(priv, skb);
 			dev_kfree_skb_any(skb);
 		}
-
+#if (ION_ENABLE_BLE == 1)
 	} else if (payload_header->if_type == ESP_HCI_IF) {
 		if (hdev) {
 
@@ -756,6 +764,8 @@ static void process_rx_packet(struct esp_adapter *adapter, struct sk_buff *skb)
 				esp_hci_update_rx_counter(hdev, *type, skb->len);
 			}
 		}
+#endif // Enable BLE
+
 	} else if (payload_header->if_type == ESP_INTERNAL_IF) {
 
 		/* Queue event skb for processing in events workqueue */
