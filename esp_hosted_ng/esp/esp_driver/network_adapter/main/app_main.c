@@ -52,7 +52,7 @@ static const char TAG[] = "FW_MAIN";
 
 #if CONFIG_ESP_WLAN_DEBUG
 static const char TAG_RX[] = "H -> S";
-static const char TAG_TX[] = "S -> H";
+// static const char TAG_TX[] = "S -> H";
 #endif
 
 #ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
