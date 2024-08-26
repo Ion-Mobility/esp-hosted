@@ -91,10 +91,10 @@ static const char TAG[] = "FW_SPI";
 #elif defined CONFIG_IDF_TARGET_ESP32S3
 
 	#define ESP_SPI_CONTROLLER		1
-	#define GPIO_MOSI			11
-	#define GPIO_MISO			13
-	#define GPIO_SCLK			12
-	#define GPIO_CS 			10
+	#define GPIO_MOSI			3
+	#define GPIO_MISO			4
+	#define GPIO_SCLK			5
+	#define GPIO_CS 			6
 	#define DMA_CHAN			SPI_DMA_CH_AUTO
 
 	#define SPI_CLK_MHZ			30
@@ -512,7 +512,7 @@ static interface_handle_t * esp_spi_init(void)
 
 	/* Configuration for the SPI slave interface */
 	spi_slave_interface_config_t slvcfg={
-		.mode=SPI_MODE_2,
+		.mode=SPI_MODE_3,
 		.spics_io_num=GPIO_CS,
 		.queue_size=SPI_QUEUE_SIZE,
 		.flags=0,
