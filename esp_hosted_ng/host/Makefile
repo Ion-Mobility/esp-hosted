@@ -44,7 +44,7 @@ ifeq ($(MODULE_NAME), esp32_spi)
 	module_objects += spi/esp_spi.o
 endif
 
-module_objects += esp_bt.o main.o esp_cmd.o esp_utils.o esp_cfg80211.o esp_stats.o esp_debugfs.o esp_log.o
+module_objects += main.o esp_cmd.o esp_utils.o esp_cfg80211.o esp_stats.o esp_debugfs.o esp_log.o
 #$(foreach obj,$(module_objects),$(eval CFLAGS_$(obj:.o=).o := $(debug_flags)))
 CFLAGS_esp_log.o = -DDEBUG
 
@@ -55,6 +55,9 @@ $(MODULE_NAME)-y := $(module_objects)
 
 all: clean
 	make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -C $(KERNEL) M=$(PWD) modules
+
+modules_install:
+	make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -C $(KERNEL) M=$(PWD) modules_install
 
 clean:
 	rm -rf *.o sdio/*.o spi/*.o *.ko
