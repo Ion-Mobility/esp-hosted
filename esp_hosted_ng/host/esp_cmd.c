@@ -892,7 +892,8 @@ int cmd_set_ip_address(struct esp_wifi_device *priv, u32 ip)
 
 	if (test_bit(ESP_CLEANUP_IN_PROGRESS, &priv->adapter->state_flags))
 		return 0;
-
+	if (!test_bit(ESP_DRIVER_ACTIVE, &priv->adapter->state_flags))
+			return 0;
 	cmd_node = prepare_command_request(priv->adapter, CMD_SET_IP_ADDR,
 			sizeof(struct cmd_set_ip_addr));
 
@@ -2073,6 +2074,9 @@ int cmd_get_tx_power(struct esp_wifi_device *priv)
 		return -EINVAL;
 	}
 
+	if (!test_bit(ESP_DRIVER_ACTIVE, &priv->adapter->state_flags))
+			return 0;
+
 	cmd_len = sizeof(struct command_header) + sizeof(int32_t);
 
 	cmd_node = prepare_command_request(priv->adapter, CMD_GET_TXPOWER, cmd_len);
@@ -2099,7 +2103,8 @@ int cmd_get_reg_domain(struct esp_wifi_device *priv)
 		esp_err("Invalid argument\n");
 		return -EINVAL;
 	}
-
+	if (!test_bit(ESP_DRIVER_ACTIVE, &priv->adapter->state_flags))
+			return 0;
 	cmd_len = sizeof(struct cmd_reg_domain);
 
 	cmd_node = prepare_command_request(priv->adapter, CMD_GET_REG_DOMAIN, cmd_len);
@@ -2127,7 +2132,8 @@ int cmd_set_reg_domain(struct esp_wifi_device *priv)
 		esp_err("Invalid argument\n");
 		return -EINVAL;
 	}
-
+	if (!test_bit(ESP_DRIVER_ACTIVE, &priv->adapter->state_flags))
+			return 0;
 	cmd_len = sizeof(struct cmd_reg_domain);
 
 	cmd_node = prepare_command_request(priv->adapter, CMD_SET_REG_DOMAIN, cmd_len);
