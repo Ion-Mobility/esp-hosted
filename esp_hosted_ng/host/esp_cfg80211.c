@@ -1223,10 +1223,9 @@ int esp_mark_scan_done_and_disconnect(struct esp_wifi_device *priv, uint8_t loca
 	if (priv->wdev.iftype != NL80211_IFTYPE_STATION)
 		return 0;
 		
-	if((priv->scan_in_progress == 0) && (priv->waiting_for_scan_done == 0))
-		return 0;
-
-	ESP_MARK_SCAN_DONE(priv, true);
-	ESP_CANCEL_SCHED_SCAN();
+	if((priv->scan_in_progress != 0) || (priv->waiting_for_scan_done != 0)){
+            ESP_MARK_SCAN_DONE(priv, true);
+            ESP_CANCEL_SCHED_SCAN();
+	}
 	return esp_mark_disconnect(priv, 0, locally_disconnect);
 }
