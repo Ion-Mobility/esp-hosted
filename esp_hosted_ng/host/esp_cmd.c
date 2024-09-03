@@ -509,7 +509,7 @@ struct command_node *prepare_command_request(struct esp_adapter *adapter, u8 cmd
 	struct esp_payload_header *payload_header;
 	struct command_node *node = NULL;
 	struct esp_wifi_device *priv = adapter->priv[0];
-
+	printk("%s code: %d\n", __func__, cmd_code);
 	if (!adapter) {
 		esp_info("%u null adapter\n", __LINE__);
 		return NULL;
@@ -855,9 +855,14 @@ int cmd_set_mcast_mac_list(struct esp_wifi_device *priv, struct multicast_list *
 		return -EINVAL;
 	}
 
-	if (test_bit(ESP_CLEANUP_IN_PROGRESS, &priv->adapter->state_flags))
+	if (test_bit(ESP_CLEANUP_IN_PROGRESS, &priv->adapter->state_flags)) {
+		printk("ESP_CLEANUP_IN_PROGRESS!\n");
 		return 0;
-
+	}
+	if (!test_bit(ESP_DRIVER_ACTIVE, &priv->adapter->state_flags)) {
+		printk("Drop set mcast mac command due to driver inactive!\n");
+		return 0;
+	}
 	cmd_node = prepare_command_request(priv->adapter, CMD_SET_MCAST_MAC_ADDR,
 			sizeof(struct cmd_set_mcast_mac_addr));
 
@@ -1680,6 +1685,11 @@ int cmd_get_rssi(struct esp_wifi_device *priv)
 		return -EINVAL;
 	}
 
+	if (!test_bit(ESP_DRIVER_ACTIVE, &priv->adapter->state_flags)) {
+		printk("Drop RSSI command due to driver inactive!\n");
+		return 0;
+	}
+
 	cmd_len = sizeof(struct command_header) + sizeof(int32_t);
 
 	cmd_node = prepare_command_request(priv->adapter, CMD_STA_RSSI, cmd_len);
@@ -2074,9 +2084,10 @@ int cmd_get_tx_power(struct esp_wifi_device *priv)
 		return -EINVAL;
 	}
 
-	if (!test_bit(ESP_DRIVER_ACTIVE, &priv->adapter->state_flags))
-			return 0;
-
+	if (!test_bit(ESP_DRIVER_ACTIVE, &priv->adapter->state_flags)) {
+		printk("Drop get tx power command due to driver inactive!\n");
+		return 0;
+	}
 	cmd_len = sizeof(struct command_header) + sizeof(int32_t);
 
 	cmd_node = prepare_command_request(priv->adapter, CMD_GET_TXPOWER, cmd_len);
@@ -2103,8 +2114,10 @@ int cmd_get_reg_domain(struct esp_wifi_device *priv)
 		esp_err("Invalid argument\n");
 		return -EINVAL;
 	}
-	if (!test_bit(ESP_DRIVER_ACTIVE, &priv->adapter->state_flags))
-			return 0;
+	if (!test_bit(ESP_DRIVER_ACTIVE, &priv->adapter->state_flags)) {
+		printk("Drop get reg domain command due to driver inactive!\n");
+		return 0;
+	}
 	cmd_len = sizeof(struct cmd_reg_domain);
 
 	cmd_node = prepare_command_request(priv->adapter, CMD_GET_REG_DOMAIN, cmd_len);
@@ -2132,8 +2145,10 @@ int cmd_set_reg_domain(struct esp_wifi_device *priv)
 		esp_err("Invalid argument\n");
 		return -EINVAL;
 	}
-	if (!test_bit(ESP_DRIVER_ACTIVE, &priv->adapter->state_flags))
-			return 0;
+	if (!test_bit(ESP_DRIVER_ACTIVE, &priv->adapter->state_flags)) {
+		printk("Drop set Reg domain command due to driver inactive!\n");
+		return 0;
+	}
 	cmd_len = sizeof(struct cmd_reg_domain);
 
 	cmd_node = prepare_command_request(priv->adapter, CMD_SET_REG_DOMAIN, cmd_len);
