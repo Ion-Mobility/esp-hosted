@@ -502,7 +502,7 @@ static void destroy_cmd_wq(struct esp_adapter *adapter)
 	}
 
 }
-
+static int esp32_device_deiniting = 0;
 struct command_node *prepare_command_request(struct esp_adapter *adapter, u8 cmd_code, u16 len)
 {
 	struct command_header *cmd;
@@ -513,6 +513,14 @@ struct command_node *prepare_command_request(struct esp_adapter *adapter, u8 cmd
 	if (!adapter) {
 		esp_info("%u null adapter\n", __LINE__);
 		return NULL;
+	}
+	if(esp32_device_deiniting == 1) 
+		return NULL;
+	else {
+		if(cmd_code == CMD_DEINIT_INTERFACE) {
+			printk("Deiniting Espnet devive!\n");
+			esp32_device_deiniting = 1;
+		}
 	}
 
 	if (!cmd_code || cmd_code >= CMD_MAX) {
