@@ -497,9 +497,9 @@ static void destroy_cmd_wq(struct esp_adapter *adapter)
 		destroy_workqueue(adapter->cmd_wq);
 		adapter->cmd_wq = NULL;
 	}
-	if (adapter->if_rx_workqueue) {
-		flush_workqueue(adapter->if_rx_workqueue);
-	}
+	// if (adapter->if_rx_workqueue) {
+	// 	flush_workqueue(adapter->if_rx_workqueue);
+	// }
 
 }
 static int esp32_device_deiniting = 0;

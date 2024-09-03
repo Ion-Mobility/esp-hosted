@@ -606,9 +606,9 @@ int esp_remove_card(struct esp_adapter *adapter)
 	esp_deinit_bt(adapter);
 #endif 
 
-	if (adapter->if_rx_workqueue) {
-		flush_workqueue(adapter->if_rx_workqueue);
-	}
+	// if (adapter->if_rx_workqueue) {
+	// 	flush_workqueue(adapter->if_rx_workqueue);
+	// }
 	esp_commands_teardown(adapter);
 	esp_remove_network_ifaces(adapter);
 	esp_remove_wiphy(adapter);
