@@ -47,7 +47,7 @@
 #include "slave_bt.c"
 #include "stats.h"
 #include "esp_mac.h"
-
+#include "tm.h"
 static const char TAG[] = "FW_MAIN";
 
 #if CONFIG_ESP_WLAN_DEBUG
@@ -737,4 +737,6 @@ void app_main()
 		send_bootup_event_to_host(capa);
 
 	ESP_LOGI(TAG,"Initial set up done");
+
+	tm_tasks_init();
 }
