@@ -14,26 +14,30 @@
 #include "driver/spi_slave.h"
 #include "driver/gpio.h"
 
+//macros
 #define TM_TASK_PRIO                            3
 #define TAG                                     "TM"
 #define GPIO_INPUT_IO_0                         0
 #define GPIO_INPUT_PIN_SEL                      (1ULL<<GPIO_INPUT_IO_0)
 #define ESP_INTR_FLAG_DEFAULT                   0
-#define EXAMPLE_ESP_WIFI_SSID                   "abcxyz"
-#define EXAMPLE_ESP_WIFI_PASS                   "123456"
+#define EXAMPLE_ESP_WIFI_SSID                   "Mynori"
+#define EXAMPLE_ESP_WIFI_PASS                   "Tramy28sd9"
 #define EXAMPLE_ESP_MAXIMUM_RETRY               3
 #define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD       WIFI_AUTH_OPEN
 
 #define WIFI_CONNECTED_BIT                      BIT0
 #define WIFI_FAIL_BIT                           BIT1
 
-
+//private variables
 static EventGroupHandle_t s_wifi_event_group;
 static int s_retry_num = 0;
 
+//private functions
+static void wifi_init_sta(void);
 
 static void tm_task(void *arg)
 {
+    wifi_init_sta();
     while(1) {
         vTaskDelay(1000);
         ESP_LOGI(TAG,"tm_task");

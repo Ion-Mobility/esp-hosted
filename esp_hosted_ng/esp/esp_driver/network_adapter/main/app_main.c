@@ -48,6 +48,7 @@
 #include "stats.h"
 #include "esp_mac.h"
 #include "tm.h"
+#include "driver/gpio.h"
 static const char TAG[] = "FW_MAIN";
 
 #if CONFIG_ESP_WLAN_DEBUG
@@ -209,6 +210,9 @@ uint8_t is_wakeup_needed(interface_buffer_handle_t *buf_handle)
 	return 0;
 }
 #endif
+
+#define GPIO_APP_SELECT_PIN	(36)
+#define GPIO_INPUT_PIN_SEL  (1ULL<<GPIO_APP_SELECT_PIN)
 
 void esp_update_ap_mac(void)
 {
@@ -660,6 +664,27 @@ static void set_gpio_cd_pin(void)
 #endif
 }
 
+
+int check_app_pin_config(void) {
+    //zero-initialize the config structure.
+    gpio_config_t io_conf = {};
+    //disable interrupt
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    //set as output mode
+    io_conf.mode = GPIO_MODE_INPUT;
+    //bit mask of the pins that you want to set,e.g.GPIO18/19
+    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
+    //disable pull-down mode
+    io_conf.pull_down_en = 0;
+    //disable pull-up mode
+    io_conf.pull_up_en = 0;
+    //configure GPIO with the given settings
+    gpio_config(&io_conf);
+
+	vTaskDelay(pdMS_TO_TICKS(1000*2));
+	return gpio_get_level(GPIO_APP_SELECT_PIN);
+}
+
 void app_main()
 {
 	esp_err_t ret;
@@ -680,63 +705,68 @@ void app_main()
 	}
 	ESP_ERROR_CHECK( ret );
 
-	ret = initialise_wifi();
-	ESP_ERROR_CHECK( ret );
+	if (!check_app_pin_config()) {
+		ESP_LOGI(TAG, "boot to imx host");
+		ret = initialise_wifi();
+		ESP_ERROR_CHECK( ret );
 
-	init_sem = xSemaphoreCreateBinary();
-	if (init_sem == NULL) {
-		ESP_LOGE(TAG, "Failed to create init semaphore\n");
-		return;
-	}
+		init_sem = xSemaphoreCreateBinary();
+		if (init_sem == NULL) {
+			ESP_LOGE(TAG, "Failed to create init semaphore\n");
+			return;
+		}
 
 #ifdef CONFIG_BT_ENABLED
-	initialise_bluetooth();
+		initialise_bluetooth();
 
-	ret = esp_read_mac(mac, ESP_MAC_BT);
-	if (ret) {
-		ESP_LOGE(TAG,"Failed to read BT Mac addr\n");
-	} else {
-		ESP_LOGI(TAG, "ESP Bluetooth MAC addr: %2x-%2x-%2x-%2x-%2x-%2x\n",
-				mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-	}
+		ret = esp_read_mac(mac, ESP_MAC_BT);
+		if (ret) {
+			ESP_LOGE(TAG,"Failed to read BT Mac addr\n");
+		} else {
+			ESP_LOGI(TAG, "ESP Bluetooth MAC addr: %2x-%2x-%2x-%2x-%2x-%2x\n",
+					mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+		}
 #endif
 
-	if_context = interface_insert_driver(event_handler);
+	    if_context = interface_insert_driver(event_handler);
 #if CONFIG_ESP_SPI_HOST_INTERFACE
-	datapath = 1;
+	    datapath = 1;
 #endif
 
-	if (!if_context || !if_context->if_ops) {
-		ESP_LOGE(TAG, "Failed to insert driver\n");
-		return;
-	}
+        if (!if_context || !if_context->if_ops) {
+            ESP_LOGE(TAG, "Failed to insert driver\n");
+            return;
+        }
 
-	if_handle = if_context->if_ops->init();
+        if_handle = if_context->if_ops->init();
 
-	if (!if_handle) {
-		ESP_LOGE(TAG, "Failed to initialize driver\n");
-		return;
-	}
+        if (!if_handle) {
+            ESP_LOGE(TAG, "Failed to initialize driver\n");
+            return;
+        }
 
-	sleep(1);
+    	sleep(1);
 
-	for (prio_q_idx=0; prio_q_idx<MAX_PRIORITY_QUEUES; prio_q_idx++) {
-		to_host_queue[prio_q_idx] = xQueueCreate(TO_HOST_QUEUE_SIZE, sizeof(interface_buffer_handle_t));
-		assert(to_host_queue[prio_q_idx] != NULL);
-	}
+        for (prio_q_idx=0; prio_q_idx<MAX_PRIORITY_QUEUES; prio_q_idx++) {
+            to_host_queue[prio_q_idx] = xQueueCreate(TO_HOST_QUEUE_SIZE, sizeof(interface_buffer_handle_t));
+            assert(to_host_queue[prio_q_idx] != NULL);
+        }
 
-	assert(xTaskCreate(recv_task , "recv_task" , TASK_DEFAULT_STACK_SIZE , NULL , TASK_DEFAULT_PRIO, NULL) == pdTRUE);
-	assert(xTaskCreate(send_task , "send_task" , TASK_DEFAULT_STACK_SIZE, NULL , TASK_DEFAULT_PRIO , NULL) == pdTRUE);
+        assert(xTaskCreate(recv_task , "recv_task" , TASK_DEFAULT_STACK_SIZE , NULL , TASK_DEFAULT_PRIO, NULL) == pdTRUE);
+        assert(xTaskCreate(send_task , "send_task" , TASK_DEFAULT_STACK_SIZE, NULL , TASK_DEFAULT_PRIO , NULL) == pdTRUE);
 
-	create_debugging_tasks();
+    	create_debugging_tasks();
 
-	set_gpio_cd_pin();
+	    set_gpio_cd_pin();
 
-	/* send capabilities to host */
-	if (datapath || xSemaphoreTake(init_sem, portMAX_DELAY))
-		send_bootup_event_to_host(capa);
+        /* send capabilities to host */
+        if (datapath || xSemaphoreTake(init_sem, portMAX_DELAY))
+            send_bootup_event_to_host(capa);
+    } else {
+		ESP_LOGI(TAG, "boot to tm host");   
+	    tm_tasks_init();
+    }
+    
+    ESP_LOGI(TAG,"Initial set up done");
 
-	ESP_LOGI(TAG,"Initial set up done");
-
-	tm_tasks_init();
 }
