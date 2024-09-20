@@ -509,7 +509,7 @@ struct command_node *prepare_command_request(struct esp_adapter *adapter, u8 cmd
 	struct esp_payload_header *payload_header;
 	struct command_node *node = NULL;
 	struct esp_wifi_device *priv = adapter->priv[0];
-	printk("%s code: %d\n", __func__, cmd_code);
+	//printk("%s code: %d\n", __func__, cmd_code);
 	if (!adapter) {
 		esp_info("%u null adapter\n", __LINE__);
 		return NULL;
