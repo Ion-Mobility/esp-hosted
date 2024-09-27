@@ -50,8 +50,6 @@
 #include "stats.h"
 #include "heartbeat.h"
 
-#define WATCHDOG_TIMEOUT_MS 10000  // 10 seconds
-
 static const char TAG[] = "FW_MAIN";
 
 #if CONFIG_ESP_WLAN_DEBUG

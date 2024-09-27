@@ -7,19 +7,19 @@ static esp_timer_handle_t watchdog_timer_118;
 static esp_timer_handle_t watchdog_timer_148;
 
 // Function to reset the watchdog timer for 118
-void reset_watchdog_118() {
+static void reset_watchdog_118() {
     esp_timer_stop(watchdog_timer_118);  // Stop the current timer
     esp_timer_start_once(watchdog_timer_118, WATCHDOG_TIMEOUT_MS * 1000);  // Restart the timer
 }
 
 // Function to reset the watchdog timer for 148
-void reset_watchdog_148() {
+static void reset_watchdog_148() {
     esp_timer_stop(watchdog_timer_148);  // Stop the current timer
     esp_timer_start_once(watchdog_timer_148, WATCHDOG_TIMEOUT_MS * 1000);  // Restart the timer
 }
 
 
-void switch_partition() {
+static void switch_partition() {
     // Get the currently running partition
     const esp_partition_t *running_partition = esp_ota_get_running_partition();
     
@@ -50,7 +50,7 @@ void switch_partition() {
 }
 
 // This is the function to be called if the watchdog times out
-void watchdog_timeout_callback(void *arg) {
+static void watchdog_timeout_callback(void *arg) {
     ESP_LOGE(OTA_TAG, "No CAN packet received for 10 seconds!");
     // Switch to esp-diag
     switch_partition();
@@ -59,18 +59,13 @@ void watchdog_timeout_callback(void *arg) {
 // Task to receive CAN messages
 void can_receive_task(void *arg) {
     twai_message_t rx_msg;
-	// Create watchdog timer for 118
-    const esp_timer_create_args_t watchdog_timer_args_118 = {
+	// Create watchdog timer for 118 and 148
+    const esp_timer_create_args_t watchdog_timer_args = {
         .callback = &watchdog_timeout_callback,
-        .name = "CAN Watchdog 118"
+        .name = "CAN Watchdog"
     };
-    esp_timer_create(&watchdog_timer_args_118, &watchdog_timer_118);
-    // Create watchdog timer for 148
-    const esp_timer_create_args_t watchdog_timer_args_148 = {
-        .callback = &watchdog_timeout_callback,
-        .name = "CAN Watchdog 148"
-    };
-    esp_timer_create(&watchdog_timer_args_148, &watchdog_timer_148);
+    esp_timer_create(&watchdog_timer_args, &watchdog_timer_118);
+    esp_timer_create(&watchdog_timer_args, &watchdog_timer_148);
 	
 	// Start the watchdog timer with 10s timeout
     esp_timer_start_once(watchdog_timer_118, WATCHDOG_TIMEOUT_MS * 1000);
@@ -90,7 +85,7 @@ void can_receive_task(void *arg) {
             if (rx_msg.identifier == 0x148) {
                 ESP_LOGI(OTA_TAG, "Receive Telematic Heartbeat");
                 // Reset watchdog on successful reception
-                reset_watchdog_118();
+                reset_watchdog_148();
             }
 
         } else {
