@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "esp_log.h"
-#include "esp_ota_ops.h"
 #include "sys/queue.h"
 #include "soc/soc.h"
 #include "nvs_flash.h"
@@ -49,21 +48,11 @@
 
 #include "slave_bt.c"
 #include "stats.h"
-#include "esp_mac.h"
-
-// Define the CAN bus TX and RX pins and the baudrate
-#define CAN_TX_PIN 37
-#define CAN_RX_PIN 38
-#define CAN_BAUDRATE TWAI_TIMING_CONFIG_250KBITS()  // 250 kbps
-
-// Filter ID and Mask
-#define FILTER_ID 0x1EFFF000
-#define FILTER_MASK 0x1FFFF000
+#include "heartbeat.h"
 
 #define WATCHDOG_TIMEOUT_MS 10000  // 10 seconds
 
 static const char TAG[] = "FW_MAIN";
-static const char OTA_TAG[] = "OTA_SWITCH";
 
 #if CONFIG_ESP_WLAN_DEBUG
 static const char TAG_RX[] = "H -> S";
@@ -92,8 +81,6 @@ uint32_t from_wlan_count = 0;
 uint32_t to_host_count = 0;
 uint32_t to_host_sent_count = 0;
 #endif
-
-esp_timer_handle_t watchdog_timer;
 
 interface_context_t *if_context = NULL;
 interface_handle_t *if_handle = NULL;
@@ -607,80 +594,6 @@ void recv_task(void* pvParameters)
 	}
 }
 
-// Function to reset the watchdog timer
-void reset_watchdog() {
-    esp_timer_stop(watchdog_timer);  // Stop the current timer
-    esp_timer_start_once(watchdog_timer, WATCHDOG_TIMEOUT_MS * 1000);  // Restart the timer
-}
-
-void switch_partition() {
-    // Get the currently running partition
-    const esp_partition_t *running_partition = esp_ota_get_running_partition();
-    
-    // Get the next OTA partition to switch to (the inactive one)
-    const esp_partition_t *next_partition = esp_ota_get_next_update_partition(NULL);
-
-    if (next_partition != NULL) {
-        ESP_LOGI(OTA_TAG, "Current partition: type: 0x%x, subtype: 0x%x, address: 0x%x",
-                 (unsigned int)running_partition->type,
-				 (unsigned int)running_partition->subtype,
-				 (unsigned int)running_partition->address);
-        ESP_LOGI(OTA_TAG, "Switching to partition: type: 0x%x, subtype: 0x%x, address: 0x%x",
-                 (unsigned int)next_partition->type,
-				 (unsigned int)next_partition->subtype,
-				 (unsigned int)next_partition->address);
-
-        // Set the next boot partition to the new partition
-        esp_err_t err = esp_ota_set_boot_partition(next_partition);
-        if (err == ESP_OK) {
-            ESP_LOGI(OTA_TAG, "Partition switch successful. Restarting...");
-            esp_restart();  // Restart the device to boot from the new partition
-        } else {
-            ESP_LOGE(OTA_TAG, "Failed to switch partition, error: %s", esp_err_to_name(err));
-        }
-    } else {
-        ESP_LOGE(OTA_TAG, "No valid OTA partition found for update");
-    }
-}
-
-// This is the function to be called if the watchdog times out
-void watchdog_timeout_callback(void *arg) {
-    ESP_LOGE(OTA_TAG, "No CAN packet received for 10 seconds!");
-    // Switch to esp-diag
-    switch_partition();
-}
-
-// Task to receive CAN messages
-void can_receive_task(void *arg) {
-    twai_message_t rx_msg;
-	// Create watchdog timer
-    const esp_timer_create_args_t watchdog_timer_args = {
-        .callback = &watchdog_timeout_callback,
-        .name = "CAN Watchdog"
-    };
-	esp_timer_create(&watchdog_timer_args, &watchdog_timer);
-	    // Start the watchdog timer
-    esp_timer_start_once(watchdog_timer, WATCHDOG_TIMEOUT_MS * 1000);
-
-    while (1) {
-        // Block until a CAN message is received
-        if (twai_receive(&rx_msg, portMAX_DELAY) == ESP_OK) {
-            ESP_LOGI(OTA_TAG, "CAN message received:\n");
-            printf("ID: 0x%lx\n", rx_msg.identifier);
-            printf("DLC: %d\n", rx_msg.data_length_code);
-            printf("Data: ");
-            for (int i = 0; i < rx_msg.data_length_code; i++) {
-                printf("0x%02x ", rx_msg.data[i]);
-            }
-            printf("\n");
-			// Reset watchdog on successful reception
-            reset_watchdog();
-        } else {
-            printf("Failed to receive CAN message\n");
-        }
-    }
-}
-
 int event_handler(uint8_t val)
 {
 	switch(val) {
@@ -762,37 +675,22 @@ void app_main()
 
 	capa = get_capabilities();
 
-	/*Initialize NVS*/
-	ret = nvs_flash_init();
-
-	// Configure the CAN general parameters
+	// Configure the CAN driver
     twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(CAN_TX_PIN, CAN_RX_PIN, TWAI_MODE_NORMAL);
-
-    // Set the CAN bus baudrate to 250 kbps
     twai_timing_config_t t_config = CAN_BAUDRATE;
-
-    // Configure filter for extended ID: 0x1EFFFxxx
     twai_filter_config_t f_config = {
-        .acceptance_code = FILTER_ID << 3,  // Base ID for filtering
-        .acceptance_mask = ~(FILTER_MASK << 3),  // Mask to accept 0x1EFFFxxx
-        .single_filter = true  // Single filter mode
+        .acceptance_code = FILTER_ID << 3,
+        .acceptance_mask = ~(FILTER_MASK << 3),
+        .single_filter = true
     };
 
 	// Install CAN driver
-    if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK) {
-        ESP_LOGI(OTA_TAG, "TWAI driver installed");
-    } else {
-        ESP_LOGI(OTA_TAG, "Failed to install TWAI driver");
-        return;
-    }
-
+    ESP_ERROR_CHECK(twai_driver_install(&g_config, &t_config, &f_config));
 	// Start CAN driver
-    if (twai_start() == ESP_OK) {
-        ESP_LOGI(OTA_TAG, "TWAI driver started");
-    } else {
-        ESP_LOGI(OTA_TAG, "Failed to start TWAI driver");
-        return;
-    }
+	ESP_ERROR_CHECK(twai_start());
+
+	/*Initialize NVS*/
+	ret = nvs_flash_init();
 
 	if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
 		ESP_ERROR_CHECK(nvs_flash_erase());
