@@ -36,6 +36,8 @@
 #include "esp_mac.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "driver/gpio.h"
+#include "driver/twai.h"
 #ifdef CONFIG_BT_ENABLED
 #include "esp_bt.h"
 #ifdef CONFIG_BT_HCI_UART_NO
@@ -46,7 +48,7 @@
 
 #include "slave_bt.c"
 #include "stats.h"
-#include "esp_mac.h"
+#include "heartbeat.h"
 
 static const char TAG[] = "FW_MAIN";
 
@@ -671,6 +673,20 @@ void app_main()
 
 	capa = get_capabilities();
 
+	// Configure the CAN driver
+    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(CAN_TX_PIN, CAN_RX_PIN, TWAI_MODE_NORMAL);
+    twai_timing_config_t t_config = CAN_BAUDRATE;
+    twai_filter_config_t f_config = {
+        .acceptance_code = FILTER_ID << 3,
+        .acceptance_mask = ~(FILTER_MASK << 3),
+        .single_filter = true
+    };
+
+	// Install CAN driver
+    ESP_ERROR_CHECK(twai_driver_install(&g_config, &t_config, &f_config));
+	// Start CAN driver
+	ESP_ERROR_CHECK(twai_start());
+
 	/*Initialize NVS*/
 	ret = nvs_flash_init();
 
@@ -727,6 +743,7 @@ void app_main()
 
 	assert(xTaskCreate(recv_task , "recv_task" , TASK_DEFAULT_STACK_SIZE , NULL , TASK_DEFAULT_PRIO, NULL) == pdTRUE);
 	assert(xTaskCreate(send_task , "send_task" , TASK_DEFAULT_STACK_SIZE, NULL , TASK_DEFAULT_PRIO , NULL) == pdTRUE);
+	assert(xTaskCreate(can_receive_task, "CAN Receive Task", TASK_DEFAULT_STACK_SIZE, NULL, TASK_DEFAULT_PRIO, NULL) == pdTRUE);
 
 	create_debugging_tasks();
 
