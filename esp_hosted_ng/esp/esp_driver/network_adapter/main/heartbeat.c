@@ -74,16 +74,14 @@ void can_receive_task(void *arg) {
     while (1) {
         // Block until a CAN message is received
         if (twai_receive(&rx_msg, portMAX_DELAY) == ESP_OK) {
-            ESP_LOGI(OTA_TAG, "CAN message received:");
-            printf("ID: 0x%lx\n", rx_msg.identifier);
-            if (rx_msg.identifier == 0x118) {
-                ESP_LOGI(OTA_TAG, "Receive Realtime Heartbeat");
+            if (rx_msg.identifier == CAN_118_OTA_ID || rx_msg.identifier == CAN_118_VERSION_ID) {
+                ESP_LOGI(OTA_TAG, "Receive Realtime Heartbeat - ID 0x%lx", rx_msg.identifier);
 			    // Reset watchdog on successful reception
                 reset_watchdog_118();
             }
 
-            if (rx_msg.identifier == 0x148) {
-                ESP_LOGI(OTA_TAG, "Receive Telematic Heartbeat");
+            if (rx_msg.identifier == CAN_148_OTA_ID || rx_msg.identifier == CAN_148_VERSION_ID) {
+                ESP_LOGI(OTA_TAG, "Receive Telematic Heartbeat - ID 0x%lx", rx_msg.identifier);
                 // Reset watchdog on successful reception
                 reset_watchdog_148();
             }
