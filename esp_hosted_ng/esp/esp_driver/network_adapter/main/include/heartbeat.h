@@ -16,6 +16,7 @@
 // Accepted IDs for heartbeat
 #define CAN_118_VERSION_ID 0x1800F4FA
 #define CAN_148_VERSION_ID 0x1800F4F9
+#define CAN_WIFI_STATUS_ID 0x1800F2F9
 #define CAN_118_OTA_ID 0x118
 #define CAN_148_OTA_ID 0x148
 

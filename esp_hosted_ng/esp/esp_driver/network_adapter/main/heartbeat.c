@@ -19,25 +19,43 @@ static void reset_watchdog_148() {
 }
 
 
-static void switch_partition() {
-    // Get the currently running partition
-    const esp_partition_t *running_partition = esp_ota_get_running_partition();
-    
-    // Get the next OTA partition to switch to (the inactive one)
-    const esp_partition_t *next_partition = esp_ota_get_next_update_partition(NULL);
+void switch_partition(int partition_id) {
+    const esp_partition_t *target_partition = NULL;
 
-    if (next_partition != NULL) {
+    // Get the current running partition
+    const esp_partition_t *running_partition = esp_ota_get_running_partition();
+
+    ESP_LOGI(OTA_TAG, "Switch to partition: %d",partition_id);
+
+    // Determine the target partition based on the input
+    switch (partition_id) {
+        case 0: // Factory partition
+            target_partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_FACTORY, NULL);
+            break;
+        case 1: // OTA1 partition
+            target_partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0, NULL);
+            break;
+        case 2: // OTA2 partition
+            target_partition = esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1, NULL);
+            break;
+        default:
+            ESP_LOGE(OTA_TAG, "Invalid partition ID. Use 0 for factory, 1 for OTA1, 2 for OTA2");
+            return;
+    }
+
+    if (target_partition != NULL) {
         ESP_LOGI(OTA_TAG, "Current partition: type: 0x%x, subtype: 0x%x, address: 0x%x",
                  (unsigned int)running_partition->type,
-				 (unsigned int)running_partition->subtype,
-				 (unsigned int)running_partition->address);
+                 (unsigned int)running_partition->subtype,
+                 (unsigned int)running_partition->address);
+
         ESP_LOGI(OTA_TAG, "Switching to partition: type: 0x%x, subtype: 0x%x, address: 0x%x",
-                 (unsigned int)next_partition->type,
-				 (unsigned int)next_partition->subtype,
-				 (unsigned int)next_partition->address);
+                 (unsigned int)target_partition->type,
+                 (unsigned int)target_partition->subtype,
+                 (unsigned int)target_partition->address);
 
         // Set the next boot partition to the new partition
-        esp_err_t err = esp_ota_set_boot_partition(next_partition);
+        esp_err_t err = esp_ota_set_boot_partition(target_partition);
         if (err == ESP_OK) {
             ESP_LOGI(OTA_TAG, "Partition switch successful. Restarting...");
             esp_restart();  // Restart the device to boot from the new partition
@@ -45,15 +63,15 @@ static void switch_partition() {
             ESP_LOGE(OTA_TAG, "Failed to switch partition, error: %s", esp_err_to_name(err));
         }
     } else {
-        ESP_LOGE(OTA_TAG, "No valid OTA partition found for update");
+        ESP_LOGE(OTA_TAG, "No valid partition found for the given ID");
     }
 }
 
 // This is the function to be called if the watchdog times out
 static void watchdog_timeout_callback(void *arg) {
     ESP_LOGE(OTA_TAG, "No CAN packet received for 10 seconds!");
-    // Switch to esp-diag
-    switch_partition();
+    // Switch to esp-diag at partition 0
+    switch_partition(0);
 }
 
 // Task to receive CAN messages
@@ -86,6 +104,11 @@ void can_receive_task(void *arg) {
                 reset_watchdog_148();
             }
 
+            if (rx_msg.identifier == CAN_WIFI_STATUS_ID) {
+                ESP_LOGI(OTA_TAG, "Received WIFI_STATUS_PACKET");
+                // start partition switching
+                switch_partition(rx_msg.data[0]);
+            }
         } else {
             ESP_LOGI(OTA_TAG, "Failed to receive CAN message");
         }
