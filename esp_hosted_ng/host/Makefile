@@ -65,6 +65,9 @@ $(MODULE_NAME)-y := $(module_objects)
 all: clean
 	make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -C $(KERNEL) M=$(PWD) modules
 
+modules_install:
+	make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -C $(KERNEL) M=$(PWD) modules_install
+
 clean:
 	rm -rf *.o sdio/*.o spi/*.o *.ko
 	make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -C $(KERNEL) M=$(PWD) clean
