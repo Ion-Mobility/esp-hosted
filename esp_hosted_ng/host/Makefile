@@ -53,7 +53,8 @@ ifeq ($(MODULE_NAME), esp32_spi)
 	module_objects += spi/esp_spi.o
 endif
 
-module_objects += esp_bt.o main.o esp_cmd.o esp_utils.o esp_cfg80211.o esp_stats.o esp_debugfs.o esp_log.o
+#module_objects += esp_bt.o main.o esp_cmd.o esp_utils.o esp_cfg80211.o esp_stats.o esp_debugfs.o esp_log.o
+module_objects += main.o esp_cmd.o esp_utils.o esp_cfg80211.o esp_stats.o esp_debugfs.o esp_log.o
 #$(foreach obj,$(module_objects),$(eval CFLAGS_$(obj:.o=).o := $(debug_flags)))
 CFLAGS_esp_log.o = -DDEBUG
 

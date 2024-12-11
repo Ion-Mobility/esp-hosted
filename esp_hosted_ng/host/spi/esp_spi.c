@@ -611,10 +611,10 @@ static void spi_exit(void)
 	esp_remove_card(spi_context.adapter);
 
 	cleanup_spi_gpio();
-
+#if (ION_ENABLE_BLE == 1)
 	if (spi_context.adapter && spi_context.adapter->hcidev)
 		esp_deinit_bt(spi_context.adapter);
-
+#endif
 	spi_context.adapter->dev = NULL;
 
 	if (spi_context.esp_spi_dev) {
