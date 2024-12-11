@@ -23,7 +23,7 @@
 #define TX_RESUME_THRESHOLD     (TX_MAX_PENDING_COUNT/5)
 
 extern u32 raw_tp_mode;
-uint8_t g_spi_mode = SPI_MODE_2;
+uint8_t g_spi_mode = SPI_MODE_3;
 static struct sk_buff *read_packet(struct esp_adapter *adapter);
 static int write_packet(struct esp_adapter *adapter, struct sk_buff *skb);
 static void spi_exit(void);
