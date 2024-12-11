@@ -43,7 +43,7 @@ static const char TAG[] = "FW_SPI";
 #define MAKE_SPI_DMA_ALIGNED(VAL)  (VAL += SPI_DMA_ALIGNMENT_BYTES - \
 				((VAL)& SPI_DMA_ALIGNMENT_MASK))
 
-uint8_t g_spi_mode = SPI_MODE_2;
+uint8_t g_spi_mode = SPI_MODE_3;
 
 /* Chipset specific configurations */
 #ifdef CONFIG_IDF_TARGET_ESP32
