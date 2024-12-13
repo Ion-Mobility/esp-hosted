@@ -29,6 +29,7 @@
 #include "esp_ota_ops.h"
 #include "esp_app_format.h"
 #include "freertos/event_groups.h"
+#include "esp_sleep.h"
 
 #define TAG "FW_CMD"
 
@@ -1520,6 +1521,10 @@ int process_deinit_interface(uint8_t if_type, uint8_t *payload, uint16_t payload
 
 	ret = send_command_resp(if_type, CMD_DEINIT_INTERFACE, cmd_status, NULL, 0, 0);
 
+	ESP_LOGI(TAG, "Waiting for %d Seconds to enter deepsleep\n", 1);
+	sleep(1);
+	ESP_LOGI(TAG, "Enter Deepsleep\n");
+	esp_deep_sleep_start();
 	return ret;
 }
 
